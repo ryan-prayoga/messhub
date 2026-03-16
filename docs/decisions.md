@@ -55,3 +55,11 @@
 - Rationale: This keeps auth operational and production-aligned enough for early module work without adding OAuth or session store complexity.
 - Impact: Future auth work should preserve the existing role model while improving cookie security, refresh flow, and onboarding.
 - Follow-up: Harden cookie settings and add refresh/logout invalidation strategy before production release.
+
+## Decision 8
+- Date: 2026-03-16
+- Context: The project must fit an existing VPS workflow based on GAS CLI, PM2, and Nginx instead of Docker-first deployment.
+- Decision: Make frontend and backend runnable as separate PM2 apps, standardize default ports to `4101` and `4100`, keep Docker only for local Postgres, and use per-service `.env.example` files.
+- Rationale: This matches the established server workflow, avoids port collisions on the VPS, and removes ambiguity between local dev tooling and production deploy.
+- Impact: Frontend now uses `adapter-node` plus `ecosystem.config.cjs`; backend now prefers `PORT`; deployment docs and env handling are centered on service directories instead of root Docker runtime.
+- Follow-up: Validate the new workflow end-to-end with `gas build` and `gas deploy` on the target VPS.

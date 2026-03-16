@@ -9,6 +9,10 @@ agent-cache/
 # Application artifacts
 .DS_Store
 .env
+frontend/.env
+frontend/.env.production
+backend/.env
+backend/.env.production
 frontend/node_modules/
 frontend/.svelte-kit/
 frontend/build/

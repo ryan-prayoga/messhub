@@ -12,7 +12,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-  default: async ({ cookies, fetch, request }) => {
+  default: async ({ cookies, fetch, request, url }) => {
     const formData = await request.formData();
     const email = String(formData.get('email') || '').trim();
     const password = String(formData.get('password') || '');
@@ -46,7 +46,7 @@ export const actions: Actions = {
     }
 
     const { token, user } = payload.data;
-    const secure = false;
+    const secure = url.protocol === 'https:';
     const cookieOptions = {
       path: '/',
       httpOnly: true,

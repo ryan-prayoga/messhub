@@ -64,6 +64,13 @@
 - None observed.
 
 ## Done
+- ID: OPS-001
+  Title: Adapt deploy/runtime workflow to GAS CLI, PM2, and Nginx
+  Priority: P1
+  Owner/Agent: Codex
+  Dependencies: T-001, T-002
+  Notes: Frontend now uses adapter-node + ecosystem config on port 4101, backend prefers PORT on 4100, service env files were split, and Docker was reduced to local Postgres only.
+
 - ID: T-001
   Title: Initialize frontend and backend repo structure
   Priority: P1

@@ -1,184 +1,209 @@
 # MessHub
 
-MessHub adalah monorepo awal untuk aplikasi PWA internal mess dengan frontend `SvelteKit + Tailwind + PWA` dan backend `Go Fiber + PostgreSQL`.
+MessHub adalah monorepo aplikasi operasional mess dengan runtime terpisah:
 
-## Stack
+- `frontend/`: SvelteKit + Tailwind + PWA
+- `backend/`: Go Fiber + PostgreSQL
 
-- Frontend: SvelteKit, TailwindCSS, Vite PWA
-- Backend: Go Fiber, JWT auth, PostgreSQL
-- Infra: Docker Compose
+Deploy utama ditujukan untuk VPS Linux dengan:
 
-## Struktur Folder
+- GAS CLI
+- PM2
+- Nginx
+- frontend dan backend berjalan terpisah
+
+Docker bukan jalur utama deploy. `docker-compose.yml` dipertahankan hanya untuk Postgres lokal.
+
+## Production Workflow
+
+Production deploy memakai:
+
+- GAS CLI untuk build/run metadata
+- PM2 untuk process manager
+- Nginx untuk reverse proxy
+
+Frontend dan backend tidak dijalankan via container pada workflow production ini.
+
+## Runtime Default
+
+- Frontend port: `4101`
+- Backend port: `4100`
+- PM2 frontend: `messhub-frontend`
+- PM2 backend: `messhub-backend`
+
+Port ini dipilih karena `3000`, `4000`, `4001`, `5000`, dan `5001` sudah terpakai.
+
+## Struktur Project
 
 ```text
 .
 ├── frontend/
-│   ├── src/
-│   │   ├── lib/
-│   │   │   ├── api/
-│   │   │   ├── auth/
-│   │   │   ├── components/
-│   │   │   ├── config/
-│   │   │   └── stores/
-│   │   ├── routes/
-│   │   │   ├── login/
-│   │   │   ├── members/
-│   │   │   ├── wallet/
-│   │   │   ├── wifi/
-│   │   │   ├── shared-expenses/
-│   │   │   ├── contributions/
-│   │   │   ├── feed/
-│   │   │   ├── proposals/
-│   │   │   ├── profile/
-│   │   │   └── settings/
-│   │   ├── app.css
-│   │   ├── app.d.ts
-│   │   ├── app.html
-│   │   └── hooks.server.ts
-│   ├── static/
+│   ├── .env.example
+│   ├── ecosystem.config.cjs
 │   ├── package.json
 │   ├── svelte.config.js
-│   ├── tailwind.config.ts
-│   └── vite.config.ts
+│   ├── vite.config.ts
+│   └── src/
 ├── backend/
+│   ├── .env.example
 │   ├── cmd/
-│   │   ├── api/
-│   │   └── seed-admin/
 │   ├── db/
-│   │   ├── migrations/
-│   │   └── seeds/
-│   ├── internal/
-│   │   ├── app/
-│   │   ├── config/
-│   │   ├── database/
-│   │   ├── handlers/
-│   │   ├── middleware/
-│   │   ├── models/
-│   │   ├── repository/
-│   │   ├── routes/
-│   │   ├── services/
-│   │   └── types/
-│   └── go.mod
+│   ├── go.mod
+│   └── internal/
 ├── docs/
 ├── docker-compose.yml
 ├── .env.example
 └── README.md
 ```
 
-## Yang Sudah Disiapkan
+## File Penting
 
-- Mobile-first AppShell dan placeholder routes:
-  - `/login`
-  - `/`
-  - `/members`
-  - `/wallet`
-  - `/wifi`
-  - `/shared-expenses`
-  - `/contributions`
-  - `/feed`
-  - `/proposals`
-  - `/profile`
-  - `/settings`
-- API client frontend
-- Basic auth guard berbasis cookie
-- Backend `/api/v1`
-- Health check: `GET /api/v1/health`
-- Auth endpoints:
-  - `POST /api/v1/auth/login`
-  - `GET /api/v1/auth/me`
-- Middleware auth JWT
-- Middleware role untuk `admin` dan `treasurer`
-- Migration SQL awal untuk semua tabel inti
-- Seed admin command
+- `frontend/ecosystem.config.cjs`: default PM2 config untuk GAS/PM2
+- `frontend/.env.example`: env frontend untuk VPS/local run
+- `frontend/package.json`: script `dev`, `build`, `preview`, `start`
+- `frontend/svelte.config.js`: pakai `@sveltejs/adapter-node`
+- `frontend/vite.config.ts`: dev proxy ke backend `4100`
+- `backend/.env.example`: env backend untuk VPS/local run
+- `backend/internal/config/config.go`: backend sekarang membaca `PORT` lebih dulu
+- `backend/db/migrations/001_init.sql`: schema awal database
+- `docker-compose.yml`: Postgres lokal saja
 
-## Setup
+## Frontend
 
-1. Salin env:
+Frontend sekarang diarahkan ke runtime Node production, bukan preview server:
+
+- adapter: `@sveltejs/adapter-node`
+- script start: `npm run start`
+- env utama: `PORT`, `HOST`, `ORIGIN`, `PUBLIC_API_BASE_URL`
+- default API URL: `/api/v1`
+
+Ini membuat frontend cocok untuk:
+
+```bash
+cd frontend
+gas build --no-ui --type svelte --pm2-name messhub-frontend --port 4101 --yes
+```
+
+## Backend
+
+Backend sekarang membaca port dari `PORT`, lalu fallback ke `BACKEND_PORT`.
+
+Default env backend:
+
+- `PORT=4100`
+- `BACKEND_HOST=0.0.0.0`
+- `DATABASE_URL=postgres://...`
+- `JWT_SECRET=...`
+- `CORS_ORIGIN=http://127.0.0.1:4101,http://localhost:4101`
+
+Ini membuat backend cocok untuk:
+
+```bash
+cd backend
+gas build --no-ui --type go --pm2-name messhub-backend --port 4100 --yes
+```
+
+## Setup Local
+
+### 1. Jalankan Postgres Lokal
 
 ```bash
 cp .env.example .env
+docker compose up -d
 ```
 
-2. Jalankan PostgreSQL:
+### 2. Setup Backend
 
 ```bash
-docker compose up -d postgres
+cd backend
+cp .env.example .env
+go mod tidy
+psql "postgres://messhub:messhub@127.0.0.1:5432/messhub?sslmode=disable" -f db/migrations/001_init.sql
+go run ./cmd/seed-admin
+go run ./cmd/api
 ```
 
-3. Export env untuk shell saat ini:
+Backend akan listen di `http://127.0.0.1:4100`.
+
+### 3. Setup Frontend
 
 ```bash
-set -a
-source .env
-set +a
+cd frontend
+cp .env.example .env
+npm install
+npm run dev
 ```
 
-4. Jalankan migration:
+Frontend akan listen di `http://127.0.0.1:4101`.
+
+Dev proxy akan mengarahkan `/api/*` dari frontend ke backend `4100`.
+
+## Workflow VPS Dengan GAS CLI
+
+### Frontend
 
 ```bash
-psql "$DATABASE_URL" -f backend/db/migrations/001_init.sql
+cd frontend
+cp .env.example .env
+npm install
+gas build --no-ui --type svelte --pm2-name messhub-frontend --port 4101 --yes
 ```
 
-5. Seed admin:
+### Backend
+
+```bash
+cd backend
+cp .env.example .env
+go mod tidy
+gas build --no-ui --type go --pm2-name messhub-backend --port 4100 --yes
+```
+
+### Deploy Nginx Split Frontend/Backend
+
+```bash
+gas deploy --no-ui \
+  --frontend messhub-frontend \
+  --backend messhub-backend \
+  --domain messhub.example.com \
+  --mode frontend-backend-split \
+  --ssl certbot-nginx \
+  --yes
+```
+
+Ekspektasi route deploy:
+
+- `/` -> frontend `messhub-frontend`
+- `/api/` -> backend `messhub-backend`
+
+Karena frontend default ke `/api/v1`, tidak perlu hardcode domain backend di browser.
+
+## Seed Admin
+
+Default seed:
+
+- Email: `admin@messhub.local`
+- Password: lihat `SEED_ADMIN_PASSWORD` di `backend/.env`
+
+Command:
 
 ```bash
 cd backend
 go run ./cmd/seed-admin
 ```
 
-6. Jalankan backend:
+## Docker
 
-```bash
-cd backend
-go run ./cmd/api
-```
+`docker-compose.yml` dipertahankan hanya untuk:
 
-7. Jalankan frontend:
+- Postgres lokal
+- bootstrap development cepat
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-8. Buka aplikasi:
-
-- Frontend: `http://localhost:5173`
-- Backend: `http://localhost:8080/api/v1/health`
-
-## Setup Dengan Docker Compose
-
-```bash
-cp .env.example .env
-docker compose up
-```
-
-Catatan:
-- Compose ini cocok untuk bootstrap dev.
-- Migration masih dijalankan manual agar flow schema tetap jelas.
-- Frontend membaca root `.env` lewat `envDir`.
-- Backend akan membaca `.env` dari root repo atau dari folder backend jika file tersedia.
-
-## Kredensial Awal
-
-- Email: `admin@messhub.local`
-- Password: ambil dari `SEED_ADMIN_PASSWORD` di `.env`
-
-## File Penting
-
-- `frontend/src/routes/login/+page.server.ts`: login action dan set auth cookies
-- `frontend/src/routes/+layout.server.ts`: auth guard dasar
-- `frontend/src/lib/api/client.ts`: API client untuk backend
-- `frontend/src/lib/components/AppShell.svelte`: shell mobile-first
-- `backend/internal/services/auth_service.go`: validasi password dan issue JWT
-- `backend/internal/middleware/auth.go`: middleware auth dan role
-- `backend/db/migrations/001_init.sql`: schema awal database
-- `backend/cmd/seed-admin/main.go`: seed admin idempotent
+Docker tidak dipakai untuk menjalankan frontend atau backend di VPS production.
 
 ## Next Steps
 
-1. Tambahkan loader migration otomatis atau Makefile task supaya bootstrap lebih singkat.
-2. Implement CRUD member management.
-3. Implement wallet transactions dan wifi billing flow.
-4. Tambahkan password reset dan invite/onboarding flow.
-5. Ganti adapter frontend dan setup Dockerfile jika mulai harden untuk production deploy.
+1. Tambahkan CRUD `members`.
+2. Implement `wallet_transactions`.
+3. Implement `wifi_bills` dan `wifi_bill_members`.
+4. Tambahkan flow upload bukti pembayaran.
+5. Tambahkan hardening env production per domain VPS.
