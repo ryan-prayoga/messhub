@@ -179,6 +179,110 @@ Ekspektasi route deploy:
 
 Karena frontend default ke `/api/v1`, tidak perlu hardcode domain backend di browser.
 
+## CI/CD GitHub Actions
+
+Deploy otomatis production sekarang memakai workflow GitHub Actions di [`.github/workflows/deploy.yml`](/Users/ryanprayoga/Kerjaan/Pribadi/messhub/.github/workflows/deploy.yml).
+
+Trigger:
+
+- push ke branch `main`
+
+Secrets yang wajib di-set di GitHub repository:
+
+- `VPS_HOST`: host atau IP VPS Ubuntu
+- `VPS_USER`: user SSH VPS, mis. `ubuntu`
+- `VPS_SSH_KEY`: private key SSH untuk login ke VPS
+
+Alur workflow:
+
+1. checkout repository
+2. load private key ke `ssh-agent`
+3. tambah host VPS ke `known_hosts`
+4. SSH ke VPS dan masuk ke `/home/ubuntu/projects/messhub`
+5. `git checkout main` lalu `git pull --ff-only origin main`
+6. build backend dengan GAS CLI dan restart PM2 `messhub-backend`
+7. build frontend dengan GAS CLI dan restart PM2 `messhub-frontend`
+8. jalankan health check `curl http://127.0.0.1:4100/health`
+
+Command yang dijalankan di VPS:
+
+```bash
+cd /home/ubuntu/projects/messhub
+git checkout main
+git pull --ff-only origin main
+
+cd backend
+gas build --no-ui --type go --pm2-name messhub-backend --port 4100 --yes
+
+cd ../frontend
+gas build --no-ui --type svelte --pm2-name messhub-frontend --port 4101 --yes
+
+curl --fail --silent --show-error http://127.0.0.1:4100/health
+```
+
+Contoh setup secrets di GitHub:
+
+1. Buka repository `Settings` -> `Secrets and variables` -> `Actions`
+2. Tambah secret `VPS_HOST`
+3. Tambah secret `VPS_USER`
+4. Tambah secret `VPS_SSH_KEY`
+
+Contoh generate SSH key khusus deploy:
+
+```bash
+ssh-keygen -t ed25519 -C "github-actions@messhub" -f ~/.ssh/messhub_github_actions
+cat ~/.ssh/messhub_github_actions.pub
+```
+
+Tambahkan public key ke VPS pada `~/.ssh/authorized_keys` untuk user deploy, lalu simpan isi private key `~/.ssh/messhub_github_actions` sebagai secret `VPS_SSH_KEY`.
+
+Contoh log deploy yang diharapkan:
+
+```text
+Run ssh "${VPS_USER}@${VPS_HOST}"
++ cd /home/ubuntu/projects/messhub
++ git checkout main
++ git pull --ff-only origin main
+Already up to date.
++ cd backend
++ gas build --no-ui --type go --pm2-name messhub-backend --port 4100 --yes
+[PM2] Applying action restartProcessId on app [messhub-backend]
++ cd ../frontend
++ gas build --no-ui --type svelte --pm2-name messhub-frontend --port 4101 --yes
+[PM2] Applying action restartProcessId on app [messhub-frontend]
++ curl --fail --silent --show-error http://127.0.0.1:4100/health
+{"status":"ok"}
+```
+
+Cara test CI/CD:
+
+1. pastikan secret GitHub sudah terpasang
+2. pastikan VPS bisa `git pull origin main` tanpa prompt interaktif
+3. commit perubahan kecil ke branch `main`
+4. push: `git push origin main`
+5. buka tab `Actions` dan verifikasi job `Deploy to VPS` sukses
+6. cek aplikasi di `https://messhub.ryannn.net` dan endpoint health di VPS
+
+Rollback jika deploy gagal:
+
+1. SSH ke VPS
+2. buka folder `/home/ubuntu/projects/messhub`
+3. cek commit sebelumnya yang stabil: `git log --oneline -n 5`
+4. checkout commit stabil atau branch/tag yang diinginkan
+5. jalankan ulang command deploy manual yang sama:
+
+```bash
+cd /home/ubuntu/projects/messhub/backend
+gas build --no-ui --type go --pm2-name messhub-backend --port 4100 --yes
+
+cd /home/ubuntu/projects/messhub/frontend
+gas build --no-ui --type svelte --pm2-name messhub-frontend --port 4101 --yes
+
+curl --fail http://127.0.0.1:4100/health
+```
+
+Rollback tetap memakai arsitektur deploy yang sama: git checkout ke revision stabil lalu rebuild kedua service dengan GAS CLI.
+
 ## Seed Admin
 
 Default seed:

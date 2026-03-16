@@ -87,3 +87,11 @@
 - Rationale: This keeps the runtime aligned with the existing split frontend/backend deploy, avoids trusting tamperable identity cookies, and gives later modules a verified current-user source without introducing refresh-token/session-store complexity yet.
 - Impact: Protected frontend routes should fetch user-aware data from server loads/actions, and future domain work should reuse the same verified session flow instead of reading role/name/email directly from client-stored cookies.
 - Follow-up: Add refresh/logout invalidation strategy before production hardening if session duration or device switching becomes more complex.
+
+## Decision 12
+- Date: 2026-03-16
+- Context: Production deployment is already stable through manual SSH plus GAS CLI, but releases from `main` still require manual login to the VPS.
+- Decision: Automate deploys with GitHub Actions on pushes to `main`, using SSH into the existing VPS checkout, `git pull --ff-only origin main`, the current GAS CLI build commands for backend and frontend, and a post-deploy backend health check.
+- Rationale: This removes manual login from the release path while preserving the existing GAS CLI, PM2 app names, ports, Nginx split routing, and VPS directory structure that are already proven in the project.
+- Impact: Repository secrets must provide `VPS_HOST`, `VPS_USER`, and `VPS_SSH_KEY`; the VPS checkout must already support non-interactive Git pulls; failed health checks should fail the workflow after the rebuild.
+- Follow-up: Validate the workflow against the live VPS and decide later whether notifications or manual rollback helpers are needed.

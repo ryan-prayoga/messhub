@@ -11,6 +11,7 @@
 ## Summary Status
 
 - Observed: monorepo baseline now exists with `frontend/`, `backend/`, root env/compose/readme, and initial database migration.
+- Observed: GitHub Actions deployment automation is now defined for pushes to `main`, using SSH into the VPS, `git pull --ff-only origin main`, GAS CLI rebuilds for backend/frontend, and a backend health check.
 - Observed: frontend now verifies the access token server-side through `GET /api/v1/auth/me` instead of trusting copied identity cookies.
 - Observed: frontend includes a protected `/dashboard` route, dashboard summary cards, and a `/members` list screen with empty/error/access-denied states.
 - Observed: Tailwind global stylesheet is now imported from the root layout, so utility classes and custom component layers render instead of falling back to browser defaults.
@@ -34,6 +35,7 @@
 - Frontend install/runtime path is now stable on Node 24, with deprecated Workbox install warnings removed and `.svelte-kit` sync automated for fresh installs.
 - Backend scaffold created with Go Fiber, env config, PostgreSQL bootstrap, `/api/v1`, auth endpoints, middleware, migration SQL, and seed admin.
 - Runtime/deploy adaptation completed for separated frontend/backend services on ports `4101` and `4100`.
+- GitHub Actions CI/CD baseline added for `main` branch deploys to the VPS through SSH, reusing the existing GAS CLI + PM2 runtime commands and backend health check.
 - STEP 1 auth/session foundation is now connected end-to-end: login stores a single access-token cookie, SvelteKit verifies it through `auth/me`, and protected routes now rely on verified server-side user state.
 - Member management foundation is now available: users schema is hardened, admin seed is non-duplicating, and backend/frontend now support the initial members list flow.
 - Dashboard now has a meaningful placeholder with auth status, current role, and member count summary when the user role is allowed to read the members API.
@@ -41,13 +43,14 @@
 ## In Progress
 
 - Domain modules beyond auth and members are still placeholder-only on the frontend.
-- VPS build/deploy has not been executed from this workspace yet.
+- The new GitHub Actions deploy workflow has been authored, but it has not been exercised against the live VPS from this workspace yet.
 - Admin create/edit UI for members is still backend-only; frontend currently ships the members list only.
 
 ## Blockers / Risks
 
 - Migration is manual; schema application is not yet automated.
 - Production deploy has not been validated with live GAS build or Nginx apply yet.
+- Risk: GitHub Actions deploy depends on repository secrets plus non-interactive `git pull` access already working on the VPS checkout.
 - Residual: `frontend/npm audit` still reports 3 low severity vulnerabilities from SvelteKit's current `cookie@0.6.0` dependency chain; no safe local override has been applied yet.
 - Risk: scope can expand too early if phase order is not enforced.
 - Risk: `frontend/.env` now needs a valid `PRIVATE_API_BASE_URL` for server-side auth and data loads outside the Nginx split runtime.
@@ -55,6 +58,7 @@
 ## Recently Touched Areas
 
 - `.gitignore`
+- `.github/workflows/deploy.yml`
 - `.env.example`
 - `frontend/.env.example`
 - `frontend/ecosystem.config.cjs`
@@ -100,9 +104,11 @@
 - Assumption: frontend can reach the backend from the server runtime through `PRIVATE_API_BASE_URL`, defaulting to `http://127.0.0.1:4100/api/v1`.
 - Unknown: final public domain and SSL mode for production deploy.
 - Unknown: preferred migration tool and CI workflow.
+- Assumption: the VPS checkout at `/home/ubuntu/projects/messhub` already has Git remote credentials configured so `git pull --ff-only origin main` succeeds non-interactively.
 
 ## Next Recommended Steps
 
+- Add the required `VPS_HOST`, `VPS_USER`, and `VPS_SSH_KEY` repository secrets in GitHub, then run the workflow with a test push to `main`.
 - Apply `backend/db/migrations/002_auth_foundation.sql` after the initial schema migration, then run the seed admin command.
 - Validate the updated runtime on the VPS with the new `PRIVATE_API_BASE_URL` frontend env.
 - Continue to STEP 2 with wallet transaction foundation, reusing the verified auth/session and user role checks.

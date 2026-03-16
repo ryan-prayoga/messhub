@@ -57,6 +57,13 @@
 - None observed.
 
 ## Done
+- ID: OPS-002
+  Title: Automate VPS deploys from GitHub Actions
+  Priority: P1
+  Owner/Agent: Codex
+  Dependencies: OPS-001
+  Notes: Added `.github/workflows/deploy.yml` for push-to-main SSH deploys to `/home/ubuntu/projects/messhub`, reusing the existing GAS CLI commands for `messhub-backend` on `4100` and `messhub-frontend` on `4101`, with a backend `/health` check and documented secrets/rollback flow.
+
 - ID: DX-001
   Title: Stabilize frontend install/runtime warnings on Node 24
   Priority: P1

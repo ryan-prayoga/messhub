@@ -1,0 +1,59 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy main to VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+      PROJECT_DIR: /home/ubuntu/projects/messhub
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        run: |
+          set -eu
+          test -n "${VPS_HOST}"
+          test -n "${VPS_USER}"
+          test -n "${{ secrets.VPS_SSH_KEY }}"
+
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Add VPS host to known_hosts
+        run: |
+          set -eu
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${VPS_HOST}" >> ~/.ssh/known_hosts
+
+      - name: Deploy on VPS
+        run: |
+          set -euxo pipefail
+          ssh "${VPS_USER}@${VPS_HOST}" <<'EOF'
+            set -euxo pipefail
+
+            cd /home/ubuntu/projects/messhub
+
+            git checkout main
+            git pull --ff-only origin main
+
+            cd backend
+            gas build --no-ui --type go --pm2-name messhub-backend --port 4100 --yes
+
+            cd ../frontend
+            gas build --no-ui --type svelte --pm2-name messhub-frontend --port 4101 --yes
+
+            curl --fail --silent --show-error http://127.0.0.1:4100/health
+          EOF
