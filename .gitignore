@@ -1,0 +1,16 @@
+# Agent runtime artifacts
+docs/handoffs/*
+!docs/handoffs/HANDOFF_TEMPLATE.md
+agent-temp/
+agent-cache/
+.agent-state/
+.agent-work/
+
+# Application artifacts
+.DS_Store
+.env
+frontend/node_modules/
+frontend/.svelte-kit/
+frontend/build/
+frontend/dist/
+backend/bin/
