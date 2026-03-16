@@ -4,14 +4,18 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "sync": "svelte-kit sync",
+    "predev": "npm run sync",
     "dev": "vite dev --host 0.0.0.0 --port 4101",
+    "prebuild": "npm run sync",
     "build": "vite build",
+    "prepreview": "npm run sync",
     "preview": "vite preview --host 0.0.0.0 --port 4101",
+    "postinstall": "npm run sync",
     "start": "node build",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
   },
   "devDependencies": {
-    "@vite-pwa/sveltekit": "^0.6.7",
     "@sveltejs/adapter-node": "^5.2.11",
     "@sveltejs/kit": "^2.15.0",
     "@sveltejs/vite-plugin-svelte": "^5.0.1",

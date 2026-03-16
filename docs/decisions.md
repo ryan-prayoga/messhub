@@ -71,3 +71,11 @@
 - Rationale: This fixes the immediate default-browser look, keeps Tailwind usage consistent, and provides reusable styling for later dashboard/member/wallet/wifi/feed work without introducing heavy abstraction.
 - Impact: App shell, cards, buttons, inputs, helper boxes, badges, and empty states should reuse the shared classes first before adding one-off patterns.
 - Follow-up: Apply the same baseline to dashboard summary cards and module list/detail screens as feature work continues.
+
+## Decision 10
+- Date: 2026-03-16
+- Context: Fresh installs on Node 24 were showing deprecated dependency warnings from the Workbox-based PWA plugin chain, and `npm run dev` on a clean checkout could warn that `./.svelte-kit/tsconfig.json` was missing.
+- Decision: Keep the PWA baseline with a static `manifest.webmanifest` and a native SvelteKit service worker, and standardize frontend scripts to run `svelte-kit sync` on install/dev/build/preview instead of depending on `@vite-pwa/sveltekit`.
+- Rationale: This preserves baseline installability, removes deprecated install noise caused by the Workbox dependency chain, and makes the generated SvelteKit TypeScript config available on fresh installs.
+- Impact: Future PWA work should extend the native service worker/manifest baseline first; reintroducing a plugin should only happen if it solves a concrete feature gap without reintroducing the Node 24 install warnings.
+- Follow-up: Revisit richer offline caching or push-related features only when the actual product requirements exceed the native baseline.

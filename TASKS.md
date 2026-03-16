@@ -64,6 +64,13 @@
 - None observed.
 
 ## Done
+- ID: DX-001
+  Title: Stabilize frontend install/runtime warnings on Node 24
+  Priority: P1
+  Owner/Agent: Codex
+  Dependencies: OPS-001
+  Notes: Replaced the Workbox-based PWA plugin with a static manifest plus native SvelteKit service worker, added sync hooks around install/dev/build, removed deprecated `npm install` warnings, and eliminated the fresh-checkout `.svelte-kit/tsconfig.json` warning.
+
 - ID: UX-001
   Title: Polish frontend baseline UI for login and app shell
   Priority: P1

@@ -1,0 +1,19 @@
+{
+  "name": "MessHub",
+  "short_name": "MessHub",
+  "description": "PWA untuk operasional internal Mess Traspac Menyala.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#f8fbff",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
