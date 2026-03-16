@@ -130,9 +130,11 @@ type CreateUserParams struct {
 	Name         string
 	Email        string
 	Username     string
+	Phone        *string
 	PasswordHash string
 	Role         string
 	IsActive     bool
+	JoinedAt     time.Time
 }
 
 func (r *UserRepository) Create(ctx context.Context, params CreateUserParams) (*models.User, error) {
@@ -145,8 +147,8 @@ func (r *UserRepository) CreateTx(ctx context.Context, tx *sql.Tx, params Create
 
 func (r *UserRepository) create(ctx context.Context, runner userQueryRunner, params CreateUserParams) (*models.User, error) {
 	query := `
-		INSERT INTO users (name, email, username, password_hash, role, is_active, joined_at)
-		VALUES ($1, $2, $3, $4, $5, $6, NOW())
+		INSERT INTO users (name, email, username, phone, password_hash, role, is_active, joined_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id, name, email, username, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
 	`
 
@@ -156,9 +158,11 @@ func (r *UserRepository) create(ctx context.Context, runner userQueryRunner, par
 		params.Name,
 		params.Email,
 		params.Username,
+		nullableString(params.Phone),
 		params.PasswordHash,
 		params.Role,
 		params.IsActive,
+		params.JoinedAt,
 	)
 
 	return scanUser(row)
@@ -167,8 +171,12 @@ func (r *UserRepository) create(ctx context.Context, runner userQueryRunner, par
 type UpdateUserParams struct {
 	ID       string
 	Name     string
+	Email    string
+	Username string
+	Phone    *string
 	Role     string
 	IsActive bool
+	JoinedAt time.Time
 }
 
 type UpdateProfileParams struct {
@@ -196,13 +204,17 @@ func (r *UserRepository) update(ctx context.Context, runner userQueryRunner, par
 		UPDATE users
 		SET
 			name = $2,
-			role = $3,
-			is_active = $4,
+			email = $3,
+			username = $4,
+			phone = $5,
+			role = $6,
+			is_active = $7,
 			left_at = CASE
-				WHEN $4 = FALSE AND left_at IS NULL THEN NOW()
-				WHEN $4 = TRUE THEN NULL
+				WHEN $7 = FALSE AND left_at IS NULL THEN NOW()
+				WHEN $7 = TRUE THEN NULL
 				ELSE left_at
 			END,
+			joined_at = $8,
 			updated_at = NOW()
 		WHERE id = $1
 		RETURNING id, name, email, username, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
@@ -213,8 +225,12 @@ func (r *UserRepository) update(ctx context.Context, runner userQueryRunner, par
 		query,
 		params.ID,
 		params.Name,
+		params.Email,
+		params.Username,
+		nullableString(params.Phone),
 		params.Role,
 		params.IsActive,
+		params.JoinedAt,
 	)
 
 	return scanUser(row)
@@ -272,6 +288,21 @@ func (r *UserRepository) UpdatePasswordTx(ctx context.Context, tx *sql.Tx, param
 
 func (r *UserRepository) FindAvailableUsername(ctx context.Context, name string, email string) (string, error) {
 	return r.findAvailableUsername(ctx, r.db, name, email)
+}
+
+func (r *UserRepository) CountActiveAdmins(ctx context.Context) (int, error) {
+	const query = `
+		SELECT COUNT(1)
+		FROM users
+		WHERE role = 'admin' AND is_active = TRUE
+	`
+
+	var count int
+	if err := r.db.QueryRowContext(ctx, query).Scan(&count); err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }
 
 func (r *UserRepository) FindAvailableUsernameTx(ctx context.Context, tx *sql.Tx, name string, email string) (string, error) {

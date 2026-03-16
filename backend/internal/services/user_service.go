@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
+	"time"
+	"unicode"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/ryanprayoga/messhub/backend/internal/models"
@@ -15,27 +17,39 @@ import (
 var (
 	ErrInvalidRole             = errors.New("invalid role")
 	ErrInvalidUserInput        = errors.New("invalid user input")
+	ErrInvalidUsername         = errors.New("invalid username")
 	ErrInvalidProfileInput     = errors.New("invalid profile input")
 	ErrPasswordTooShort        = errors.New("password must be at least 8 characters")
 	ErrCurrentPasswordRequired = errors.New("current password is required")
 	ErrNewPasswordRequired     = errors.New("new password is required")
 	ErrCurrentPasswordInvalid  = errors.New("current password is invalid")
 	ErrUserAlreadyExists       = errors.New("user email already exists")
+	ErrUsernameAlreadyExists   = errors.New("username already exists")
 	ErrUserNotFound            = errors.New("user not found")
+	ErrSelfDeactivateBlocked   = errors.New("cannot deactivate your own account")
+	ErrSelfDemoteBlocked       = errors.New("cannot remove your own admin role")
+	ErrLastAdminRequired       = errors.New("at least one active admin must remain")
 )
 
 type CreateUserInput struct {
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	Role     string `json:"role"`
-	IsActive *bool  `json:"is_active"`
+	Name     string  `json:"name"`
+	Email    string  `json:"email"`
+	Username *string `json:"username"`
+	Phone    *string `json:"phone"`
+	Password string  `json:"password"`
+	Role     string  `json:"role"`
+	IsActive *bool   `json:"is_active"`
+	JoinedAt *string `json:"joined_at"`
 }
 
 type UpdateUserInput struct {
 	Name     *string `json:"name"`
+	Email    *string `json:"email"`
+	Username *string `json:"username"`
+	Phone    *string `json:"phone"`
 	Role     *string `json:"role"`
 	IsActive *bool   `json:"is_active"`
+	JoinedAt *string `json:"joined_at"`
 }
 
 type UpdateProfileInput struct {
@@ -47,6 +61,10 @@ type UpdateProfileInput struct {
 type ChangePasswordInput struct {
 	CurrentPassword string `json:"current_password"`
 	NewPassword     string `json:"new_password"`
+}
+
+type AdminResetPasswordInput struct {
+	NewPassword string `json:"new_password"`
 }
 
 type UserService struct {
@@ -80,7 +98,7 @@ func (s *UserService) GetProfile(ctx context.Context, userID string) (*models.Us
 	return user, nil
 }
 
-func (s *UserService) CreateUser(ctx context.Context, input CreateUserInput) (*models.User, error) {
+func (s *UserService) CreateUser(ctx context.Context, actorID string, input CreateUserInput) (*models.User, error) {
 	name := strings.TrimSpace(input.Name)
 	email := normalizeEmail(input.Email)
 	role := strings.TrimSpace(input.Role)
@@ -97,6 +115,17 @@ func (s *UserService) CreateUser(ctx context.Context, input CreateUserInput) (*m
 		return nil, ErrInvalidRole
 	}
 
+	username, err := resolveRequestedUsername(ctx, s.userRepository, input.Username, name, email)
+	if err != nil {
+		return nil, err
+	}
+
+	phone := normalizeOptionalString(input.Phone)
+	joinedAt, err := resolveJoinedAt(input.JoinedAt)
+	if err != nil {
+		return nil, ErrInvalidUserInput
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
@@ -107,24 +136,52 @@ func (s *UserService) CreateUser(ctx context.Context, input CreateUserInput) (*m
 		isActive = *input.IsActive
 	}
 
-	username, err := s.userRepository.FindAvailableUsername(ctx, name, email)
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
+	defer tx.Rollback()
 
-	user, err := s.userRepository.Create(ctx, repository.CreateUserParams{
+	user, err := s.userRepository.CreateTx(ctx, tx, repository.CreateUserParams{
 		Name:         name,
 		Email:        email,
 		Username:     username,
+		Phone:        phone,
 		PasswordHash: string(hashedPassword),
 		Role:         role,
 		IsActive:     isActive,
+		JoinedAt:     joinedAt,
 	})
 	if err != nil {
-		if isUniqueViolation(err) {
+		switch uniqueViolationField(err) {
+		case "email":
 			return nil, ErrUserAlreadyExists
+		case "username":
+			return nil, ErrUsernameAlreadyExists
+		default:
+			return nil, err
 		}
+	}
 
+	if err := s.auditService.LogTx(ctx, tx, AuditLogInput{
+		UserID:     stringPtr(actorID),
+		Action:     "create_user",
+		EntityType: "user",
+		EntityID:   stringPtr(user.ID),
+		NewValue: map[string]any{
+			"name":      user.Name,
+			"email":     user.Email,
+			"username":  user.Username,
+			"phone":     user.Phone,
+			"role":      user.Role,
+			"is_active": user.IsActive,
+			"joined_at": user.JoinedAt,
+		},
+	}); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 
@@ -154,6 +211,31 @@ func (s *UserService) UpdateUser(ctx context.Context, actorID string, userID str
 		updated = true
 	}
 
+	if input.Email != nil {
+		email := normalizeEmail(*input.Email)
+		if email == "" {
+			return nil, ErrInvalidUserInput
+		}
+
+		user.Email = email
+		updated = true
+	}
+
+	if input.Username != nil {
+		username, err := normalizeUsername(*input.Username)
+		if err != nil {
+			return nil, err
+		}
+
+		user.Username = username
+		updated = true
+	}
+
+	if input.Phone != nil {
+		user.Phone = normalizeOptionalString(input.Phone)
+		updated = true
+	}
+
 	if input.Role != nil {
 		role := strings.TrimSpace(*input.Role)
 		if !models.IsValidRole(role) {
@@ -169,8 +251,49 @@ func (s *UserService) UpdateUser(ctx context.Context, actorID string, userID str
 		updated = true
 	}
 
+	if input.JoinedAt != nil {
+		trimmed := strings.TrimSpace(*input.JoinedAt)
+		if trimmed != "" {
+			joinedAt, err := parseDateOnly(trimmed)
+			if err != nil {
+				return nil, ErrInvalidUserInput
+			}
+
+			user.JoinedAt = &joinedAt
+			updated = true
+		}
+	}
+
 	if !updated {
 		return nil, ErrInvalidUserInput
+	}
+
+	if actorID == user.ID {
+		if previous.Role == models.RoleAdmin && user.Role != models.RoleAdmin {
+			return nil, ErrSelfDemoteBlocked
+		}
+
+		if previous.IsActive && !user.IsActive {
+			return nil, ErrSelfDeactivateBlocked
+		}
+	}
+
+	adminRoleRemoved := previous.Role == models.RoleAdmin && user.Role != models.RoleAdmin
+	adminDeactivated := previous.Role == models.RoleAdmin && previous.IsActive && !user.IsActive
+	if adminRoleRemoved || adminDeactivated {
+		activeAdmins, err := s.userRepository.CountActiveAdmins(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		if activeAdmins <= 1 {
+			return nil, ErrLastAdminRequired
+		}
+	}
+
+	joinedAt := time.Now()
+	if user.JoinedAt != nil {
+		joinedAt = *user.JoinedAt
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -182,15 +305,49 @@ func (s *UserService) UpdateUser(ctx context.Context, actorID string, userID str
 	updatedUser, err := s.userRepository.UpdateTx(ctx, tx, repository.UpdateUserParams{
 		ID:       user.ID,
 		Name:     user.Name,
+		Email:    user.Email,
+		Username: user.Username,
+		Phone:    user.Phone,
 		Role:     user.Role,
 		IsActive: user.IsActive,
+		JoinedAt: joinedAt,
 	})
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
 			return nil, ErrUserNotFound
+		case uniqueViolationField(err) == "email":
+			return nil, ErrUserAlreadyExists
+		case uniqueViolationField(err) == "username":
+			return nil, ErrUsernameAlreadyExists
+		default:
+			return nil, err
 		}
+	}
 
-		return nil, err
+	if basicUserFieldsChanged(previous, *updatedUser) {
+		if err := s.auditService.LogTx(ctx, tx, AuditLogInput{
+			UserID:     stringPtr(actorID),
+			Action:     "update_user",
+			EntityType: "user",
+			EntityID:   stringPtr(updatedUser.ID),
+			OldValue: map[string]any{
+				"name":      previous.Name,
+				"email":     previous.Email,
+				"username":  previous.Username,
+				"phone":     previous.Phone,
+				"joined_at": previous.JoinedAt,
+			},
+			NewValue: map[string]any{
+				"name":      updatedUser.Name,
+				"email":     updatedUser.Email,
+				"username":  updatedUser.Username,
+				"phone":     updatedUser.Phone,
+				"joined_at": updatedUser.JoinedAt,
+			},
+		}); err != nil {
+			return nil, err
+		}
 	}
 
 	if previous.Role != updatedUser.Role {
@@ -400,15 +557,190 @@ func (s *UserService) ChangePassword(ctx context.Context, userID string, input C
 	return tx.Commit()
 }
 
+func (s *UserService) AdminResetPassword(ctx context.Context, actorID string, userID string, input AdminResetPasswordInput) error {
+	newPassword := strings.TrimSpace(input.NewPassword)
+	if newPassword == "" {
+		return ErrNewPasswordRequired
+	}
+
+	if len(newPassword) < 8 {
+		return ErrPasswordTooShort
+	}
+
+	user, err := s.userRepository.FindByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrUserNotFound
+		}
+
+		return err
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if err := s.userRepository.UpdatePasswordTx(ctx, tx, repository.UpdatePasswordParams{
+		ID:           user.ID,
+		PasswordHash: string(hashedPassword),
+	}); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrUserNotFound
+		}
+
+		return err
+	}
+
+	if err := s.auditService.LogTx(ctx, tx, AuditLogInput{
+		UserID:     stringPtr(actorID),
+		Action:     "admin_reset_password",
+		EntityType: "user",
+		EntityID:   stringPtr(user.ID),
+		NewValue: map[string]any{
+			"changed":  true,
+			"admin_id": actorID,
+		},
+	}); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
 func normalizeEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
 }
 
-func isUniqueViolation(err error) bool {
-	var pgErr *pgconn.PgError
-	if !errors.As(err, &pgErr) {
-		return false
+func normalizeOptionalString(value *string) *string {
+	if value == nil {
+		return nil
 	}
 
-	return pgErr.Code == "23505"
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil
+	}
+
+	return &trimmed
+}
+
+func resolveRequestedUsername(
+	ctx context.Context,
+	userRepository *repository.UserRepository,
+	value *string,
+	name string,
+	email string,
+) (string, error) {
+	if value == nil || strings.TrimSpace(*value) == "" {
+		return userRepository.FindAvailableUsername(ctx, name, email)
+	}
+
+	return normalizeUsername(*value)
+}
+
+func normalizeUsername(value string) (string, error) {
+	candidate := sanitizeUsernameValue(value)
+	if candidate == "" || len(candidate) < 3 || len(candidate) > 32 {
+		return "", ErrInvalidUsername
+	}
+
+	return candidate, nil
+}
+
+func resolveJoinedAt(value *string) (time.Time, error) {
+	if value == nil || strings.TrimSpace(*value) == "" {
+		return time.Now().UTC(), nil
+	}
+
+	return parseDateOnly(strings.TrimSpace(*value))
+}
+
+func parseDateOnly(value string) (time.Time, error) {
+	date, err := time.Parse("2006-01-02", value)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return date.UTC(), nil
+}
+
+func sanitizeUsernameValue(value string) string {
+	var builder strings.Builder
+	lastWasHyphen := false
+
+	for _, character := range strings.ToLower(strings.TrimSpace(value)) {
+		switch {
+		case character >= 'a' && character <= 'z':
+			builder.WriteRune(character)
+			lastWasHyphen = false
+		case character >= '0' && character <= '9':
+			builder.WriteRune(character)
+			lastWasHyphen = false
+		case unicode.IsSpace(character) || character == '-' || character == '_' || character == '.':
+			if builder.Len() == 0 || lastWasHyphen {
+				continue
+			}
+
+			builder.WriteRune('-')
+			lastWasHyphen = true
+		default:
+			if builder.Len() == 0 || lastWasHyphen {
+				continue
+			}
+
+			builder.WriteRune('-')
+			lastWasHyphen = true
+		}
+	}
+
+	return strings.Trim(builder.String(), "-")
+}
+
+func basicUserFieldsChanged(previous models.User, next models.User) bool {
+	phoneChanged := (previous.Phone == nil) != (next.Phone == nil)
+	if !phoneChanged && previous.Phone != nil && next.Phone != nil {
+		phoneChanged = *previous.Phone != *next.Phone
+	}
+
+	joinedAtChanged := (previous.JoinedAt == nil) != (next.JoinedAt == nil)
+	if !joinedAtChanged && previous.JoinedAt != nil && next.JoinedAt != nil {
+		joinedAtChanged = !previous.JoinedAt.Equal(*next.JoinedAt)
+	}
+
+	return previous.Name != next.Name ||
+		previous.Email != next.Email ||
+		previous.Username != next.Username ||
+		phoneChanged ||
+		joinedAtChanged
+}
+
+func uniqueViolationField(err error) string {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		return ""
+	}
+
+	if pgErr.Code != "23505" {
+		return ""
+	}
+
+	switch pgErr.ConstraintName {
+	case "users_email_key":
+		return "email"
+	case "idx_users_username_lower":
+		return "username"
+	default:
+		return ""
+	}
+}
+
+func isUniqueViolation(err error) bool {
+	return uniqueViolationField(err) != ""
 }

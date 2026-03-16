@@ -4,6 +4,7 @@ import (
 	"net/mail"
 	"net/url"
 	"strings"
+	"time"
 )
 
 type Errors map[string]string
@@ -79,6 +80,21 @@ func (e Errors) URL(field string, value *string, message string) {
 
 	parsed, err := url.ParseRequestURI(trimmed)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		e.Add(field, message)
+	}
+}
+
+func (e Errors) Date(field string, value *string, layout string, message string) {
+	if value == nil {
+		return
+	}
+
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return
+	}
+
+	if _, err := time.Parse(layout, trimmed); err != nil {
 		e.Add(field, message)
 	}
 }

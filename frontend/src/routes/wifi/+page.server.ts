@@ -2,6 +2,7 @@ import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { ApiError, settingsServerApi, wifiServerApi } from '$lib/api/server';
 import type { WifiBillStatus } from '$lib/api/types';
+import { requireServerUser } from '$lib/auth/server';
 import { throwIfUnauthorized, toApiFailureState } from '$lib/server/api-errors';
 
 function canManage(role: string | undefined) {
@@ -99,15 +100,9 @@ export const actions: Actions = {
       status: normalizeString(formData.get('status')) || 'active'
     };
 
-    if (!locals.token || !locals.user) {
-      return fail(401, {
-        action: 'createBill',
-        message: 'Sesi login tidak ditemukan.',
-        values
-      });
-    }
+    const { token, user } = await requireServerUser({ cookies, fetch, locals });
 
-    if (!canManage(locals.user.role)) {
+    if (!canManage(user.role)) {
       return fail(403, {
         action: 'createBill',
         message: 'Hanya admin dan bendahara yang bisa membuat tagihan wifi.',
@@ -134,7 +129,7 @@ export const actions: Actions = {
     }
 
     try {
-      await wifiServerApi.createBill(fetch, locals.token, {
+      await wifiServerApi.createBill(fetch, token, {
         month,
         year,
         nominal_per_person: nominalPerPerson,
@@ -166,13 +161,7 @@ export const actions: Actions = {
       note: normalizeString(formData.get('note'))
     };
 
-    if (!locals.token || !locals.user) {
-      return fail(401, {
-        action: 'submitProof',
-        message: 'Sesi login tidak ditemukan.',
-        values
-      });
-    }
+    const { token } = await requireServerUser({ cookies, fetch, locals });
 
     if (values.bill_id === '' || values.proof_url === '') {
       return fail(400, {
@@ -183,7 +172,7 @@ export const actions: Actions = {
     }
 
     try {
-      await wifiServerApi.submitProof(fetch, locals.token, values.bill_id, {
+      await wifiServerApi.submitProof(fetch, token, values.bill_id, {
         proof_url: values.proof_url,
         ...(values.note ? { note: values.note } : {})
       });
@@ -211,15 +200,9 @@ export const actions: Actions = {
       member_id: normalizeString(formData.get('member_id'))
     };
 
-    if (!locals.token || !locals.user) {
-      return fail(401, {
-        action: 'verify',
-        message: 'Sesi login tidak ditemukan.',
-        values
-      });
-    }
+    const { token, user } = await requireServerUser({ cookies, fetch, locals });
 
-    if (!canManage(locals.user.role)) {
+    if (!canManage(user.role)) {
       return fail(403, {
         action: 'verify',
         message: 'Hanya admin dan bendahara yang bisa memverifikasi pembayaran wifi.',
@@ -236,7 +219,7 @@ export const actions: Actions = {
     }
 
     try {
-      await wifiServerApi.verifyPayment(fetch, locals.token, values.bill_id, values.member_id);
+      await wifiServerApi.verifyPayment(fetch, token, values.bill_id, values.member_id);
 
       return {
         action: 'verify',
@@ -262,15 +245,9 @@ export const actions: Actions = {
       reason: normalizeString(formData.get('reason'))
     };
 
-    if (!locals.token || !locals.user) {
-      return fail(401, {
-        action: 'reject',
-        message: 'Sesi login tidak ditemukan.',
-        values
-      });
-    }
+    const { token, user } = await requireServerUser({ cookies, fetch, locals });
 
-    if (!canManage(locals.user.role)) {
+    if (!canManage(user.role)) {
       return fail(403, {
         action: 'reject',
         message: 'Hanya admin dan bendahara yang bisa menolak pembayaran wifi.',
@@ -287,7 +264,7 @@ export const actions: Actions = {
     }
 
     try {
-      await wifiServerApi.rejectPayment(fetch, locals.token, values.bill_id, values.member_id, {
+      await wifiServerApi.rejectPayment(fetch, token, values.bill_id, values.member_id, {
         reason: values.reason
       });
 

@@ -404,9 +404,11 @@ func (s *ImportService) CommitMembers(ctx context.Context, actorID string, input
 				Name:         strings.TrimSpace(row.Name),
 				Email:        normalizeEmail(row.Email),
 				Username:     username,
+				Phone:        nil,
 				PasswordHash: string(passwordHash),
 				Role:         row.NormalizedRole,
 				IsActive:     isActive,
+				JoinedAt:     time.Now().UTC(),
 			})
 			if err != nil {
 				if isUniqueViolation(err) {

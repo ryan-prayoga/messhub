@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { navigating, page } from '$app/stores';
   import { fly, fade } from 'svelte/transition';
   import { APP_NAME } from '$lib/config/env';
   import AppIcon from '$lib/components/AppIcon.svelte';
@@ -21,11 +22,13 @@
   let mobileMenuOpen = false;
   let userMenuOpen = false;
 
+  $: actualPath = $page.url.pathname || currentPath;
+  $: displayPath = $navigating?.to?.url.pathname ?? actualPath;
   $: navGroups = getVisibleNavigation(user);
-  $: currentItem = getCurrentNavigationItem(currentPath, user);
-  $: currentMeta = getPageMeta(currentPath, user);
+  $: currentItem = getCurrentNavigationItem(displayPath, user);
+  $: currentMeta = getPageMeta(displayPath, user);
   $: unreadCount = notificationSummary?.unread_count ?? 0;
-  $: if (currentPath) {
+  $: if (actualPath) {
     mobileMenuOpen = false;
     userMenuOpen = false;
   }
@@ -48,10 +51,14 @@
     void clearOfflineSessionArtifacts();
   }
 
+  function closeMenus() {
+    mobileMenuOpen = false;
+    userMenuOpen = false;
+  }
+
   function handleWindowKeydown(event: KeyboardEvent) {
     if (event.key === 'Escape') {
-      mobileMenuOpen = false;
-      userMenuOpen = false;
+      closeMenus();
     }
   }
 </script>
@@ -61,7 +68,7 @@
 <div class="app-shell">
   <div class="shell-layout">
     <aside class="shell-sidebar">
-      <a href="/dashboard" class="shell-brand">
+      <a href="/dashboard" class="shell-brand" data-sveltekit-preload-data="tap" on:click={closeMenus}>
         <div class="shell-brand-mark">M</div>
         <div class="min-w-0">
           <p class="shell-brand-kicker">Mess Traspac Menyala</p>
@@ -82,7 +89,9 @@
           {#each navGroups.primary as item}
             <a
               href={item.href}
-              class={`nav-link ${isPathActive(currentPath, item.href) ? 'nav-link-active' : ''}`}
+              class={`nav-link ${isPathActive(displayPath, item.href) ? 'nav-link-active' : ''}`}
+              data-sveltekit-preload-data="tap"
+              on:click={closeMenus}
             >
               <span class="nav-link-icon">
                 <AppIcon icon={item.icon} className="h-5 w-5" />
@@ -103,7 +112,9 @@
           {#each [...navGroups.workspace, ...navGroups.admin] as item}
             <a
               href={item.href}
-              class={`nav-link ${isPathActive(currentPath, item.href) ? 'nav-link-active' : ''}`}
+              class={`nav-link ${isPathActive(displayPath, item.href) ? 'nav-link-active' : ''}`}
+              data-sveltekit-preload-data="tap"
+              on:click={closeMenus}
             >
               <span class="nav-link-icon">
                 <AppIcon icon={item.icon} className="h-5 w-5" />
@@ -152,8 +163,10 @@
         <div class="shell-header-actions">
           <a
             href="/notifications"
-            class={`icon-button ${isPathActive(currentPath, '/notifications') ? 'icon-button-active' : ''}`}
+            class={`icon-button ${isPathActive(displayPath, '/notifications') ? 'icon-button-active' : ''}`}
             aria-label="Buka notifikasi"
+            data-sveltekit-preload-data="tap"
+            on:click={closeMenus}
           >
             <AppIcon icon="lucide:bell-ring" className="h-5 w-5" />
             {#if unreadCount > 0}
@@ -201,13 +214,13 @@
                     </div>
                   </div>
 
-                  <a href="/profile" class="menu-link">
+                  <a href="/profile" class="menu-link" data-sveltekit-preload-data="tap" on:click={closeMenus}>
                     <AppIcon icon="lucide:user-round" className="h-4 w-4" />
                     <span>Profile</span>
                   </a>
 
                   {#if user.role === 'admin'}
-                    <a href="/settings" class="menu-link">
+                    <a href="/settings" class="menu-link" data-sveltekit-preload-data="tap" on:click={closeMenus}>
                       <AppIcon icon="lucide:settings-2" className="h-4 w-4" />
                       <span>Settings</span>
                     </a>
@@ -232,7 +245,9 @@
             {#each [...navGroups.primary, ...navGroups.workspace, ...navGroups.admin] as item}
               <a
                 href={item.href}
-                class={`mobile-menu-link ${isPathActive(currentPath, item.href) ? 'mobile-menu-link-active' : ''}`}
+                class={`mobile-menu-link ${isPathActive(displayPath, item.href) ? 'mobile-menu-link-active' : ''}`}
+                data-sveltekit-preload-data="tap"
+                on:click={closeMenus}
               >
                 <AppIcon icon={item.icon} className="h-5 w-5" />
                 <div class="min-w-0">
@@ -262,7 +277,9 @@
           {#each navGroups.bottom as item}
             <a
               href={item.href}
-              class={`bottom-nav-link ${isPathActive(currentPath, item.href) ? 'bottom-nav-link-active' : ''}`}
+              class={`bottom-nav-link ${isPathActive(displayPath, item.href) ? 'bottom-nav-link-active' : ''}`}
+              data-sveltekit-preload-data="tap"
+              on:click={closeMenus}
             >
               <span class="bottom-nav-icon">
                 <AppIcon icon={item.icon} className="h-5 w-5" />

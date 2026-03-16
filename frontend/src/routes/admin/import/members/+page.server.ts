@@ -1,6 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { importsServerApi } from '$lib/api/server';
+import { requireServerUser } from '$lib/auth/server';
 import { throwIfUnauthorized, toApiFailureState } from '$lib/server/api-errors';
 
 function isAdmin(role: string | undefined) {
@@ -24,14 +25,9 @@ export const actions: Actions = {
     const formData = await request.formData();
     const file = formData.get('file');
 
-    if (!locals.token || !locals.user) {
-      return fail(401, {
-        action: 'preview',
-        message: 'Sesi login tidak ditemukan.'
-      });
-    }
+    const { token, user } = await requireServerUser({ cookies, fetch, locals });
 
-    if (!isAdmin(locals.user.role)) {
+    if (!isAdmin(user.role)) {
       return fail(403, {
         action: 'preview',
         message: 'Halaman impor hanya tersedia untuk admin mess.'
@@ -46,7 +42,7 @@ export const actions: Actions = {
     }
 
     try {
-      const response = await importsServerApi.previewMembers(fetch, locals.token, formData);
+      const response = await importsServerApi.previewMembers(fetch, token, formData);
 
       return {
         action: 'preview',
@@ -71,15 +67,9 @@ export const actions: Actions = {
       temporary_password: normalizeString(formData.get('temporary_password'))
     };
 
-    if (!locals.token || !locals.user) {
-      return fail(401, {
-        action: 'commit',
-        message: 'Sesi login tidak ditemukan.',
-        values
-      });
-    }
+    const { token, user } = await requireServerUser({ cookies, fetch, locals });
 
-    if (!isAdmin(locals.user.role)) {
+    if (!isAdmin(user.role)) {
       return fail(403, {
         action: 'commit',
         message: 'Halaman impor hanya tersedia untuk admin mess.',
@@ -100,7 +90,7 @@ export const actions: Actions = {
     }
 
     try {
-      const response = await importsServerApi.commitMembers(fetch, locals.token, {
+      const response = await importsServerApi.commitMembers(fetch, token, {
         job_id: values.job_id,
         duplicate_strategy: values.duplicate_strategy as 'skip' | 'fail',
         temporary_password: values.temporary_password

@@ -77,6 +77,25 @@ export const usersServerApi = {
     apiServerRequest<MemberUser[]>(fetcher, '/users', {
       token
     }),
+  create: (
+    fetcher: typeof fetch,
+    token: string,
+    payload: {
+      name: string;
+      email: string;
+      username?: string;
+      phone?: string;
+      password: string;
+      role: MemberUser['role'];
+      is_active?: boolean;
+      joined_at?: string;
+    }
+  ) =>
+    apiServerRequest<MemberUser>(fetcher, '/users', {
+      method: 'POST',
+      token,
+      body: payload
+    }),
   update: (
     fetcher: typeof fetch,
     token: string,
@@ -85,9 +104,26 @@ export const usersServerApi = {
       role?: MemberUser['role'];
       is_active?: boolean;
       name?: string;
+      email?: string;
+      username?: string;
+      phone?: string;
+      joined_at?: string;
     }
   ) =>
     apiServerRequest<MemberUser>(fetcher, `/users/${userID}`, {
+      method: 'PATCH',
+      token,
+      body: payload
+    }),
+  resetPassword: (
+    fetcher: typeof fetch,
+    token: string,
+    userID: string,
+    payload: {
+      new_password: string;
+    }
+  ) =>
+    apiServerRequest<{ changed: boolean }>(fetcher, `/users/${userID}/password`, {
       method: 'PATCH',
       token,
       body: payload

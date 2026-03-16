@@ -40,7 +40,15 @@
             <p class="section-subtitle mt-2">{board.description}</p>
 
             {#if board.items.length === 0}
-              <div class="empty-state mt-4">Belum ada data leaderboard.</div>
+              <div class="mt-4">
+                <StatePanel
+                  tone="empty"
+                  title={`Belum ada kontribusi ${board.title.toLowerCase()}`}
+                  message="Poin kontribusi akan muncul setelah penghuni membuat aktivitas bertipe kontribusi di feed."
+                  actionHref="/feed"
+                  actionLabel="Buka feed"
+                />
+              </div>
             {:else}
               <div class="mt-4 space-y-3">
                 {#each board.items as item}

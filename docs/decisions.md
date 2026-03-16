@@ -151,3 +151,19 @@
 - Rationale: This improves consistency across desktop/mobile/PWA navigation, avoids title/menu drift between routes, gives the frontend a maintainable tokenized design baseline, and adds a more practical login identifier without forcing a breaking auth rewrite.
 - Impact: Future frontend routes should derive titles/navigation state from the shared metadata helper first, new UI work should reuse the warm theme tokens and Iconify wrapper components, and user creation/import flows must continue assigning stable unique usernames.
 - Follow-up: Validate the new shell and username migration against live device installs plus real production user data before rollout.
+
+## Decision 20
+- Date: 2026-03-16
+- Context: Protected SvelteKit form actions were returning false missing-session errors because `locals.user` was only being populated inside layout load, not in the action request path itself.
+- Decision: Keep backend auth as the source of truth, but resolve the current user for protected frontend server actions through a shared server-side auth helper that calls `GET /api/v1/auth/me` on demand instead of assuming layout load side effects.
+- Rationale: This fixes settings/admin/member mutations without introducing a separate session store or trusting stale client state, while keeping expired sessions redirectable to `/login` and preserving the existing token-cookie model.
+- Impact: Future protected server actions should use the shared auth helper whenever they need the current user or role, rather than checking `locals.user` directly unless it was resolved in the same request path.
+- Follow-up: Reuse the same helper for any future admin or profile mutations that depend on role-aware action handling.
+
+## Decision 21
+- Date: 2026-03-16
+- Context: Admin member management needed to become production-usable without splitting the existing members surface into a separate admin-only route tree or inventing a parallel user resource.
+- Decision: Keep member administration centered on `/members` and the existing `/api/v1/users` resource, extend that resource for richer editable fields plus `PATCH /users/:id/password`, and use soft-disable via `is_active` together with reusable sheet-based admin actions on the frontend.
+- Rationale: This preserves the current information architecture, keeps member CRUD aligned with the existing backend model and audit log system, and improves usability on mobile/desktop without a broader navigation rewrite.
+- Impact: Future member-management work should extend the existing users resource and `/members` admin UX first, and destructive account removal should remain out of scope unless a new decision explicitly introduces hard-delete semantics.
+- Follow-up: Validate the new member sheets and safety guards against real admin workflows after deploy.

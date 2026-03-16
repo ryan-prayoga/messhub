@@ -67,6 +67,7 @@ func Register(
 	adminOnly := authenticated.Group("", middleware.RequireRole("admin"))
 	adminOnly.Post("/users", userHandler.Create)
 	adminOnly.Patch("/users/:id", userHandler.Update)
+	adminOnly.Patch("/users/:id/password", userHandler.ResetPassword)
 	adminOnly.Patch("/settings", settingsHandler.Update)
 	adminOnly.Get("/system/status", systemHandler.GetStatus)
 	adminOnly.Post("/import/members/preview", importHandler.PreviewMembers)

@@ -1,6 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { settingsServerApi, systemServerApi } from '$lib/api/server';
+import { requireServerUser } from '$lib/auth/server';
 import { throwIfUnauthorized, toApiFailureState } from '$lib/server/api-errors';
 
 function normalizeString(value: FormDataEntryValue | null) {
@@ -69,15 +70,9 @@ export const actions: Actions = {
       bank_account_number: normalizeString(formData.get('bank_account_number'))
     };
 
-    if (!locals.token || !locals.user) {
-      return fail(401, {
-        action: 'updateSettings',
-        message: 'Sesi login tidak ditemukan.',
-        values
-      });
-    }
+    const { token, user } = await requireServerUser({ cookies, fetch, locals });
 
-    if (!isAdmin(locals.user.role)) {
+    if (!isAdmin(user.role)) {
       return fail(403, {
         action: 'updateSettings',
         message: 'Hanya admin yang bisa mengubah pengaturan mess.',
@@ -106,7 +101,7 @@ export const actions: Actions = {
     }
 
     try {
-      await settingsServerApi.update(fetch, locals.token, {
+      await settingsServerApi.update(fetch, token, {
         mess_name: values.mess_name,
         wifi_price: wifiPrice,
         wifi_deadline_day: wifiDeadlineDay,

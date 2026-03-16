@@ -1,9 +1,10 @@
 import { error as svelteError } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
-import { ApiError, authServerApi, notificationsServerApi } from '$lib/api/server';
+import { ApiError, notificationsServerApi } from '$lib/api/server';
 import type { NotificationList } from '$lib/api/types';
 import { clearAuthCookies } from '$lib/auth/session';
 import { requireAuth } from '$lib/auth/guard';
+import { resolveServerUser } from '$lib/auth/server';
 import { toApiFailureState } from '$lib/server/api-errors';
 
 export const load: LayoutServerLoad = async ({ cookies, fetch, locals, url }) => {
@@ -15,18 +16,12 @@ export const load: LayoutServerLoad = async ({ cookies, fetch, locals, url }) =>
 
   if (locals.token) {
     try {
-      const response = await authServerApi.me(fetch, locals.token);
-      user = response.data;
+      user = await resolveServerUser({ cookies, fetch, locals });
     } catch (error) {
-      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
-        clearAuthCookies(cookies);
-        locals.token = null;
-      } else {
-        const failure = toApiFailureState(error, 'Sesi belum dapat diverifikasi.');
-        throw svelteError(503, {
-          message: failure.message
-        });
-      }
+      const failure = toApiFailureState(error, 'Sesi belum dapat diverifikasi.');
+      throw svelteError(503, {
+        message: failure.message
+      });
     }
   }
 
@@ -41,6 +36,7 @@ export const load: LayoutServerLoad = async ({ cookies, fetch, locals, url }) =>
       if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
         clearAuthCookies(cookies);
         locals.token = null;
+        locals.user = null;
       } else {
         const failure = toApiFailureState(error, 'Ringkasan notifikasi belum dapat dimuat.');
         console.error('notification summary failed', failure);

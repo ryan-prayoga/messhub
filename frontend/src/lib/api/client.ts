@@ -55,6 +55,24 @@ export const authApi = {
 
 export const usersApi = {
   list: (token: string) => apiRequest<MemberUser[]>('/users', { token }),
+  create: (
+    token: string,
+    payload: {
+      name: string;
+      email: string;
+      username?: string;
+      phone?: string;
+      password: string;
+      role: MemberUser['role'];
+      is_active?: boolean;
+      joined_at?: string;
+    }
+  ) =>
+    apiRequest<MemberUser>('/users', {
+      method: 'POST',
+      token,
+      body: payload
+    }),
   update: (
     token: string,
     userID: string,
@@ -62,9 +80,25 @@ export const usersApi = {
       role?: MemberUser['role'];
       is_active?: boolean;
       name?: string;
+      email?: string;
+      username?: string;
+      phone?: string;
+      joined_at?: string;
     }
   ) =>
     apiRequest<MemberUser>(`/users/${userID}`, {
+      method: 'PATCH',
+      token,
+      body: payload
+    }),
+  resetPassword: (
+    token: string,
+    userID: string,
+    payload: {
+      new_password: string;
+    }
+  ) =>
+    apiRequest<{ changed: boolean }>(`/users/${userID}/password`, {
       method: 'PATCH',
       token,
       body: payload

@@ -75,7 +75,13 @@
       </div>
 
       {#if data.notificationSummary.items.length === 0}
-        <div class="empty-state">Belum ada notifikasi.</div>
+        <StatePanel
+          tone="empty"
+          title="Inbox masih kosong"
+          message="Belum ada notifikasi baru. Update penting dari wifi, feed, dan aktivitas mess akan muncul di sini."
+          actionHref="/feed"
+          actionLabel="Buka feed"
+        />
       {:else}
         <div class="space-y-3">
           {#each data.notificationSummary.items as item}

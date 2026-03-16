@@ -10,6 +10,11 @@
 
 ## Summary Status
 
+- Observed: protected SvelteKit server actions now resolve the current user through a shared server-side auth helper before checking role-sensitive mutations, fixing the false "Sesi login tidak ditemukan" error on settings saves and other admin/member actions while still redirecting expired sessions back to `/login`.
+- Observed: the shared app shell now uses navigation-start aware route state, closes menus consistently on click, and keeps the desktop sidebar bounded to the viewport with its own scroll area so the sidebar no longer bleeds down over the content column.
+- Observed: `/members` is now a fuller admin workspace with search/filter controls, member create/edit sheets, activate/deactivate actions, role/status updates, admin password reset, and clearer empty/error feedback on both desktop and mobile.
+- Observed: backend user management now supports richer editable member fields plus `PATCH /api/v1/users/:id/password`, adds create/update/reset audit logs, and protects against self-demotion, self-deactivation, and removing the last active admin.
+- Observed: empty-state UX is now more consistent across members, wallet, feed, notifications, contributions, and settings through a richer shared `StatePanel` and reusable action-sheet surface.
 - Observed: frontend now uses a shared navigation/meta source for route-aware titles, menu visibility, active states, and browser tab metadata, with consistent `• MessHub` titles for login, dashboard, wallet, wifi, feed, members, profile, settings, admin, and nested import routes.
 - Observed: frontend authenticated UX now has a warm interior-inspired theme with reusable CSS tokens, Iconify icons, a new responsive shell with desktop sidebar + mobile bottom navigation, safer profile dropdown behavior, smoother page transitions, and richer feedback/loading/skeleton states across the main routes.
 - Observed: login now accepts email or username on the frontend, with a refined identifier-based form, better submit states, and production-facing copy that no longer reads like helper/dev text.
@@ -87,7 +92,6 @@
 - Live browser/device validation for Step 8 is still pending for standalone install, Android push delivery, offline cache behavior after logout/login, and background-sync replay after reconnect.
 - Shared expenses and proposals are still placeholder-only on the frontend and do not yet have live runtime integration.
 - The new GitHub Actions deploy workflow has been authored, but it has not been exercised against the live VPS from this workspace yet.
-- Admin user creation is still backend-only; frontend now supports role and activation updates on `/members`, but it still does not provide a create-member form.
 
 ## Blockers / Risks
 
@@ -110,6 +114,9 @@
 
 ## Recently Touched Areas
 
+- frontend/src/lib/auth/server.ts
+- frontend/src/lib/components/ActionSheet.svelte
+- frontend/src/lib/components/StatePanel.svelte
 - frontend/src/lib/components/AppShell.svelte
 - frontend/src/app.css
 - frontend/src/routes/login/

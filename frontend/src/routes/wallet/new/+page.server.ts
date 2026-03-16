@@ -2,6 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { walletServerApi } from '$lib/api/server';
 import type { WalletTransactionType } from '$lib/api/types';
+import { requireServerUser } from '$lib/auth/server';
 import { throwIfUnauthorized, toApiFailureState } from '$lib/server/api-errors';
 
 function canCreate(role: string | undefined) {
@@ -30,14 +31,9 @@ export const actions: Actions = {
       description: normalizeString(formData.get('description'))
     };
 
-    if (!locals.token || !locals.user) {
-      return fail(401, {
-        message: 'Sesi login tidak ditemukan.',
-        values
-      });
-    }
+    const { token, user } = await requireServerUser({ cookies, fetch, locals });
 
-    if (!canCreate(locals.user.role)) {
+    if (!canCreate(user.role)) {
       return fail(403, {
         message: 'Hanya admin dan bendahara yang bisa menambah transaksi kas.',
         values
@@ -59,7 +55,7 @@ export const actions: Actions = {
     }
 
     try {
-      await walletServerApi.createTransaction(fetch, locals.token, {
+      await walletServerApi.createTransaction(fetch, token, {
         type: values.type as WalletTransactionType,
         category: values.category,
         amount,

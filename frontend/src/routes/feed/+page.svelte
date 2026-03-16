@@ -277,7 +277,12 @@
       </article>
 
       {#if data.activities.length === 0}
-        <StatePanel tone="empty" title="Belum ada aktivitas" message="Belum ada aktivitas. Terbitkan item pertama dari form di atas." />
+        <StatePanel
+          tone="empty"
+          title="Feed masih sepi"
+          message="Belum ada aktivitas yang terbit. Gunakan form di atas untuk membuat pengumuman, update makanan, rencana nasi, atau kontribusi pertama."
+          icon="lucide:sparkles"
+        />
       {:else}
         <div class="mt-4 space-y-4">
           {#each data.activities as item}
@@ -368,7 +373,12 @@
                 </div>
 
                 {#if item.comments.length === 0}
-                  <StatePanel tone="empty" title="Belum ada komentar" message="Belum ada komentar untuk aktivitas ini." />
+                  <StatePanel
+                    tone="empty"
+                    title="Komentar masih kosong"
+                    message="Belum ada tanggapan untuk aktivitas ini. Balas dari form di bawah jika ingin menambahkan konteks."
+                    icon="lucide:messages-square"
+                  />
                 {:else}
                   <div class="space-y-2">
                     {#each item.comments as comment}

@@ -109,8 +109,10 @@
       {#if data.transactions.length === 0}
         <StatePanel
           tone="empty"
-          title="Belum ada data"
-          message="Belum ada transaksi kas. Setelah transaksi pertama dicatat atau diimpor, daftar ini akan terisi."
+          title="Belum ada transaksi kas"
+          message="Belum ada pemasukan atau pengeluaran yang tercatat. Tambahkan transaksi pertama atau impor CSV kas lama agar saldo wallet mulai terbentuk."
+          actionHref={data.canCreate ? '/wallet/new' : null}
+          actionLabel={data.canCreate ? 'Tambah transaksi pertama' : ''}
         />
       {:else}
         <div class="mt-4 space-y-3">

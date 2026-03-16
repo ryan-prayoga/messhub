@@ -223,7 +223,12 @@
                   </div>
                 </div>
               {:else}
-                <StatePanel tone="empty" title="Belum ada data" message="Status layanan belum tersedia saat ini." />
+                <StatePanel
+                  tone="empty"
+                  title="Status layanan belum tersedia"
+                  message="Pantauan backend belum bisa ditampilkan saat ini. Anda masih bisa menyimpan pengaturan, lalu cek ulang status layanan beberapa saat lagi."
+                  icon="lucide:server-off"
+                />
               {/if}
             </article>
           </section>

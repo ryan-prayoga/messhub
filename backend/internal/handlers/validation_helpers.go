@@ -22,6 +22,7 @@ const (
 	maxMessNameLength       = 120
 	maxBankFieldLength      = 120
 	maxRejectReasonLength   = 300
+	maxUsernameLength       = 32
 )
 
 func invalidPayload(c *fiber.Ctx, entity string) error {
