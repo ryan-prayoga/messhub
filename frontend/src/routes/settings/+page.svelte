@@ -2,7 +2,9 @@
   import { enhance } from '$app/forms';
   import { navigating } from '$app/stores';
   import type { SubmitFunction } from '@sveltejs/kit';
+  import FeedbackBanner from '$lib/components/FeedbackBanner.svelte';
   import PageCard from '$lib/components/PageCard.svelte';
+  import PageSkeleton from '$lib/components/PageSkeleton.svelte';
   import StatePanel from '$lib/components/StatePanel.svelte';
   import type { ActionData, PageData } from './$types';
 
@@ -59,15 +61,13 @@
 
 <div class="space-y-4">
   <PageCard
+    eyebrow="Settings"
+    icon="lucide:settings-2"
     title="Pengaturan Mess"
     description="Kelola nama mess, nominal wifi, deadline, dan rekening tujuan dari satu tempat."
   >
     {#if $navigating?.to?.url.pathname === '/settings' || pendingAction}
-      <StatePanel
-        tone="loading"
-        title="Memuat"
-        message={pendingAction ? 'Menyimpan pengaturan...' : 'Memuat ulang data pengaturan...'}
-      />
+      <PageSkeleton statCards={2} rows={2} />
     {/if}
 
     {#if data.accessDenied}
@@ -85,10 +85,7 @@
           requestId={form && 'requestId' in form && typeof form.requestId === 'string' ? form.requestId : null}
         />
       {:else if form?.success}
-        <div class="helper-box mb-4 border-emerald-200 bg-emerald-50/80">
-          <p class="helper-label text-emerald-700">Berhasil</p>
-          <p class="mt-2 text-sm leading-6 text-emerald-800">{form.success}</p>
-        </div>
+        <FeedbackBanner tone="success" title="Berhasil" message={form.success} />
       {/if}
 
       {#if data.loadError || !data.settings}

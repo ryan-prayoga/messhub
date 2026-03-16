@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import AppIcon from '$lib/components/AppIcon.svelte';
+  import Spinner from '$lib/components/Spinner.svelte';
   import { networkState } from '$lib/pwa/network';
   import {
     getPushPromptState,
@@ -51,11 +53,11 @@
     if (choice?.outcome === 'accepted') {
       canInstall = false;
       installEvent = null;
-      feedback = 'MessHub sedang dipasang ke homescreen.';
+      feedback = 'MessHub sedang dipasang ke layar utama.';
       return;
     }
 
-    feedback = 'Install ditunda untuk sekarang.';
+    feedback = 'Pemasangan ditunda untuk sekarang.';
   }
 
   async function enablePush() {
@@ -66,7 +68,7 @@
       pushState = result.state;
       feedback = result.message;
     } catch (error) {
-      feedback = error instanceof Error ? error.message : 'Gagal mengaktifkan push notification.';
+      feedback = error instanceof Error ? error.message : 'Gagal mengaktifkan notifikasi push.';
     } finally {
       pushBusy = false;
     }
@@ -83,14 +85,14 @@
 
 {#if showBar}
   <div class="mx-auto w-full max-w-4xl px-4 pt-3 sm:px-6">
-    <section class="app-panel border border-slate-200/80 bg-white/95 px-4 py-4">
+    <section class="app-panel px-4 py-4">
       <div class="flex flex-col gap-3">
         {#if !$networkState.online}
           <div class="native-banner native-banner-offline">
             <div>
               <p class="helper-label text-amber-800">Offline mode</p>
               <p class="mt-1 text-sm leading-6 text-amber-950">
-                Menampilkan data terakhir yang tersimpan. Outbox akan sync otomatis saat koneksi kembali.
+                Menampilkan data terakhir yang tersimpan. Outbox akan sinkron otomatis saat koneksi kembali.
               </p>
             </div>
           </div>
@@ -101,14 +103,20 @@
             {#if showInstall}
               <div class="native-banner">
                 <div>
-                  <p class="helper-label">Homescreen</p>
+                  <p class="helper-label">Layar utama</p>
                   <p class="mt-1 text-sm leading-6 text-slate-700">
-                    Pasang MessHub agar terbuka seperti app native dari homescreen.
+                    Pasang MessHub agar terbuka seperti aplikasi native langsung dari layar utama.
                   </p>
                 </div>
 
                 <button type="button" class="btn-primary px-4 py-3" on:click={installApp} disabled={installing}>
-                  {installing ? 'Preparing...' : 'Install MessHub App'}
+                  {#if installing}
+                    <Spinner className="h-4 w-4" />
+                    <span>Menyiapkan...</span>
+                  {:else}
+                    <AppIcon icon="lucide:download" className="h-4 w-4" />
+                    <span>Pasang MessHub</span>
+                  {/if}
                 </button>
               </div>
             {/if}
@@ -116,14 +124,20 @@
             {#if showPushPrompt}
               <div class="native-banner">
                 <div>
-                  <p class="helper-label">Notifications</p>
+                  <p class="helper-label">Notifikasi</p>
                   <p class="mt-1 text-sm leading-6 text-slate-700">
-                    Aktifkan push notification untuk tagihan wifi dan update feed.
+                    Aktifkan notifikasi push untuk tagihan wifi dan update feed.
                   </p>
                 </div>
 
                 <button type="button" class="btn-secondary px-4 py-3" on:click={enablePush} disabled={pushBusy}>
-                  {pushBusy ? 'Enabling...' : 'Aktifkan notifikasi'}
+                  {#if pushBusy}
+                    <Spinner className="h-4 w-4" />
+                    <span>Mengaktifkan...</span>
+                  {:else}
+                    <AppIcon icon="lucide:bell-ring" className="h-4 w-4" />
+                    <span>Aktifkan notifikasi</span>
+                  {/if}
                 </button>
               </div>
             {/if}
@@ -131,7 +145,7 @@
         {/if}
 
         {#if feedback}
-          <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          <div class="rounded-2xl border border-line bg-panel/80 px-4 py-3 text-sm text-muted">
             {feedback}
           </div>
         {/if}

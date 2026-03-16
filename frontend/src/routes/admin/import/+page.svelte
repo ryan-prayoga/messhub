@@ -23,6 +23,8 @@
 
 <div class="space-y-4">
   <PageCard
+    eyebrow="Admin"
+    icon="lucide:download"
     title="Pusat Impor Data"
     description="Pindahkan data spreadsheet lama ke MessHub lewat alur CSV yang aman dan bisa ditinjau dulu."
   >

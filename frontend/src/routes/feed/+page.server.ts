@@ -21,7 +21,7 @@ export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) =
   if (!locals.token || !locals.user) {
     return {
       activities: [],
-      loadError: 'Missing authenticated session',
+      loadError: 'Sesi login tidak ditemukan.',
       defaults
     };
   }
@@ -36,7 +36,7 @@ export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) =
     };
   } catch (error) {
     throwIfUnauthorized(error, cookies);
-    const failure = toApiFailureState(error, 'Failed to load activities');
+    const failure = toApiFailureState(error, 'Aktivitas belum dapat dimuat.');
 
     return {
       activities: [],
@@ -59,7 +59,7 @@ export const actions: Actions = {
     if (!locals.token) {
       return fail(401, {
         action: 'createActivity',
-        message: 'Missing authenticated session',
+        message: 'Sesi login tidak ditemukan.',
         values
       });
     }
@@ -80,7 +80,7 @@ export const actions: Actions = {
       if (!Number.isInteger(points) || points <= 0) {
         return fail(400, {
           action: 'createActivity',
-          message: 'Contribution membutuhkan points lebih dari 0',
+          message: 'Aktivitas kontribusi membutuhkan poin lebih dari 0.',
           values
         });
       }
@@ -93,11 +93,11 @@ export const actions: Actions = {
 
       return {
         action: 'createActivity',
-        success: 'Activity berhasil diposting.'
+        success: 'Aktivitas berhasil diterbitkan.'
       };
     } catch (error) {
       throwIfUnauthorized(error, cookies);
-      const failure = toApiFailureState(error, 'Failed to create activity');
+      const failure = toApiFailureState(error, 'Aktivitas belum dapat diterbitkan.');
 
       return fail(failure.status, {
         action: 'createActivity',
@@ -116,7 +116,7 @@ export const actions: Actions = {
     if (!locals.token) {
       return fail(401, {
         action: 'react',
-        message: 'Missing authenticated session',
+        message: 'Sesi login tidak ditemukan.',
         values
       });
     }
@@ -124,7 +124,7 @@ export const actions: Actions = {
     if (values.activity_id === '') {
       return fail(400, {
         action: 'react',
-        message: 'Activity reference is required',
+        message: 'Referensi aktivitas wajib diisi.',
         values
       });
     }
@@ -136,11 +136,11 @@ export const actions: Actions = {
 
       return {
         action: 'react',
-        success: 'Reaction diperbarui.'
+        success: 'Reaksi berhasil diperbarui.'
       };
     } catch (error) {
       throwIfUnauthorized(error, cookies);
-      const failure = toApiFailureState(error, 'Failed to update reaction');
+      const failure = toApiFailureState(error, 'Reaksi belum dapat diperbarui.');
 
       return fail(failure.status, {
         action: 'react',
@@ -160,7 +160,7 @@ export const actions: Actions = {
     if (!locals.token) {
       return fail(401, {
         action: 'comment',
-        message: 'Missing authenticated session',
+        message: 'Sesi login tidak ditemukan.',
         values
       });
     }
@@ -168,7 +168,7 @@ export const actions: Actions = {
     if (values.activity_id === '' || values.comment === '') {
       return fail(400, {
         action: 'comment',
-        message: 'Activity dan comment wajib diisi',
+        message: 'Referensi aktivitas dan komentar wajib diisi.',
         values
       });
     }
@@ -184,7 +184,7 @@ export const actions: Actions = {
       };
     } catch (error) {
       throwIfUnauthorized(error, cookies);
-      const failure = toApiFailureState(error, 'Failed to add comment');
+      const failure = toApiFailureState(error, 'Komentar belum dapat ditambahkan.');
 
       return fail(failure.status, {
         action: 'comment',
@@ -203,7 +203,7 @@ export const actions: Actions = {
     if (!locals.token) {
       return fail(401, {
         action: 'claim',
-        message: 'Missing authenticated session',
+        message: 'Sesi login tidak ditemukan.',
         values
       });
     }
@@ -211,7 +211,7 @@ export const actions: Actions = {
     if (values.activity_id === '') {
       return fail(400, {
         action: 'claim',
-        message: 'Activity reference is required',
+        message: 'Referensi aktivitas wajib diisi.',
         values
       });
     }
@@ -221,11 +221,11 @@ export const actions: Actions = {
 
       return {
         action: 'claim',
-        success: 'Food claim tercatat.'
+        success: 'Pengambilan makanan berhasil dicatat.'
       };
     } catch (error) {
       throwIfUnauthorized(error, cookies);
-      const failure = toApiFailureState(error, 'Failed to claim food');
+      const failure = toApiFailureState(error, 'Pengambilan makanan belum dapat dicatat.');
 
       return fail(failure.status, {
         action: 'claim',
@@ -244,7 +244,7 @@ export const actions: Actions = {
     if (!locals.token) {
       return fail(401, {
         action: 'riceResponse',
-        message: 'Missing authenticated session',
+        message: 'Sesi login tidak ditemukan.',
         values
       });
     }
@@ -252,7 +252,7 @@ export const actions: Actions = {
     if (values.activity_id === '') {
       return fail(400, {
         action: 'riceResponse',
-        message: 'Activity reference is required',
+        message: 'Referensi aktivitas wajib diisi.',
         values
       });
     }
@@ -266,7 +266,7 @@ export const actions: Actions = {
       };
     } catch (error) {
       throwIfUnauthorized(error, cookies);
-      const failure = toApiFailureState(error, 'Failed to save rice response');
+      const failure = toApiFailureState(error, 'Respons nasi belum dapat disimpan.');
 
       return fail(failure.status, {
         action: 'riceResponse',

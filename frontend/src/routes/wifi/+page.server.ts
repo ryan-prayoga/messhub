@@ -43,7 +43,7 @@ export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) =
       );
     } catch (error) {
       throwIfUnauthorized(error, cookies);
-      console.error('wifi defaults failed', toApiFailureState(error, 'Failed to load wifi defaults'));
+      console.error('wifi defaults failed', toApiFailureState(error, 'Default wifi belum dapat dimuat.'));
     }
   }
 
@@ -53,7 +53,7 @@ export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) =
       bills: [],
       myBills: [],
       canManage: false,
-      loadError: 'Missing authenticated session',
+      loadError: 'Sesi login tidak ditemukan.',
       defaults
     };
   }
@@ -75,7 +75,7 @@ export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) =
     };
   } catch (error) {
     throwIfUnauthorized(error, cookies);
-    const failure = toApiFailureState(error, 'Failed to load wifi data');
+    const failure = toApiFailureState(error, 'Data wifi belum dapat dimuat.');
 
     return {
       activeBill: null,
@@ -102,7 +102,7 @@ export const actions: Actions = {
     if (!locals.token || !locals.user) {
       return fail(401, {
         action: 'createBill',
-        message: 'Missing authenticated session',
+        message: 'Sesi login tidak ditemukan.',
         values
       });
     }
@@ -110,7 +110,7 @@ export const actions: Actions = {
     if (!canManage(locals.user.role)) {
       return fail(403, {
         action: 'createBill',
-        message: 'Only admin and treasurer can create wifi bills',
+        message: 'Hanya admin dan bendahara yang bisa membuat tagihan wifi.',
         values
       });
     }
@@ -128,7 +128,7 @@ export const actions: Actions = {
     ) {
       return fail(400, {
         action: 'createBill',
-        message: 'Month, year, nominal, and deadline are required',
+        message: 'Bulan, tahun, nominal, dan jatuh tempo wajib diisi.',
         values
       });
     }
@@ -144,11 +144,11 @@ export const actions: Actions = {
 
       return {
         action: 'createBill',
-        success: 'Wifi bill created and active members were generated automatically.'
+        success: 'Tagihan wifi berhasil dibuat dan anggota aktif sudah ditambahkan otomatis.'
       };
     } catch (error) {
       throwIfUnauthorized(error, cookies);
-      const failure = toApiFailureState(error, 'Failed to create wifi bill');
+      const failure = toApiFailureState(error, 'Tagihan wifi belum dapat dibuat.');
 
       return fail(failure.status, {
         action: 'createBill',
@@ -169,7 +169,7 @@ export const actions: Actions = {
     if (!locals.token || !locals.user) {
       return fail(401, {
         action: 'submitProof',
-        message: 'Missing authenticated session',
+        message: 'Sesi login tidak ditemukan.',
         values
       });
     }
@@ -177,7 +177,7 @@ export const actions: Actions = {
     if (values.bill_id === '' || values.proof_url === '') {
       return fail(400, {
         action: 'submitProof',
-        message: 'Proof reference is required',
+        message: 'Referensi bukti transfer wajib diisi.',
         values
       });
     }
@@ -190,11 +190,11 @@ export const actions: Actions = {
 
       return {
         action: 'submitProof',
-        success: 'Payment proof submitted for verification.'
+        success: 'Bukti pembayaran berhasil dikirim untuk diverifikasi.'
       };
     } catch (error) {
       throwIfUnauthorized(error, cookies);
-      const failure = toApiFailureState(error, 'Failed to submit wifi payment proof');
+      const failure = toApiFailureState(error, 'Bukti pembayaran belum dapat dikirim.');
 
       return fail(failure.status, {
         action: 'submitProof',
@@ -214,7 +214,7 @@ export const actions: Actions = {
     if (!locals.token || !locals.user) {
       return fail(401, {
         action: 'verify',
-        message: 'Missing authenticated session',
+        message: 'Sesi login tidak ditemukan.',
         values
       });
     }
@@ -222,7 +222,7 @@ export const actions: Actions = {
     if (!canManage(locals.user.role)) {
       return fail(403, {
         action: 'verify',
-        message: 'Only admin and treasurer can verify wifi payments',
+        message: 'Hanya admin dan bendahara yang bisa memverifikasi pembayaran wifi.',
         values
       });
     }
@@ -230,7 +230,7 @@ export const actions: Actions = {
     if (values.bill_id === '' || values.member_id === '') {
       return fail(400, {
         action: 'verify',
-        message: 'Bill and member reference are required',
+        message: 'Referensi tagihan dan anggota wajib diisi.',
         values
       });
     }
@@ -240,11 +240,11 @@ export const actions: Actions = {
 
       return {
         action: 'verify',
-        success: 'Wifi payment verified.'
+        success: 'Pembayaran wifi berhasil diverifikasi.'
       };
     } catch (error) {
       throwIfUnauthorized(error, cookies);
-      const failure = toApiFailureState(error, 'Failed to verify wifi payment');
+      const failure = toApiFailureState(error, 'Pembayaran wifi belum dapat diverifikasi.');
 
       return fail(failure.status, {
         action: 'verify',
@@ -265,7 +265,7 @@ export const actions: Actions = {
     if (!locals.token || !locals.user) {
       return fail(401, {
         action: 'reject',
-        message: 'Missing authenticated session',
+        message: 'Sesi login tidak ditemukan.',
         values
       });
     }
@@ -273,7 +273,7 @@ export const actions: Actions = {
     if (!canManage(locals.user.role)) {
       return fail(403, {
         action: 'reject',
-        message: 'Only admin and treasurer can reject wifi payments',
+        message: 'Hanya admin dan bendahara yang bisa menolak pembayaran wifi.',
         values
       });
     }
@@ -281,7 +281,7 @@ export const actions: Actions = {
     if (values.bill_id === '' || values.member_id === '' || values.reason === '') {
       return fail(400, {
         action: 'reject',
-        message: 'Bill, member reference, and rejection reason are required',
+        message: 'Referensi tagihan, anggota, dan alasan penolakan wajib diisi.',
         values
       });
     }
@@ -293,11 +293,11 @@ export const actions: Actions = {
 
       return {
         action: 'reject',
-        success: 'Wifi payment rejected and can be resubmitted by the member.'
+        success: 'Pembayaran wifi ditolak dan anggota bisa mengirim ulang bukti baru.'
       };
     } catch (error) {
       throwIfUnauthorized(error, cookies);
-      const failure = toApiFailureState(error, 'Failed to reject wifi payment');
+      const failure = toApiFailureState(error, 'Pembayaran wifi belum dapat ditolak.');
 
       return fail(failure.status, {
         action: 'reject',

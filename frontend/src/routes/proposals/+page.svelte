@@ -3,6 +3,8 @@
 </script>
 
 <PageCard
+  eyebrow="Usulan"
+  icon="lucide:file-text"
   title="Proposals"
   description="Placeholder untuk usulan dan voting sederhana."
 >

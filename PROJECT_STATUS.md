@@ -2,14 +2,18 @@
 
 ## Current Objective
 
-- Complete STEP 9 data import, production UI cleanup, and spreadsheet migration tooling on top of the existing production-ready auth, member, wallet, wifi, smart mess, profile, settings, and admin runtime.
+- Implement cross-app UX polish, navigation cleanup, title/meta consistency, Iconify adoption, and auth identifier login (`email` or `username`) on top of the existing production-ready auth, member, wallet, wifi, smart mess, profile, settings, import, and PWA runtime.
 
 ## Current Phase
 
-- Phase 9 — Data Import, UI Cleanup, and Migration Tools
+- Phase 10 — UX Polish, Navigation, and Auth Refinement
 
 ## Summary Status
 
+- Observed: frontend now uses a shared navigation/meta source for route-aware titles, menu visibility, active states, and browser tab metadata, with consistent `• MessHub` titles for login, dashboard, wallet, wifi, feed, members, profile, settings, admin, and nested import routes.
+- Observed: frontend authenticated UX now has a warm interior-inspired theme with reusable CSS tokens, Iconify icons, a new responsive shell with desktop sidebar + mobile bottom navigation, safer profile dropdown behavior, smoother page transitions, and richer feedback/loading/skeleton states across the main routes.
+- Observed: login now accepts email or username on the frontend, with a refined identifier-based form, better submit states, and production-facing copy that no longer reads like helper/dev text.
+- Observed: backend now supports login by `identifier` (`email` or `username`), includes `username` in auth/session payloads, auto-generates unique usernames for new/seed/imported users, and ships a safe `009_username_auth_step10.sql` migration that backfills existing members before enforcing uniqueness.
 - Observed: production-facing copy across login, dashboard, members, wallet, profile, settings, the shared app shell, and the global error boundary has been cleaned up so the UI no longer exposes seed-account, `.env`, backend-auth, or phase-internal helper text, while admin-facing messaging is now more user-friendly.
 - Observed: backend now has `backend/db/migrations/008_import_step9.sql`, an `import_jobs` tracking table, wallet `transaction_date` + `proof_url` + `source` metadata, and admin-only CSV preview/commit endpoints for `/api/v1/import/members/...` and `/api/v1/import/wallet/...`, with audit logs for preview and commit actions.
 - Observed: frontend now includes an admin import hub at `/admin/import`, dedicated `/admin/import/members` and `/admin/import/wallet` flows, downloadable CSV templates, mobile-friendly preview cards, duplicate/validation summaries, and commit guards before data is persisted.
@@ -55,6 +59,7 @@
 
 ## Done
 
+- Cross-app UX polish, navigation cleanup, title/meta consistency, Iconify adoption, warm-theme refresh, and username login support are now implemented across the main authenticated shell and key frontend/backend auth paths.
 - STEP 9 data import, UI cleanup, and migration tooling is now implemented end-to-end: admin-only CSV preview/commit APIs for members and wallet, import job tracking plus audit logs, import templates and docs, admin import hub/pages, wallet history date/proof preservation, and production UI copy cleanup on key pages.
 - Masterplan exists in `messhub-masterplan.md`.
 - Shared context baseline created: `AGENTS.md`, `PROJECT_STATUS.md`, `TASKS.md`, `docs/decisions.md`, `docs/handoffs/HANDOFF_TEMPLATE.md`.
@@ -105,6 +110,21 @@
 
 ## Recently Touched Areas
 
+- frontend/src/lib/components/AppShell.svelte
+- frontend/src/app.css
+- frontend/src/routes/login/
+- frontend/src/routes/dashboard/
+- frontend/src/routes/wallet/
+- frontend/src/routes/wifi/
+- frontend/src/routes/feed/
+- frontend/src/routes/members/
+- frontend/src/routes/profile/
+- frontend/src/routes/settings/
+- backend/internal/services/auth_service.go
+- backend/internal/handlers/auth_handler.go
+- backend/internal/repository/user_repository.go
+- backend/internal/models/models.go
+- backend/db/migrations/
 - `backend/db/migrations/008_import_step9.sql`
 - `backend/internal/handlers/import_handler.go`
 - `backend/internal/repository/import_job_repository.go`

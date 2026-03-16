@@ -1,6 +1,8 @@
 <script lang="ts">
   import { navigating } from '$app/stores';
+  import AppIcon from '$lib/components/AppIcon.svelte';
   import PageCard from '$lib/components/PageCard.svelte';
+  import PageSkeleton from '$lib/components/PageSkeleton.svelte';
   import StatePanel from '$lib/components/StatePanel.svelte';
   import type { PageData } from './$types';
 
@@ -29,37 +31,57 @@
 
 <div class="space-y-4">
   <PageCard
+    eyebrow="Wallet"
+    icon="lucide:wallet"
     title="Kantong Duafa"
     description="Ringkasan saldo dan daftar transaksi kas. Semua role bisa melihat, admin dan bendahara bisa mencatat transaksi baru."
   >
     {#if $navigating?.to?.url.pathname === '/wallet'}
-      <StatePanel tone="loading" title="Memuat" message="Memuat ulang saldo dan transaksi kas..." />
+      <PageSkeleton statCards={3} rows={3} />
     {/if}
 
     {#if data.loadError}
-      <StatePanel tone="error" title="Gagal memuat" message={data.loadError} />
+      <StatePanel tone="error" title="Belum bisa memuat wallet" message={data.loadError} />
     {:else if data.summary}
       <div class="grid gap-3 sm:grid-cols-3">
         <div class="stat-card bg-slate-950 text-white">
-          <p class="helper-label text-slate-300">Saldo saat ini</p>
-          <p class="mt-2 text-3xl font-semibold tracking-[-0.04em]">
-            {formatCurrency(data.summary.balance)}
-          </p>
-          <p class="mt-2 text-sm text-slate-300">Saldo berjalan dari semua pemasukan dan pengeluaran.</p>
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="helper-label text-slate-300">Saldo saat ini</p>
+              <p class="mt-2 text-3xl font-semibold tracking-[-0.04em]">
+                {formatCurrency(data.summary.balance)}
+              </p>
+              <p class="mt-2 text-sm text-slate-300">Saldo berjalan dari semua pemasukan dan pengeluaran.</p>
+            </div>
+
+            <AppIcon icon="lucide:landmark" className="h-5 w-5 text-white/80" />
+          </div>
         </div>
 
         <div class="stat-card bg-emerald-50">
-          <p class="helper-label text-emerald-700">Total pemasukan</p>
-          <p class="mt-2 text-3xl font-semibold tracking-[-0.04em] text-ink">
-            {formatCurrency(data.summary.total_income)}
-          </p>
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="helper-label text-emerald-700">Total pemasukan</p>
+              <p class="mt-2 text-3xl font-semibold tracking-[-0.04em] text-ink">
+                {formatCurrency(data.summary.total_income)}
+              </p>
+            </div>
+
+            <AppIcon icon="lucide:trending-up" className="h-5 w-5 text-emerald-700" />
+          </div>
         </div>
 
         <div class="stat-card bg-rose-50">
-          <p class="helper-label text-rose-700">Total pengeluaran</p>
-          <p class="mt-2 text-3xl font-semibold tracking-[-0.04em] text-ink">
-            {formatCurrency(data.summary.total_expense)}
-          </p>
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="helper-label text-rose-700">Total pengeluaran</p>
+              <p class="mt-2 text-3xl font-semibold tracking-[-0.04em] text-ink">
+                {formatCurrency(data.summary.total_expense)}
+              </p>
+            </div>
+
+            <AppIcon icon="lucide:trending-down" className="h-5 w-5 text-rose-700" />
+          </div>
         </div>
       </div>
 
@@ -97,6 +119,12 @@
               <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div class="min-w-0">
                   <div class="flex flex-wrap items-center gap-2">
+                    <div class="nav-link-icon h-10 w-10 rounded-[16px]">
+                      <AppIcon
+                        icon={transaction.type === 'income' ? 'lucide:arrow-down-left' : 'lucide:arrow-up-right'}
+                        className="h-4 w-4"
+                      />
+                    </div>
                     <h3 class="text-base font-semibold text-ink">{transaction.category}</h3>
                     <span
                       class={transaction.type === 'income'
@@ -140,10 +168,11 @@
                   {#if isLink(transaction.proof_url)}
                     <a
                       href={transaction.proof_url}
-                      class="mt-2 inline-flex text-sm font-medium text-sky-700 underline"
+                      class="mt-2 inline-flex items-center gap-2 text-sm font-medium text-ink underline"
                       target="_blank"
                       rel="noreferrer"
                     >
+                      <AppIcon icon="lucide:external-link" className="h-4 w-4" />
                       Buka bukti transaksi
                     </a>
                   {:else}

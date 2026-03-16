@@ -1,12 +1,36 @@
 <script lang="ts">
+  import AppIcon from '$lib/components/AppIcon.svelte';
+
   export let title: string;
-  export let description: string;
+  export let description = '';
+  export let eyebrow = '';
+  export let icon: string | null = null;
 </script>
 
-<section class="app-panel p-5 sm:p-6">
-  <div class="mb-4 space-y-1.5">
-    <h2 class="section-title">{title}</h2>
-    <p class="section-subtitle">{description}</p>
+<section class="app-panel">
+  <div class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div class="flex min-w-0 items-start gap-4">
+      {#if icon}
+        <div class="nav-link-icon mt-0.5">
+          <AppIcon {icon} className="h-5 w-5" />
+        </div>
+      {/if}
+
+      <div class="min-w-0 space-y-1.5">
+        {#if eyebrow}
+          <p class="eyebrow">{eyebrow}</p>
+        {/if}
+
+        <h2 class="section-title">{title}</h2>
+
+        {#if description}
+          <p class="section-subtitle">{description}</p>
+        {/if}
+      </div>
+    </div>
+
+    <slot name="actions" />
   </div>
+
   <slot />
 </section>

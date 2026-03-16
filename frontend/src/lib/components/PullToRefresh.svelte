@@ -81,7 +81,7 @@
       pullDistance - 28
     )}px);`}
   >
-    <div class="rounded-full border border-slate-200 bg-white/95 px-4 py-2 text-xs font-semibold tracking-[0.12em] text-slate-500 shadow-sm">
+    <div class="rounded-full border border-line bg-panel/95 px-4 py-2 text-xs font-semibold tracking-[0.12em] text-muted shadow-sm">
       {hint}
     </div>
   </div>

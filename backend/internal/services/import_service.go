@@ -388,9 +388,22 @@ func (s *ImportService) CommitMembers(ctx context.Context, actorID string, input
 				isActive = *row.NormalizedIsActive
 			}
 
-			_, err := s.userRepository.CreateTx(ctx, tx, repository.CreateUserParams{
+			username, err := s.userRepository.FindAvailableUsernameTx(
+				ctx,
+				tx,
+				strings.TrimSpace(row.Name),
+				normalizeEmail(row.Email),
+			)
+			if err != nil {
+				tx.Rollback()
+				s.markImportJobFailed(ctx, job.ID, err)
+				return nil, err
+			}
+
+			_, err = s.userRepository.CreateTx(ctx, tx, repository.CreateUserParams{
 				Name:         strings.TrimSpace(row.Name),
 				Email:        normalizeEmail(row.Email),
+				Username:     username,
 				PasswordHash: string(passwordHash),
 				Role:         row.NormalizedRole,
 				IsActive:     isActive,

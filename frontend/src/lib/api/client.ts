@@ -45,7 +45,7 @@ export async function apiRequest<T>(
 }
 
 export const authApi = {
-  login: (payload: { email: string; password: string }) =>
+  login: (payload: { identifier: string; password: string; email?: string }) =>
     apiRequest<{ token: string; user: SessionUser }>('/auth/login', {
       method: 'POST',
       body: payload

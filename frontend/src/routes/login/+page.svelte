@@ -1,106 +1,173 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import type { SubmitFunction } from '@sveltejs/kit';
+  import AppIcon from '$lib/components/AppIcon.svelte';
+  import FeedbackBanner from '$lib/components/FeedbackBanner.svelte';
+  import Spinner from '$lib/components/Spinner.svelte';
 
   type LoginFormState = {
     message?: string;
     values?: {
-      email?: string;
+      identifier?: string;
     };
   };
 
   export let form: LoginFormState | undefined;
 
+  const loginHighlights = [
+    {
+      icon: 'lucide:house',
+      title: 'Warm, mobile-first workspace',
+      description: 'Terbuka nyaman di browser desktop, mobile, dan mode PWA.'
+    },
+    {
+      icon: 'lucide:shield-check',
+      title: 'Role & auth tetap aman',
+      description: 'Akses tetap mengikuti role existing tanpa mengubah alur izin yang sudah berjalan.'
+    },
+    {
+      icon: 'lucide:sparkles',
+      title: 'Masuk lebih fleksibel',
+      description: 'Gunakan email atau username yang sudah disiapkan admin mess.'
+    }
+  ];
+
   let isSubmitting = false;
+  let isRedirecting = false;
 
   const enhanceLogin: SubmitFunction = () => {
     isSubmitting = true;
+    isRedirecting = false;
 
-    return async ({ update }) => {
+    return async ({ result, update }) => {
+      if (result.type === 'redirect') {
+        isRedirecting = true;
+      }
+
       await update();
-      isSubmitting = false;
+
+      if (result.type !== 'redirect') {
+        isSubmitting = false;
+      }
     };
   };
 </script>
 
 <div class="app-shell">
-  <div class="mx-auto flex min-h-screen w-full max-w-5xl items-center justify-center px-4 py-10 sm:px-6">
-    <section class="app-panel w-full max-w-md p-6 sm:p-8">
-      <div class="mb-8">
+  <div class="mx-auto flex min-h-screen w-full max-w-6xl items-center px-4 py-10 sm:px-6 lg:px-8">
+    <div class="grid w-full gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+      <section class="app-panel hidden lg:block">
+        <p class="eyebrow">Mess Traspac Menyala</p>
+        <h1 class="mt-4 text-5xl font-semibold tracking-[-0.06em] text-ink">
+          MessHub untuk operasional harian yang terasa lebih rapi dan hidup.
+        </h1>
+        <p class="mt-5 max-w-2xl text-base leading-8 text-muted">
+          Satu tempat untuk memantau kas, wifi, feed, anggota, dan pengaturan mess dengan tampilan yang hangat,
+          ringan, serta tetap cepat dipakai setiap hari.
+        </p>
+
+        <div class="mt-8 grid gap-4">
+          {#each loginHighlights as item}
+            <article class="stat-card bg-white/70">
+              <div class="flex items-start gap-4">
+                <div class="nav-link-icon mt-1">
+                  <AppIcon icon={item.icon} className="h-5 w-5" />
+                </div>
+
+                <div>
+                  <h2 class="text-base font-semibold text-ink">{item.title}</h2>
+                  <p class="mt-2 text-sm leading-6 text-muted">{item.description}</p>
+                </div>
+              </div>
+            </article>
+          {/each}
+        </div>
+      </section>
+
+      <section class="app-panel w-full max-w-[34rem] justify-self-end">
         <div class="flex items-center justify-between gap-3">
           <span class="badge-brand">MessHub</span>
-          <span class="badge-muted">Internal PWA</span>
+          <span class="badge-muted">PWA Internal</span>
         </div>
 
-        <h1 class="mt-4 text-3xl font-semibold tracking-[-0.03em] text-ink">Masuk ke MessHub</h1>
-        <p class="mt-2 text-sm leading-6 text-slate-500">
-          Gunakan akun yang sudah disiapkan admin untuk mengakses operasional harian mess.
-        </p>
-      </div>
+        <div class="mt-6">
+          <p class="eyebrow">Selamat datang kembali</p>
+          <h1 class="mt-3 text-3xl font-semibold tracking-[-0.05em] text-ink">Masuk ke akun Anda</h1>
+          <p class="mt-3 text-sm leading-7 text-muted">
+            Gunakan email atau username yang sudah dibuatkan admin untuk membuka dashboard dan fitur operasional mess.
+          </p>
+        </div>
 
-      <form
-        method="POST"
-        use:enhance={enhanceLogin}
-        class="space-y-4"
-        aria-busy={isSubmitting}
-      >
-        <label class="block">
-          <span class="field-label">Email</span>
-          <input
-            name="email"
-            type="email"
-            autocomplete="username"
-            placeholder="nama@email.com"
-            class="input-field"
-            value={form?.values?.email ?? ''}
-            disabled={isSubmitting}
-          />
-        </label>
+        <form
+          method="POST"
+          use:enhance={enhanceLogin}
+          class="mt-8 space-y-4"
+          aria-busy={isSubmitting}
+        >
+          <label class="block">
+            <span class="field-label">Email atau Username</span>
+            <div class="relative">
+              <span class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-dusty">
+                <AppIcon icon="lucide:at-sign" className="h-4 w-4" />
+              </span>
+              <input
+                name="identifier"
+                type="text"
+                autocomplete="username"
+                placeholder="ryan atau admin@messhub.local"
+                class="input-field pl-11"
+                value={form?.values?.identifier ?? ''}
+                disabled={isSubmitting}
+              />
+            </div>
+          </label>
 
-        <label class="block">
-          <span class="field-label">Password</span>
-          <input
-            name="password"
-            type="password"
-            autocomplete="current-password"
-            placeholder="Masukkan password"
-            class="input-field"
-            disabled={isSubmitting}
-          />
-        </label>
+          <label class="block">
+            <span class="field-label">Password</span>
+            <div class="relative">
+              <span class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-dusty">
+                <AppIcon icon="lucide:key-round" className="h-4 w-4" />
+              </span>
+              <input
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                placeholder="Masukkan password"
+                class="input-field pl-11"
+                disabled={isSubmitting}
+              />
+            </div>
+          </label>
 
-        {#if form?.message}
-          <div class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {form.message}
-          </div>
-        {/if}
-
-        <button type="submit" class="btn-primary w-full" disabled={isSubmitting}>
-          {#if isSubmitting}
-            Memproses...
-          {:else}
-            Masuk
+          {#if form?.message}
+            <FeedbackBanner tone="error" title="Belum bisa masuk" message={form.message} />
           {/if}
-        </button>
 
-        <p class="text-center text-sm text-slate-500">
-          Gunakan akun yang sudah dibuatkan admin. Jika belum punya akun, hubungi admin mess.
-        </p>
-      </form>
+          {#if isRedirecting}
+            <FeedbackBanner
+              tone="success"
+              title="Masuk berhasil"
+              message="Membuka dashboard MessHub untuk Anda..."
+            />
+          {/if}
 
-      <div class="mt-6 helper-box-brand">
-        <p class="helper-label text-sky-700">Tips login</p>
-        <p class="mt-1 text-sm leading-6 text-slate-600">
-          Pastikan email dan password sesuai akun yang aktif. Pesan gagal login tidak akan menampilkan detail sensitif.
-        </p>
-      </div>
+          <button type="submit" class="btn-primary w-full" disabled={isSubmitting}>
+            {#if isSubmitting}
+              <Spinner className="h-4 w-4" />
+              <span>{isRedirecting ? 'Membuka dashboard...' : 'Memeriksa akun...'}</span>
+            {:else}
+              <AppIcon icon="lucide:arrow-right" className="h-4 w-4" />
+              <span>Masuk</span>
+            {/if}
+          </button>
+        </form>
 
-      <div class="mt-4 helper-box">
-        <p class="helper-label">Catatan</p>
-        <p class="mt-2 text-sm leading-6 text-slate-600">
-          MessHub dirancang ringan dan nyaman dipakai dari HP untuk kebutuhan harian penghuni mess.
-        </p>
-      </div>
-    </section>
+        <div class="mt-6 rounded-[24px] border border-line bg-white/60 p-4">
+          <p class="text-sm leading-6 text-muted">
+            Belum punya akses? Hubungi admin mess untuk dibuatkan akun aktif beserta role yang sesuai.
+          </p>
+        </div>
+      </section>
+    </div>
   </div>
 </div>

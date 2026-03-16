@@ -62,10 +62,11 @@ func (m *AuthMiddleware) RequireAuth() fiber.Handler {
 		}
 
 		c.Locals("user", types.AuthUser{
-			ID:    user.ID,
-			Email: user.Email,
-			Name:  user.Name,
-			Role:  user.Role,
+			ID:       user.ID,
+			Email:    user.Email,
+			Username: user.Username,
+			Name:     user.Name,
+			Role:     user.Role,
 		})
 
 		return c.Next()

@@ -2,7 +2,9 @@
   import { enhance } from '$app/forms';
   import { navigating } from '$app/stores';
   import type { SubmitFunction } from '@sveltejs/kit';
+  import FeedbackBanner from '$lib/components/FeedbackBanner.svelte';
   import PageCard from '$lib/components/PageCard.svelte';
+  import PageSkeleton from '$lib/components/PageSkeleton.svelte';
   import StatePanel from '$lib/components/StatePanel.svelte';
   import type { WifiBill, WifiBillMember, WifiBillStatus } from '$lib/api/types';
   import type { ActionData, PageData } from './$types';
@@ -12,8 +14,8 @@
 
   const billStatusLabels: Record<WifiBillStatus, string> = {
     draft: 'Draft',
-    active: 'Active',
-    closed: 'Closed'
+    active: 'Aktif',
+    closed: 'Ditutup'
   };
 
   let pendingAction: string | null = null;
@@ -64,31 +66,31 @@
 
   function paymentStatusLabel(status: WifiBillMember['payment_status']) {
     if (status === 'pending_verification') {
-      return 'Pending';
+      return 'Menunggu verifikasi';
     }
 
     if (status === 'verified') {
-      return 'Verified';
+      return 'Terverifikasi';
     }
 
     if (status === 'rejected') {
-      return 'Rejected';
+      return 'Ditolak';
     }
 
-    return 'Unpaid';
+    return 'Belum bayar';
   }
 
   function paymentStatusClass(status: WifiBillMember['payment_status']) {
     if (status === 'verified') {
-      return 'badge bg-emerald-100 text-emerald-700';
+      return 'badge-success';
     }
 
     if (status === 'pending_verification') {
-      return 'badge bg-amber-100 text-amber-700';
+      return 'badge-warning';
     }
 
     if (status === 'rejected') {
-      return 'badge bg-rose-100 text-rose-700';
+      return 'badge-danger';
     }
 
     return 'badge-muted';
@@ -100,10 +102,10 @@
     }
 
     if (status === 'closed') {
-      return 'badge bg-slate-950 text-white';
+      return 'badge-strong';
     }
 
-    return 'badge bg-amber-100 text-amber-700';
+    return 'badge-warning';
   }
 
   function countLabel(value: number, singular: string, plural = `${singular}s`) {
@@ -160,40 +162,35 @@
 
 <div class="space-y-4">
   <PageCard
+    eyebrow="Wifi"
+    icon="lucide:wifi"
     title="Wifi"
-    description="Tagihan wifi bulanan, submit bukti transfer, dan verifikasi pembayaran untuk STEP 3."
+    description="Tagihan wifi bulanan, submit bukti transfer, dan verifikasi pembayaran dari satu halaman yang rapi."
   >
     {#if $navigating?.to?.url.pathname === '/wifi' || pendingAction}
-      <StatePanel
-        tone="loading"
-        title="Loading"
-        message={pendingAction ? 'Memproses aksi wifi...' : 'Memuat ulang data wifi...'}
-      />
+      <PageSkeleton statCards={4} rows={3} />
     {/if}
 
     {#if form?.message}
       <StatePanel
         tone="error"
-        title="Error"
+        title="Belum bisa memproses"
         message={form.message}
         requestId={form && 'requestId' in form && typeof form.requestId === 'string' ? form.requestId : null}
       />
     {:else if form?.success}
-      <div class="helper-box mb-4 border-emerald-200 bg-emerald-50/80">
-        <p class="helper-label text-emerald-700">Success</p>
-        <p class="mt-2 text-sm leading-6 text-emerald-800">{form.success}</p>
-      </div>
+      <FeedbackBanner tone="success" title="Berhasil" message={form.success} />
     {/if}
 
     {#if data.loadError}
-      <StatePanel tone="error" title="Error" message={data.loadError} />
+      <StatePanel tone="error" title="Belum bisa memuat wifi" message={data.loadError} />
     {:else}
       {#if data.activeBill}
         <section class="space-y-4">
           <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div class="stat-card bg-slate-950 text-white sm:col-span-2">
               <div class="flex flex-wrap items-center gap-2">
-                <p class="helper-label text-slate-300">Active bill</p>
+                <p class="helper-label text-slate-300">Tagihan aktif</p>
                 <span class={billStatusClass(data.activeBill.bill.status)}>
                   {billStatusLabels[data.activeBill.bill.status]}
                 </span>
@@ -209,7 +206,7 @@
             </div>
 
             <div class="stat-card bg-emerald-50">
-              <p class="helper-label text-emerald-700">Verified</p>
+              <p class="helper-label text-emerald-700">Terverifikasi</p>
               <p class="mt-2 text-3xl font-semibold tracking-[-0.04em] text-ink">
                 {data.activeBill.summary.verified_count}
               </p>
@@ -224,28 +221,28 @@
                 {formatCurrency(data.activeBill.summary.total_target)}
               </p>
               <p class="mt-2 text-sm text-slate-600">
-                {countLabel(data.activeBill.summary.total_members, 'member')}
+                {countLabel(data.activeBill.summary.total_members, 'anggota', 'anggota')}
               </p>
             </div>
           </div>
 
           <div class="grid gap-3 sm:grid-cols-3">
             <div class="stat-card bg-white">
-              <p class="helper-label">Pending</p>
+              <p class="helper-label">Menunggu</p>
               <p class="mt-2 text-2xl font-semibold tracking-[-0.04em] text-ink">
                 {data.activeBill.summary.pending_count}
               </p>
             </div>
 
             <div class="stat-card bg-white">
-              <p class="helper-label">Unpaid</p>
+              <p class="helper-label">Belum bayar</p>
               <p class="mt-2 text-2xl font-semibold tracking-[-0.04em] text-ink">
                 {data.activeBill.summary.unpaid_count}
               </p>
             </div>
 
             <div class="stat-card bg-white">
-              <p class="helper-label">Rejected</p>
+              <p class="helper-label">Ditolak</p>
               <p class="mt-2 text-2xl font-semibold tracking-[-0.04em] text-ink">
                 {data.activeBill.summary.rejected_count}
               </p>
@@ -255,8 +252,8 @@
       {:else}
         <StatePanel
           tone="empty"
-          title="Empty"
-          message="Belum ada wifi bill aktif. Admin atau treasurer bisa membuat bill bulanan dari halaman ini."
+          title="Belum ada tagihan aktif"
+          message="Belum ada tagihan wifi aktif. Admin atau bendahara bisa membuat tagihan bulanan dari halaman ini."
         />
       {/if}
 
@@ -266,10 +263,10 @@
             <article class="app-panel p-5">
               <div class="flex items-start justify-between gap-3">
                 <div>
-                  <p class="eyebrow">Create Bill</p>
+                  <p class="eyebrow">Tagihan Baru</p>
                   <h2 class="section-title mt-1">Buat tagihan wifi bulanan</h2>
                   <p class="section-subtitle mt-2">
-                    Record untuk member aktif akan digenerate otomatis dengan nominal default Rp20.000.
+                    Record untuk anggota aktif akan dibuat otomatis mengikuti nominal default pengaturan mess.
                   </p>
                 </div>
               </div>
@@ -282,7 +279,7 @@
               >
                 <div class="grid gap-4 sm:grid-cols-2">
                   <label>
-                    <span class="field-label">Month</span>
+                    <span class="field-label">Bulan</span>
                     <input
                       class="input-field"
                       type="number"
@@ -295,7 +292,7 @@
                   </label>
 
                   <label>
-                    <span class="field-label">Year</span>
+                    <span class="field-label">Tahun</span>
                     <input
                       class="input-field"
                       type="number"
@@ -309,7 +306,7 @@
 
                 <div class="grid gap-4 sm:grid-cols-2">
                   <label>
-                    <span class="field-label">Nominal per person</span>
+                    <span class="field-label">Nominal per orang</span>
                     <input
                       class="input-field"
                       type="number"
@@ -322,7 +319,7 @@
                   </label>
 
                   <label>
-                    <span class="field-label">Deadline</span>
+                    <span class="field-label">Jatuh tempo</span>
                     <input
                       class="input-field"
                       type="date"
@@ -336,9 +333,9 @@
                 <label>
                   <span class="field-label">Status</span>
                   <select class="input-field" name="status">
-                    <option value="active" selected={createBillValue('status') === 'active'}>Active</option>
+                    <option value="active" selected={createBillValue('status') === 'active'}>Aktif</option>
                     <option value="draft" selected={createBillValue('status') === 'draft'}>Draft</option>
-                    <option value="closed" selected={createBillValue('status') === 'closed'}>Closed</option>
+                    <option value="closed" selected={createBillValue('status') === 'closed'}>Ditutup</option>
                   </select>
                 </label>
 
@@ -347,18 +344,18 @@
                   class="btn-primary w-full px-4 py-3"
                   disabled={pendingAction === 'createBill'}
                 >
-                  {pendingAction === 'createBill' ? 'Creating...' : 'Create wifi bill'}
+                  {pendingAction === 'createBill' ? 'Membuat tagihan...' : 'Buat tagihan wifi'}
                 </button>
               </form>
             </article>
 
             <article class="app-panel p-5">
-              <p class="eyebrow">Bill History</p>
-              <h2 class="section-title mt-1">Daftar bill wifi</h2>
+              <p class="eyebrow">Riwayat</p>
+              <h2 class="section-title mt-1">Daftar tagihan wifi</h2>
               <p class="section-subtitle mt-2">Satu bill per bulan-tahun, diurutkan dari yang terbaru.</p>
 
               {#if data.bills.length === 0}
-                <StatePanel tone="empty" title="Empty" message="Belum ada bill wifi yang tercatat." />
+                <StatePanel tone="empty" title="Belum ada riwayat" message="Belum ada tagihan wifi yang tercatat." />
               {:else}
                 <div class="mt-4 space-y-3">
                   {#each data.bills as bill}
@@ -390,19 +387,19 @@
 
                       <div class="mt-4 grid gap-2 sm:grid-cols-4">
                         <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                          <p class="helper-label">Verified</p>
+                          <p class="helper-label">Terverifikasi</p>
                           <p class="mt-2 text-sm font-semibold text-ink">{bill.summary.verified_count}</p>
                         </div>
                         <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                          <p class="helper-label">Pending</p>
+                          <p class="helper-label">Menunggu</p>
                           <p class="mt-2 text-sm font-semibold text-ink">{bill.summary.pending_count}</p>
                         </div>
                         <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                          <p class="helper-label">Unpaid</p>
+                          <p class="helper-label">Belum bayar</p>
                           <p class="mt-2 text-sm font-semibold text-ink">{bill.summary.unpaid_count}</p>
                         </div>
                         <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                          <p class="helper-label">Rejected</p>
+                          <p class="helper-label">Ditolak</p>
                           <p class="mt-2 text-sm font-semibold text-ink">{bill.summary.rejected_count}</p>
                         </div>
                       </div>
@@ -414,16 +411,14 @@
           </section>
 
           <article class="app-panel p-5">
-            <p class="eyebrow">Verification</p>
-            <h2 class="section-title mt-1">Status pembayaran member</h2>
-            <p class="section-subtitle mt-2">
-              Endpoint verify/reject memakai <code>wifi_bill_members.id</code> sebagai <code>memberId</code>.
-            </p>
+            <p class="eyebrow">Verifikasi</p>
+            <h2 class="section-title mt-1">Status pembayaran anggota</h2>
+            <p class="section-subtitle mt-2">Tinjau bukti transfer dan putuskan pembayaran yang masih menunggu verifikasi.</p>
 
             {#if !data.activeBill}
-              <StatePanel tone="empty" title="Empty" message="Bill aktif belum ada, jadi daftar pembayaran belum tersedia." />
+              <StatePanel tone="empty" title="Belum ada tagihan aktif" message="Daftar pembayaran akan muncul setelah tagihan aktif dibuat." />
             {:else if data.activeBill.members.length === 0}
-              <StatePanel tone="empty" title="Empty" message="Belum ada member record pada bill aktif ini." />
+              <StatePanel tone="empty" title="Belum ada anggota" message="Belum ada record anggota pada tagihan aktif ini." />
             {:else}
               <div class="mt-4 space-y-3">
                 {#each data.activeBill.members as member}
@@ -442,14 +437,14 @@
                       <div class="text-left sm:text-right">
                         <p class="text-lg font-semibold text-ink">{formatCurrency(member.amount)}</p>
                         <p class="mt-1 text-xs text-slate-500">
-                          Submit {formatDate(member.submitted_at, true)}
+                          Dikirim {formatDate(member.submitted_at, true)}
                         </p>
                       </div>
                     </div>
 
                     <div class="mt-4 grid gap-2">
                       <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                        <p class="helper-label">Proof</p>
+                        <p class="helper-label">Bukti transfer</p>
                         <p class="mt-2 break-all text-sm text-slate-700">
                           {member.proof_url || 'Belum ada bukti transfer'}
                         </p>
@@ -457,14 +452,14 @@
 
                       {#if member.note}
                         <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                          <p class="helper-label">Note</p>
+                          <p class="helper-label">Catatan</p>
                           <p class="mt-2 text-sm text-slate-700">{member.note}</p>
                         </div>
                       {/if}
 
                       {#if member.rejection_reason}
                         <div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
-                          <p class="helper-label text-rose-700">Rejection reason</p>
+                          <p class="helper-label text-rose-700">Alasan penolakan</p>
                           <p class="mt-2 text-sm text-rose-700">{member.rejection_reason}</p>
                         </div>
                       {/if}
@@ -484,7 +479,7 @@
                             class="btn-primary w-full px-4 py-3"
                             disabled={pendingAction === `verify-${member.id}`}
                           >
-                            {pendingAction === `verify-${member.id}` ? 'Verifying...' : 'Verify payment'}
+                            {pendingAction === `verify-${member.id}` ? 'Memverifikasi...' : 'Verifikasi pembayaran'}
                           </button>
                         </form>
 
@@ -500,7 +495,7 @@
                             class="input-field"
                             type="text"
                             name="reason"
-                            placeholder="Alasan reject"
+                            placeholder="Tuliskan alasan penolakan"
                             value={rejectReasonValue(member.id)}
                             required
                           />
@@ -509,7 +504,7 @@
                             class="btn-secondary px-4 py-3"
                             disabled={pendingAction === `reject-${member.id}`}
                           >
-                            {pendingAction === `reject-${member.id}` ? 'Rejecting...' : 'Reject'}
+                            {pendingAction === `reject-${member.id}` ? 'Menolak...' : 'Tolak'}
                           </button>
                         </form>
                       </div>
@@ -524,18 +519,18 @@
         <div class="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)]">
           <section class="space-y-4">
             <article class="app-panel p-5">
-              <p class="eyebrow">My Active Bill</p>
+              <p class="eyebrow">Tagihan Saya</p>
               <h2 class="section-title mt-1">Status pembayaran saya</h2>
               <p class="section-subtitle mt-2">
                 Transfer dilakukan di luar aplikasi. Halaman ini hanya mencatat bukti dan status verifikasi.
               </p>
 
               {#if !data.activeBill || !ownActiveBill}
-                <StatePanel tone="empty" title="Empty" message="Tidak ada bill aktif yang perlu Anda submit saat ini." />
+                <StatePanel tone="empty" title="Tidak ada tagihan aktif" message="Tidak ada tagihan aktif yang perlu Anda kirim saat ini." />
               {:else}
                 <div class="mt-4 grid gap-3 sm:grid-cols-2">
                   <div class="stat-card bg-slate-950 text-white">
-                    <p class="helper-label text-slate-300">Bill</p>
+                    <p class="helper-label text-slate-300">Tagihan</p>
                     <p class="mt-2 text-2xl font-semibold tracking-[-0.04em]">
                       {formatMonthYear(ownActiveBill.month, ownActiveBill.year)}
                     </p>
@@ -545,7 +540,7 @@
                   </div>
 
                   <div class="stat-card bg-white">
-                    <p class="helper-label">Current status</p>
+                    <p class="helper-label">Status saat ini</p>
                     <div class="mt-2">
                       <span class={paymentStatusClass(ownActiveBill.payment_status)}>
                         {paymentStatusLabel(ownActiveBill.payment_status)}
@@ -560,21 +555,21 @@
                 <div class="mt-4 space-y-3">
                   {#if ownActiveBill.proof_url}
                     <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                      <p class="helper-label">Latest proof</p>
+                      <p class="helper-label">Bukti terakhir</p>
                       <p class="mt-2 break-all text-sm text-slate-700">{ownActiveBill.proof_url}</p>
                     </div>
                   {/if}
 
                   {#if ownActiveBill.note}
                     <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                      <p class="helper-label">Latest note</p>
+                      <p class="helper-label">Catatan terakhir</p>
                       <p class="mt-2 text-sm text-slate-700">{ownActiveBill.note}</p>
                     </div>
                   {/if}
 
                   {#if ownActiveBill.rejection_reason}
                     <div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
-                      <p class="helper-label text-rose-700">Rejection reason</p>
+                      <p class="helper-label text-rose-700">Alasan penolakan</p>
                       <p class="mt-2 text-sm text-rose-700">{ownActiveBill.rejection_reason}</p>
                     </div>
                   {/if}
@@ -588,19 +583,19 @@
                     <input type="hidden" name="bill_id" value={ownActiveBill.wifi_bill_id} />
 
                     <label>
-                      <span class="field-label">Proof reference</span>
+                      <span class="field-label">Referensi bukti transfer</span>
                       <input
                         class="input-field"
                         type="text"
                         name="proof_url"
-                        placeholder="Link upload, path file, atau catatan bukti transfer"
+                        placeholder="Link upload, path file, atau catatan transfer"
                         value={submitProofValue('proof_url', ownActiveBill.proof_url || '')}
                         required
                       />
                     </label>
 
                     <label>
-                      <span class="field-label">Optional note</span>
+                      <span class="field-label">Catatan tambahan</span>
                       <textarea
                         class="input-field min-h-28 resize-y"
                         name="note"
@@ -614,10 +609,10 @@
                       disabled={pendingAction === 'submitProof' || ownActiveBill.payment_status === 'verified'}
                     >
                       {ownActiveBill.payment_status === 'verified'
-                        ? 'Already verified'
+                        ? 'Sudah terverifikasi'
                         : pendingAction === 'submitProof'
-                          ? 'Submitting...'
-                          : 'Submit payment proof'}
+                          ? 'Mengirim bukti...'
+                          : 'Kirim bukti pembayaran'}
                     </button>
                   </form>
                 </div>
@@ -626,12 +621,12 @@
           </section>
 
           <article class="app-panel p-5">
-            <p class="eyebrow">History</p>
+            <p class="eyebrow">Riwayat</p>
             <h2 class="section-title mt-1">Riwayat pembayaran wifi</h2>
             <p class="section-subtitle mt-2">Status terbaru submit Anda per bulan.</p>
 
             {#if data.myBills.length === 0}
-              <StatePanel tone="empty" title="Empty" message="Riwayat pembayaran wifi belum ada." />
+              <StatePanel tone="empty" title="Belum ada riwayat" message="Riwayat pembayaran wifi belum ada." />
             {:else}
               <div class="mt-4 space-y-3">
                 {#each data.myBills as bill}
@@ -653,24 +648,24 @@
 
                       <div class="text-left sm:text-right">
                         <p class="text-sm font-medium text-ink">
-                          Submitted {formatDate(bill.submitted_at, true)}
+                          Dikirim {formatDate(bill.submitted_at, true)}
                         </p>
                         <p class="mt-1 text-xs text-slate-500">
-                          Verified {formatDate(bill.verified_at, true)}
+                          Diverifikasi {formatDate(bill.verified_at, true)}
                         </p>
                       </div>
                     </div>
 
                     {#if bill.proof_url}
                       <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                        <p class="helper-label">Proof</p>
+                        <p class="helper-label">Bukti transfer</p>
                         <p class="mt-2 break-all text-sm text-slate-700">{bill.proof_url}</p>
                       </div>
                     {/if}
 
                     {#if bill.rejection_reason}
                       <div class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
-                        <p class="helper-label text-rose-700">Rejection reason</p>
+                        <p class="helper-label text-rose-700">Alasan penolakan</p>
                         <p class="mt-2 text-sm text-rose-700">{bill.rejection_reason}</p>
                       </div>
                     {/if}

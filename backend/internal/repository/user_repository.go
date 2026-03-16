@@ -3,8 +3,12 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
+	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/ryanprayoga/messhub/backend/internal/models"
 )
@@ -23,7 +27,7 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 
 func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*models.User, error) {
 	query := `
-		SELECT id, name, email, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
+		SELECT id, name, email, username, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
 		FROM users
 		WHERE LOWER(email) = LOWER($1)
 		LIMIT 1
@@ -34,9 +38,23 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*models
 	return scanUser(row)
 }
 
+func (r *UserRepository) FindByLoginIdentifier(ctx context.Context, identifier string) (*models.User, error) {
+	query := `
+		SELECT id, name, email, username, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
+		FROM users
+		WHERE LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($1)
+		ORDER BY CASE WHEN LOWER(email) = LOWER($1) THEN 0 ELSE 1 END
+		LIMIT 1
+	`
+
+	row := r.db.QueryRowContext(ctx, query, identifier)
+
+	return scanUser(row)
+}
+
 func (r *UserRepository) FindByID(ctx context.Context, id string) (*models.User, error) {
 	query := `
-		SELECT id, name, email, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
+		SELECT id, name, email, username, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
 		FROM users
 		WHERE id = $1
 		LIMIT 1
@@ -49,7 +67,7 @@ func (r *UserRepository) FindByID(ctx context.Context, id string) (*models.User,
 
 func (r *UserRepository) List(ctx context.Context) ([]models.User, error) {
 	query := `
-		SELECT id, name, email, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
+		SELECT id, name, email, username, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
 		FROM users
 		ORDER BY is_active DESC, joined_at ASC, created_at ASC
 	`
@@ -79,7 +97,7 @@ func (r *UserRepository) List(ctx context.Context) ([]models.User, error) {
 
 func (r *UserRepository) ListActive(ctx context.Context) ([]models.User, error) {
 	query := `
-		SELECT id, name, email, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
+		SELECT id, name, email, username, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
 		FROM users
 		WHERE is_active = TRUE
 		ORDER BY joined_at ASC, created_at ASC
@@ -111,6 +129,7 @@ func (r *UserRepository) ListActive(ctx context.Context) ([]models.User, error) 
 type CreateUserParams struct {
 	Name         string
 	Email        string
+	Username     string
 	PasswordHash string
 	Role         string
 	IsActive     bool
@@ -126,9 +145,9 @@ func (r *UserRepository) CreateTx(ctx context.Context, tx *sql.Tx, params Create
 
 func (r *UserRepository) create(ctx context.Context, runner userQueryRunner, params CreateUserParams) (*models.User, error) {
 	query := `
-		INSERT INTO users (name, email, password_hash, role, is_active, joined_at)
-		VALUES ($1, $2, $3, $4, $5, NOW())
-		RETURNING id, name, email, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
+		INSERT INTO users (name, email, username, password_hash, role, is_active, joined_at)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW())
+		RETURNING id, name, email, username, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
 	`
 
 	row := runner.QueryRowContext(
@@ -136,6 +155,7 @@ func (r *UserRepository) create(ctx context.Context, runner userQueryRunner, par
 		query,
 		params.Name,
 		params.Email,
+		params.Username,
 		params.PasswordHash,
 		params.Role,
 		params.IsActive,
@@ -185,7 +205,7 @@ func (r *UserRepository) update(ctx context.Context, runner userQueryRunner, par
 			END,
 			updated_at = NOW()
 		WHERE id = $1
-		RETURNING id, name, email, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
+		RETURNING id, name, email, username, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
 	`
 
 	row := runner.QueryRowContext(
@@ -209,7 +229,7 @@ func (r *UserRepository) UpdateProfileTx(ctx context.Context, tx *sql.Tx, params
 			avatar_url = $4,
 			updated_at = NOW()
 		WHERE id = $1
-		RETURNING id, name, email, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
+		RETURNING id, name, email, username, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
 	`
 
 	return scanUser(
@@ -250,6 +270,31 @@ func (r *UserRepository) UpdatePasswordTx(ctx context.Context, tx *sql.Tx, param
 	return nil
 }
 
+func (r *UserRepository) FindAvailableUsername(ctx context.Context, name string, email string) (string, error) {
+	return r.findAvailableUsername(ctx, r.db, name, email)
+}
+
+func (r *UserRepository) FindAvailableUsernameTx(ctx context.Context, tx *sql.Tx, name string, email string) (string, error) {
+	return r.findAvailableUsername(ctx, tx, name, email)
+}
+
+func (r *UserRepository) findAvailableUsername(ctx context.Context, runner userQueryRunner, name string, email string) (string, error) {
+	base := buildUsernameBase(name, email)
+	for suffix := 1; suffix <= 9999; suffix++ {
+		candidate := usernameCandidate(base, suffix)
+		exists, err := usernameExists(ctx, runner, candidate)
+		if err != nil {
+			return "", err
+		}
+
+		if !exists {
+			return candidate, nil
+		}
+	}
+
+	return "", errors.New("unable to allocate unique username")
+}
+
 func nullTimePtr(value sql.NullTime) *time.Time {
 	if !value.Valid {
 		return nil
@@ -272,6 +317,7 @@ func scanUser(row scanner) (*models.User, error) {
 		&user.ID,
 		&user.Name,
 		&user.Email,
+		&user.Username,
 		&user.PasswordHash,
 		&phone,
 		&avatarURL,
@@ -291,6 +337,96 @@ func scanUser(row scanner) (*models.User, error) {
 	user.LeftAt = nullTimePtr(leftAt)
 
 	return user, nil
+}
+
+func usernameExists(ctx context.Context, runner userQueryRunner, username string) (bool, error) {
+	var exists bool
+	err := runner.QueryRowContext(
+		ctx,
+		`SELECT EXISTS(SELECT 1 FROM users WHERE LOWER(username) = LOWER($1))`,
+		username,
+	).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
+}
+
+func buildUsernameBase(name string, email string) string {
+	candidates := []string{
+		sanitizeUsernamePart(name),
+		sanitizeUsernamePart(strings.Split(strings.TrimSpace(email), "@")[0]),
+	}
+
+	for _, candidate := range candidates {
+		if candidate != "" {
+			return candidate
+		}
+	}
+
+	return "user"
+}
+
+func usernameCandidate(base string, suffix int) string {
+	if suffix <= 1 {
+		return truncateUsernameBase(base, 0)
+	}
+
+	suffixValue := "-" + strconv.Itoa(suffix)
+	return fmt.Sprintf("%s%s", truncateUsernameBase(base, len(suffixValue)), suffixValue)
+}
+
+func truncateUsernameBase(base string, reserved int) string {
+	const maxUsernameLength = 32
+
+	trimmed := strings.Trim(strings.ToLower(strings.TrimSpace(base)), "-")
+	if trimmed == "" {
+		trimmed = "user"
+	}
+
+	limit := maxUsernameLength - reserved
+	if limit < 1 {
+		limit = 1
+	}
+
+	if len(trimmed) <= limit {
+		return trimmed
+	}
+
+	return strings.Trim(trimmed[:limit], "-")
+}
+
+func sanitizeUsernamePart(value string) string {
+	var builder strings.Builder
+	lastWasHyphen := false
+
+	for _, character := range strings.ToLower(strings.TrimSpace(value)) {
+		switch {
+		case character >= 'a' && character <= 'z':
+			builder.WriteRune(character)
+			lastWasHyphen = false
+		case character >= '0' && character <= '9':
+			builder.WriteRune(character)
+			lastWasHyphen = false
+		case unicode.IsSpace(character) || character == '-' || character == '_' || character == '.':
+			if builder.Len() == 0 || lastWasHyphen {
+				continue
+			}
+
+			builder.WriteRune('-')
+			lastWasHyphen = true
+		default:
+			if builder.Len() == 0 || lastWasHyphen {
+				continue
+			}
+
+			builder.WriteRune('-')
+			lastWasHyphen = true
+		}
+	}
+
+	return strings.Trim(builder.String(), "-")
 }
 
 func nullableString(value *string) sql.NullString {

@@ -9,6 +9,8 @@
 
 <div class="space-y-4">
   <PageCard
+    eyebrow="Wallet"
+    icon="lucide:plus"
     title="Tambah Transaksi Kas"
     description="Form pencatatan Kantong Duafa. Pembayaran tetap dilakukan di luar aplikasi, halaman ini hanya mencatat transaksi."
   >

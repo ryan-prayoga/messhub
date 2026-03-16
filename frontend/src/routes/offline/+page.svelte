@@ -6,10 +6,6 @@
   }
 </script>
 
-<svelte:head>
-  <title>Offline | MessHub</title>
-</svelte:head>
-
 <div class="min-h-screen px-4 py-8 sm:px-6">
   <div class="mx-auto flex min-h-[80vh] w-full max-w-xl items-center">
     <section class="app-panel w-full p-6 sm:p-8">

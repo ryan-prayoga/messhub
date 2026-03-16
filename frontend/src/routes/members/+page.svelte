@@ -1,6 +1,8 @@
 <script lang="ts">
   import { navigating } from '$app/stores';
+  import FeedbackBanner from '$lib/components/FeedbackBanner.svelte';
   import PageCard from '$lib/components/PageCard.svelte';
+  import PageSkeleton from '$lib/components/PageSkeleton.svelte';
   import StatePanel from '$lib/components/StatePanel.svelte';
   import type { ActionData, PageData } from './$types';
   import type { UserRole } from '$lib/api/types';
@@ -16,18 +18,18 @@
 
   function roleBadgeClass(role: UserRole) {
     if (role === 'admin') {
-      return 'badge bg-slate-950 text-white';
+      return 'badge-strong';
     }
 
     if (role === 'treasurer') {
-      return 'badge bg-emerald-100 text-emerald-700';
+      return 'badge-success';
     }
 
     return 'badge-muted';
   }
 
   function statusBadgeClass(isActive: boolean) {
-    return isActive ? 'badge-brand' : 'badge bg-rose-100 text-rose-700';
+    return isActive ? 'badge-brand' : 'badge-danger';
   }
 
   function formatDate(value: string | null) {
@@ -62,11 +64,13 @@
 
 <div class="space-y-4">
   <PageCard
+    eyebrow="Members"
+    icon="lucide:users"
     title="Anggota Mess"
     description="Kelola daftar penghuni, role, dan status aktif anggota mess."
   >
     {#if $navigating?.to?.url.pathname === '/members'}
-      <StatePanel tone="loading" title="Memuat" message="Memuat ulang data anggota mess..." />
+      <PageSkeleton statCards={3} rows={4} />
     {/if}
 
     {#if data.accessDenied}
@@ -86,17 +90,14 @@
           requestId={form && 'requestId' in form && typeof form.requestId === 'string' ? form.requestId : null}
         />
       {:else if form?.success}
-        <div class="helper-box mb-4 border-emerald-200 bg-emerald-50/80">
-          <p class="helper-label text-emerald-700">Berhasil</p>
-          <p class="mt-2 text-sm leading-6 text-emerald-800">{form.success}</p>
-        </div>
+        <FeedbackBanner tone="success" title="Berhasil" message={form.success} />
       {/if}
 
       {#if data.canManage}
-        <div class="mb-4 flex flex-col gap-3 rounded-3xl border border-sky-200 bg-sky-50/80 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div class="mb-4 flex flex-col gap-3 rounded-3xl border border-line bg-panel/80 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p class="helper-label text-sky-700">Impor data</p>
-            <p class="mt-2 text-sm leading-6 text-slate-700">
+            <p class="helper-label text-ink">Impor data</p>
+            <p class="mt-2 text-sm leading-6 text-muted">
               Pindahkan daftar penghuni lama ke MessHub lewat CSV, lengkap dengan preview validasi sebelum data disimpan.
             </p>
           </div>
@@ -136,6 +137,7 @@
                 <div class="min-w-0">
                   <h3 class="text-base font-semibold text-ink">{member.name}</h3>
                   <p class="mt-1 break-all text-sm text-slate-500">{member.email}</p>
+                  <p class="mt-2 text-xs uppercase tracking-[0.16em] text-dusty">@{member.username}</p>
                 </div>
 
                 <div class="flex flex-wrap gap-2">

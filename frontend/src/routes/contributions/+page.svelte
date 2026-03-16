@@ -1,5 +1,6 @@
 <script lang="ts">
   import PageCard from '$lib/components/PageCard.svelte';
+  import StatePanel from '$lib/components/StatePanel.svelte';
   import type { ContributionLeaderboardEntry } from '$lib/api/types';
   import type { PageData } from './$types';
 
@@ -9,12 +10,12 @@
 
   $: boards = [
     {
-      title: 'This Month',
+      title: 'Bulan Ini',
       description: 'Skor kontribusi bulan berjalan.',
       items: data.monthly
     },
     {
-      title: 'All Time',
+      title: 'Semua Waktu',
       description: 'Skor kontribusi keseluruhan.',
       items: data.allTime
     }
@@ -23,20 +24,19 @@
 
 <div class="space-y-4">
   <PageCard
+    eyebrow="Kontribusi"
+    icon="lucide:trophy"
     title="Contributions"
-    description="Leaderboard kontribusi yang dihitung dari activity type contribution."
+    description="Leaderboard kontribusi yang dihitung dari aktivitas bertipe kontribusi."
   >
     {#if data.loadError}
-      <div class="helper-box-brand">
-        <p class="helper-label text-sky-700">Error</p>
-        <p class="mt-2 text-sm leading-6 text-slate-700">{data.loadError}</p>
-      </div>
+      <StatePanel tone="error" title="Belum bisa memuat kontribusi" message={data.loadError} />
     {:else}
       <div class="grid gap-4 lg:grid-cols-2">
         {#each boards as board}
           <article class="app-panel p-5">
             <p class="eyebrow">{board.title}</p>
-            <h2 class="section-title mt-1">{board.title} leaderboard</h2>
+            <h2 class="section-title mt-1">Leaderboard {board.title.toLowerCase()}</h2>
             <p class="section-subtitle mt-2">{board.description}</p>
 
             {#if board.items.length === 0}
@@ -52,7 +52,7 @@
 
                     <div class="text-right">
                       <p class="text-xl font-semibold tracking-[-0.04em] text-ink">{item.total_points}</p>
-                      <p class="text-xs uppercase tracking-[0.16em] text-slate-400">points</p>
+                      <p class="text-xs uppercase tracking-[0.16em] text-slate-400">poin</p>
                     </div>
                   </div>
                 {/each}

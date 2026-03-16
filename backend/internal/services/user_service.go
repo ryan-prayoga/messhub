@@ -107,9 +107,15 @@ func (s *UserService) CreateUser(ctx context.Context, input CreateUserInput) (*m
 		isActive = *input.IsActive
 	}
 
+	username, err := s.userRepository.FindAvailableUsername(ctx, name, email)
+	if err != nil {
+		return nil, err
+	}
+
 	user, err := s.userRepository.Create(ctx, repository.CreateUserParams{
 		Name:         name,
 		Email:        email,
+		Username:     username,
 		PasswordHash: string(hashedPassword),
 		Role:         role,
 		IsActive:     isActive,

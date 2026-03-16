@@ -2,7 +2,9 @@
   import { enhance } from '$app/forms';
   import { navigating } from '$app/stores';
   import type { SubmitFunction } from '@sveltejs/kit';
+  import FeedbackBanner from '$lib/components/FeedbackBanner.svelte';
   import PageCard from '$lib/components/PageCard.svelte';
+  import PageSkeleton from '$lib/components/PageSkeleton.svelte';
   import StatePanel from '$lib/components/StatePanel.svelte';
   import type { ActionData, PageData } from './$types';
 
@@ -69,15 +71,13 @@
 
 <div class="space-y-4">
   <PageCard
+    eyebrow="Profile"
+    icon="lucide:user-round"
     title="Profil"
-    description="Kelola identitas akun pribadi, kontak, avatar, dan password."
+    description="Kelola identitas akun pribadi, kontak, username, avatar, dan password."
   >
     {#if $navigating?.to?.url.pathname === '/profile' || pendingAction}
-      <StatePanel
-        tone="loading"
-        title="Memuat"
-        message={pendingAction ? 'Memproses perubahan profil...' : 'Memuat ulang data profil...'}
-      />
+      <PageSkeleton statCards={2} rows={2} />
     {/if}
 
     {#if form?.message}
@@ -88,10 +88,7 @@
         requestId={form && 'requestId' in form && typeof form.requestId === 'string' ? form.requestId : null}
       />
     {:else if form?.success}
-      <div class="helper-box mb-4 border-emerald-200 bg-emerald-50/80">
-        <p class="helper-label text-emerald-700">Berhasil</p>
-        <p class="mt-2 text-sm leading-6 text-emerald-800">{form.success}</p>
-      </div>
+      <FeedbackBanner tone="success" title="Berhasil" message={form.success} />
     {/if}
 
     {#if data.loadError || !data.profile}
@@ -121,7 +118,7 @@
                   <span class="badge bg-white/10 text-white">
                     {roleLabels[data.profile.role] ?? data.profile.role}
                   </span>
-                  <span class={`badge ${data.profile.is_active ? 'bg-emerald-500/20 text-emerald-100' : 'bg-rose-500/20 text-rose-100'}`}>
+                  <span class={`badge ${data.profile.is_active ? 'bg-[#7D8A74]/20 text-[#F8F6F2]' : 'bg-[#B96F62]/20 text-[#F8F6F2]'}`}>
                     {data.profile.is_active ? 'Aktif' : 'Nonaktif'}
                   </span>
                 </div>
@@ -142,6 +139,11 @@
               <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <p class="helper-label">Mulai tinggal</p>
                 <p class="mt-2 text-sm font-medium text-ink">{formatDate(data.profile.joined_at)}</p>
+              </div>
+
+              <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 sm:col-span-2">
+                <p class="helper-label">Username login</p>
+                <p class="mt-2 text-sm font-medium text-ink">@{data.profile.username}</p>
               </div>
             </div>
           </article>

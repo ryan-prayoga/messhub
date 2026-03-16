@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/ryanprayoga/messhub/backend/internal/config"
 	"github.com/ryanprayoga/messhub/backend/internal/models"
+	"github.com/ryanprayoga/messhub/backend/internal/repository"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -49,9 +50,15 @@ func main() {
 		log.Fatalf("hash password: %v", err)
 	}
 
+	userRepository := repository.NewUserRepository(db)
+	username, err := userRepository.FindAvailableUsername(ctx, cfg.SeedAdminName, cfg.SeedAdminEmail)
+	if err != nil {
+		log.Fatalf("generate username: %v", err)
+	}
+
 	query := `
-		INSERT INTO users (name, email, password_hash, role, is_active, joined_at)
-		VALUES ($1, LOWER($2), $3, $4, TRUE, NOW())
+		INSERT INTO users (name, email, username, password_hash, role, is_active, joined_at)
+		VALUES ($1, LOWER($2), $3, $4, $5, TRUE, NOW())
 	`
 
 	if _, err := db.ExecContext(
@@ -59,6 +66,7 @@ func main() {
 		query,
 		cfg.SeedAdminName,
 		cfg.SeedAdminEmail,
+		username,
 		string(hashedPassword),
 		cfg.SeedAdminRole,
 	); err != nil {

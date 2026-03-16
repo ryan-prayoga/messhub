@@ -58,7 +58,10 @@ export async function apiServerRequest<T>(
 }
 
 export const authServerApi = {
-  login: (fetcher: typeof fetch, payload: { email: string; password: string }) =>
+  login: (
+    fetcher: typeof fetch,
+    payload: { identifier: string; password: string; email?: string }
+  ) =>
     apiServerRequest<{ token: string; user: SessionUser }>(fetcher, '/auth/login', {
       method: 'POST',
       body: payload

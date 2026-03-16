@@ -8,7 +8,7 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
     return {
       monthly: [],
       allTime: [],
-      loadError: 'Missing authenticated session'
+      loadError: 'Sesi login tidak ditemukan.'
     };
   }
 
@@ -27,7 +27,7 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
     return {
       monthly: [],
       allTime: [],
-      loadError: error instanceof Error ? error.message : 'Failed to load leaderboard'
+      loadError: error instanceof Error ? error.message : 'Leaderboard belum dapat dimuat.'
     };
   }
 };

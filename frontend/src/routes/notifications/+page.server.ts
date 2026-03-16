@@ -15,7 +15,7 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
         items: [],
         unread_count: 0
       },
-      loadError: 'Missing authenticated session'
+      loadError: 'Sesi login tidak ditemukan.'
     };
   }
 
@@ -32,7 +32,7 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
         items: [],
         unread_count: 0
       },
-      loadError: error instanceof Error ? error.message : 'Failed to load notifications'
+      loadError: error instanceof Error ? error.message : 'Notifikasi belum dapat dimuat.'
     };
   }
 };
@@ -45,14 +45,14 @@ export const actions: Actions = {
     if (!locals.token) {
       return fail(401, {
         action: 'markOneRead',
-        message: 'Missing authenticated session'
+        message: 'Sesi login tidak ditemukan.'
       });
     }
 
     if (id === '') {
       return fail(400, {
         action: 'markOneRead',
-        message: 'Notification reference is required'
+        message: 'Referensi notifikasi wajib diisi.'
       });
     }
 
@@ -63,12 +63,12 @@ export const actions: Actions = {
 
       return {
         action: 'markOneRead',
-        success: 'Notification ditandai sudah dibaca.'
+        success: 'Notifikasi berhasil ditandai sudah dibaca.'
       };
     } catch (error) {
       return fail(error instanceof ApiError ? error.status : 500, {
         action: 'markOneRead',
-        message: error instanceof Error ? error.message : 'Failed to update notification'
+        message: error instanceof Error ? error.message : 'Notifikasi belum dapat diperbarui.'
       });
     }
   },
@@ -76,7 +76,7 @@ export const actions: Actions = {
     if (!locals.token) {
       return fail(401, {
         action: 'markAllRead',
-        message: 'Missing authenticated session'
+        message: 'Sesi login tidak ditemukan.'
       });
     }
 
@@ -87,12 +87,12 @@ export const actions: Actions = {
 
       return {
         action: 'markAllRead',
-        success: 'Semua notification ditandai sudah dibaca.'
+        success: 'Semua notifikasi berhasil ditandai sudah dibaca.'
       };
     } catch (error) {
       return fail(error instanceof ApiError ? error.status : 500, {
         action: 'markAllRead',
-        message: error instanceof Error ? error.message : 'Failed to update notifications'
+        message: error instanceof Error ? error.message : 'Notifikasi belum dapat diperbarui.'
       });
     }
   }

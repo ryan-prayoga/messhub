@@ -22,6 +22,13 @@
 - None observed.
 
 ## Done
+- ID: OPS-006
+  Title: Implement navigation polish, warm-theme UI refresh, and username login
+  Priority: P1
+  Owner/Agent: Codex
+  Dependencies: OPS-005, T-002, UX-001
+  Notes: Refreshed the authenticated shell and key pages for desktop/mobile/PWA, standardized titles/meta, adopted Iconify, added animation/loading polish, and extended auth to accept either email or username while preserving existing roles and response contracts.
+
 - ID: OPS-005
   Title: Implement STEP 9 data import, UI cleanup, and migration tools
   Priority: P1

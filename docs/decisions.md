@@ -143,3 +143,11 @@
 - Rationale: CSV works with Google Sheets exports and old spreadsheet structures, keeps migration deterministic, allows row-level validation plus duplicate warnings before writes happen, and leaves a durable audit/import trail without adding direct Google Sheets coupling.
 - Impact: Future migration work should extend the existing CSV preview/commit pipeline first, and any wallet reporting or re-import logic must continue treating transactions as canonical while leaving spreadsheet balances informational only.
 - Follow-up: Validate the import rules against real exported mess spreadsheets and refine category inference or duplicate handling only if actual data shows gaps.
+
+## Decision 19
+- Date: 2026-03-16
+- Context: The app shell and login flow needed a production-ready UX refresh without rewriting the existing route structure or breaking the current auth/role model.
+- Decision: Keep the existing SvelteKit routes, but centralize navigation and browser metadata in a shared frontend config, adopt warm interior-inspired theme tokens plus Iconify-based iconography, and extend auth so users can sign in with either `email` or `username` while preserving the existing response envelope and role guards.
+- Rationale: This improves consistency across desktop/mobile/PWA navigation, avoids title/menu drift between routes, gives the frontend a maintainable tokenized design baseline, and adds a more practical login identifier without forcing a breaking auth rewrite.
+- Impact: Future frontend routes should derive titles/navigation state from the shared metadata helper first, new UI work should reuse the warm theme tokens and Iconify wrapper components, and user creation/import flows must continue assigning stable unique usernames.
+- Follow-up: Validate the new shell and username migration against live device installs plus real production user data before rollout.

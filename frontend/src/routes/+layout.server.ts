@@ -22,7 +22,7 @@ export const load: LayoutServerLoad = async ({ cookies, fetch, locals, url }) =>
         clearAuthCookies(cookies);
         locals.token = null;
       } else {
-        const failure = toApiFailureState(error, 'Failed to verify session');
+        const failure = toApiFailureState(error, 'Sesi belum dapat diverifikasi.');
         throw svelteError(503, {
           message: failure.message
         });
@@ -42,7 +42,7 @@ export const load: LayoutServerLoad = async ({ cookies, fetch, locals, url }) =>
         clearAuthCookies(cookies);
         locals.token = null;
       } else {
-        const failure = toApiFailureState(error, 'Failed to load notification summary');
+        const failure = toApiFailureState(error, 'Ringkasan notifikasi belum dapat dimuat.');
         console.error('notification summary failed', failure);
       }
     }

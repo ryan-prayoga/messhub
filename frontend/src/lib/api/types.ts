@@ -12,6 +12,7 @@ export type SessionUser = {
   id: string;
   name: string;
   email: string;
+  username: string;
   role: UserRole;
 };
 

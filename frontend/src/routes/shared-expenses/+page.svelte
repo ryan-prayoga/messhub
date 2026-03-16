@@ -3,6 +3,8 @@
 </script>
 
 <PageCard
+  eyebrow="Patungan"
+  icon="lucide:receipt"
   title="Shared Expenses"
   description="Placeholder untuk pengeluaran non-kas dan status penggantian."
 >

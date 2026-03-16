@@ -5,20 +5,31 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        canvas: '#eef4fb',
-        ink: '#0f172a',
-        muted: '#64748b',
-        accent: '#0ea5e9',
-        accentSoft: '#e0f2fe',
-        accentStrong: '#0369a1',
-        panel: '#ffffff',
-        line: '#d9e2ec'
+        canvas: '#F4F1EB',
+        panel: '#F8F6F2',
+        shell: '#ECE6DB',
+        line: '#D8D0C5',
+        lineMuted: '#C9C0B4',
+        ink: '#1F2430',
+        rail: '#2E3138',
+        muted: '#6F675E',
+        dusty: '#8D857C',
+        accent: '#2F3440',
+        accentSoft: '#D7CEC1',
+        accentStrong: '#A88B52',
+        highlight: '#BCA98B',
+        successMuted: '#7D8A74',
+        warningMuted: '#B4914E',
+        errorMuted: '#B96F62',
+        infoMuted: '#7A8CA3'
       },
       boxShadow: {
-        shell: '0 24px 60px -28px rgba(15, 23, 42, 0.28)'
+        shell: '0 28px 80px -40px rgba(31, 36, 48, 0.35)',
+        float: '0 20px 48px -26px rgba(31, 36, 48, 0.22)'
       },
       fontFamily: {
-        sans: ['"Avenir Next"', '"Segoe UI"', 'ui-sans-serif', 'system-ui', 'sans-serif']
+        sans: ['"Avenir Next"', '"Segoe UI"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['"Iowan Old Style"', '"Baskerville"', '"Times New Roman"', 'serif']
       }
     }
   },

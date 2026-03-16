@@ -15,16 +15,16 @@ export const load: PageServerLoad = async ({ locals }) => {
 export const actions: Actions = {
   default: async ({ cookies, fetch, request, url }) => {
     const formData = await request.formData();
-    const email = String(formData.get('email') || '').trim();
+    const identifier = String(formData.get('identifier') || '').trim();
     const password = String(formData.get('password') || '');
-    const values = { email };
+    const values = { identifier };
 
-    if (!email || !password) {
-      return fail(400, { message: 'Email dan password wajib diisi.', values });
+    if (!identifier || !password) {
+      return fail(400, { message: 'Email atau username dan password wajib diisi.', values });
     }
 
     try {
-      const payload = await authServerApi.login(fetch, { email, password });
+      const payload = await authServerApi.login(fetch, { identifier, password });
       const { token } = payload.data;
 
       cookies.set(AUTH_COOKIE_KEYS.token, token, buildAuthCookieOptions(url));

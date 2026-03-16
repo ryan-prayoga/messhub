@@ -1,5 +1,7 @@
 <script lang="ts">
+  import FeedbackBanner from '$lib/components/FeedbackBanner.svelte';
   import PageCard from '$lib/components/PageCard.svelte';
+  import StatePanel from '$lib/components/StatePanel.svelte';
   import type { Notification } from '$lib/api/types';
   import type { ActionData, PageData } from './$types';
 
@@ -30,39 +32,32 @@
 
   function cardClass(item: Notification) {
     if (item.is_read) {
-      return 'rounded-3xl border border-slate-200 bg-white px-4 py-4';
+      return 'rounded-3xl border border-line bg-white/80 px-4 py-4';
     }
 
-    return 'rounded-3xl border border-sky-200 bg-sky-50/70 px-4 py-4';
+    return 'rounded-3xl border border-line bg-panel px-4 py-4 shadow-sm';
   }
 </script>
 
 <div class="space-y-4">
   <PageCard
+    eyebrow="Inbox"
+    icon="lucide:bell-ring"
     title="Notifications"
-    description="Notifikasi dalam aplikasi untuk activity baru, komentar, dan status wifi."
+    description="Notifikasi dalam aplikasi untuk aktivitas baru, komentar, dan status wifi."
   >
     {#if form?.message}
-      <div class="helper-box-brand mb-4">
-        <p class="helper-label text-sky-700">Error</p>
-        <p class="mt-2 text-sm leading-6 text-slate-700">{form.message}</p>
-      </div>
+      <FeedbackBanner tone="error" title="Belum bisa memproses" message={form.message} />
     {:else if form?.success}
-      <div class="helper-box mb-4 border-emerald-200 bg-emerald-50/80">
-        <p class="helper-label text-emerald-700">Success</p>
-        <p class="mt-2 text-sm leading-6 text-emerald-800">{form.success}</p>
-      </div>
+      <FeedbackBanner tone="success" title="Berhasil" message={form.success} />
     {/if}
 
     {#if data.loadError}
-      <div class="helper-box-brand">
-        <p class="helper-label text-sky-700">Error</p>
-        <p class="mt-2 text-sm leading-6 text-slate-700">{data.loadError}</p>
-      </div>
+      <StatePanel tone="error" title="Belum bisa memuat notifikasi" message={data.loadError} />
     {:else}
       <div class="mb-4 flex items-center justify-between rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3">
         <div>
-          <p class="helper-label">Unread</p>
+          <p class="helper-label">Belum dibaca</p>
           <p class="mt-2 text-2xl font-semibold tracking-[-0.04em] text-ink">
             {data.notificationSummary.unread_count}
           </p>
@@ -74,13 +69,13 @@
             class="btn-secondary px-4 py-2.5"
             disabled={data.notificationSummary.unread_count === 0}
           >
-            Mark all read
+            Tandai semua
           </button>
         </form>
       </div>
 
       {#if data.notificationSummary.items.length === 0}
-        <div class="empty-state">Belum ada notification.</div>
+        <div class="empty-state">Belum ada notifikasi.</div>
       {:else}
         <div class="space-y-3">
           {#each data.notificationSummary.items as item}
@@ -90,7 +85,7 @@
                   <div class="flex flex-wrap items-center gap-2">
                     <p class="text-sm font-semibold text-ink">{item.title}</p>
                     {#if !item.is_read}
-                      <span class="badge-brand">Unread</span>
+                      <span class="badge-brand">Baru</span>
                     {/if}
                   </div>
                   <p class="mt-2 text-sm leading-6 text-slate-600">{item.message}</p>
@@ -100,7 +95,7 @@
                 <form method="POST" action="?/markOneRead">
                   <input type="hidden" name="notification_id" value={item.id} />
                   <button type="submit" class="btn-secondary px-3 py-2 text-xs" disabled={item.is_read}>
-                    {item.is_read ? 'Read' : 'Mark read'}
+                    {item.is_read ? 'Sudah dibaca' : 'Tandai dibaca'}
                   </button>
                 </form>
               </div>

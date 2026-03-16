@@ -11,6 +11,8 @@
 <div class="app-shell">
   <main class="page-container">
     <PageCard
+      eyebrow="Kendala"
+      icon="lucide:shield-alert"
       title="Terjadi Kendala"
       description="Halaman tetap dijaga agar tidak kosong saat ada gangguan pemuatan atau proses data."
     >

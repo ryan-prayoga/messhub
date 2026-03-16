@@ -15,13 +15,14 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var ErrInvalidCredentials = errors.New("invalid email or password")
+var ErrInvalidCredentials = errors.New("invalid identifier or password")
 var ErrInactiveUser = errors.New("user is inactive")
-var ErrInvalidLoginInput = errors.New("email and password are required")
+var ErrInvalidLoginInput = errors.New("identifier and password are required")
 
 type LoginInput struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Identifier string `json:"identifier"`
+	Email      string `json:"email"`
+	Password   string `json:"password"`
 }
 
 type LoginResponse struct {
@@ -42,13 +43,17 @@ func NewAuthService(cfg config.Config, userRepository *repository.UserRepository
 }
 
 func (s *AuthService) Login(ctx context.Context, input LoginInput) (*LoginResponse, error) {
-	email := normalizeEmail(input.Email)
+	identifier := normalizeLoginIdentifier(input.Identifier)
+	if identifier == "" {
+		identifier = normalizeLoginIdentifier(input.Email)
+	}
+
 	password := strings.TrimSpace(input.Password)
-	if email == "" || password == "" {
+	if identifier == "" || password == "" {
 		return nil, ErrInvalidLoginInput
 	}
 
-	user, err := s.userRepository.FindByEmail(ctx, email)
+	user, err := s.userRepository.FindByLoginIdentifier(ctx, identifier)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrInvalidCredentials
@@ -73,10 +78,11 @@ func (s *AuthService) Login(ctx context.Context, input LoginInput) (*LoginRespon
 	return &LoginResponse{
 		Token: token,
 		User: types.AuthUser{
-			ID:    user.ID,
-			Name:  user.Name,
-			Email: user.Email,
-			Role:  user.Role,
+			ID:       user.ID,
+			Name:     user.Name,
+			Email:    user.Email,
+			Username: user.Username,
+			Role:     user.Role,
 		},
 	}, nil
 }
@@ -84,10 +90,11 @@ func (s *AuthService) Login(ctx context.Context, input LoginInput) (*LoginRespon
 func (s *AuthService) issueToken(user *models.User) (string, error) {
 	expiresAt := time.Now().Add(time.Duration(s.config.JWTExpiresInHours) * time.Hour)
 	claims := types.JWTClaims{
-		UserID: user.ID,
-		Name:   user.Name,
-		Email:  user.Email,
-		Role:   user.Role,
+		UserID:   user.ID,
+		Name:     user.Name,
+		Email:    user.Email,
+		Username: user.Username,
+		Role:     user.Role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -98,4 +105,8 @@ func (s *AuthService) issueToken(user *models.User) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	return token.SignedString([]byte(s.config.JWTSecret))
+}
+
+func normalizeLoginIdentifier(identifier string) string {
+	return strings.ToLower(strings.TrimSpace(identifier))
 }

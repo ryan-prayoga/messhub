@@ -1,24 +1,10 @@
 <script lang="ts">
+  import { fly, fade } from 'svelte/transition';
   import { APP_NAME } from '$lib/config/env';
+  import AppIcon from '$lib/components/AppIcon.svelte';
   import PwaControlBar from '$lib/components/PwaControlBar.svelte';
   import { clearOfflineSessionArtifacts } from '$lib/pwa/runtime';
-
-  type NavItem = {
-    href: string;
-    label: string;
-    icon:
-      | 'dashboard'
-      | 'feed'
-      | 'wallet'
-      | 'wifi'
-      | 'profile'
-      | 'members'
-      | 'contrib'
-      | 'notifications'
-      | 'shared'
-      | 'proposals'
-      | 'settings';
-  };
+  import { getCurrentNavigationItem, getPageMeta, getVisibleNavigation, isPathActive } from '$lib/navigation';
 
   export let user: App.Locals['user'];
   export let currentPath: string;
@@ -26,172 +12,266 @@
     unread_count: number;
   };
 
-  const navItems: NavItem[] = [
-    { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { href: '/feed', label: 'Feed', icon: 'feed' },
-    { href: '/wallet', label: 'Kas', icon: 'wallet' },
-    { href: '/wifi', label: 'Wifi', icon: 'wifi' },
-    { href: '/profile', label: 'Profil', icon: 'profile' }
-  ];
-
-  const utilityBaseItems: NavItem[] = [
-    { href: '/members', label: 'Anggota', icon: 'members' },
-    { href: '/notifications', label: 'Inbox', icon: 'notifications' },
-    { href: '/contributions', label: 'Kontribusi', icon: 'contrib' },
-    { href: '/shared-expenses', label: 'Patungan', icon: 'shared' },
-    { href: '/proposals', label: 'Usulan', icon: 'proposals' }
-  ];
-
-  let utilityItems: NavItem[] = utilityBaseItems;
   const roleLabels: Record<string, string> = {
     admin: 'Admin',
     treasurer: 'Bendahara',
     member: 'Anggota'
   };
 
-  const isCurrentPath = (href: string) =>
-    currentPath === href || (href !== '/' && currentPath.startsWith(`${href}/`));
+  let mobileMenuOpen = false;
+  let userMenuOpen = false;
 
-  $: utilityItems = user?.role === 'admin'
-    ? [
-        ...utilityBaseItems,
-        { href: '/admin/import', label: 'Impor', icon: 'settings' },
-        { href: '/settings', label: 'Pengaturan', icon: 'settings' }
-      ]
-    : utilityBaseItems;
-  $: currentItem = [...navItems, ...utilityItems].find((item) =>
-    isCurrentPath(item.href)
-  );
+  $: navGroups = getVisibleNavigation(user);
+  $: currentItem = getCurrentNavigationItem(currentPath, user);
+  $: currentMeta = getPageMeta(currentPath, user);
   $: unreadCount = notificationSummary?.unread_count ?? 0;
+  $: if (currentPath) {
+    mobileMenuOpen = false;
+    userMenuOpen = false;
+  }
+
+  function toggleMobileMenu() {
+    mobileMenuOpen = !mobileMenuOpen;
+    if (mobileMenuOpen) {
+      userMenuOpen = false;
+    }
+  }
+
+  function toggleUserMenu() {
+    userMenuOpen = !userMenuOpen;
+    if (userMenuOpen) {
+      mobileMenuOpen = false;
+    }
+  }
 
   function handleSignOut() {
     void clearOfflineSessionArtifacts();
   }
+
+  function handleWindowKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      mobileMenuOpen = false;
+      userMenuOpen = false;
+    }
+  }
 </script>
 
+<svelte:window on:keydown={handleWindowKeydown} />
+
 <div class="app-shell">
-  <div class="mx-auto flex min-h-screen w-full max-w-4xl flex-col">
-    <header class="sticky top-0 z-20 border-b border-line/80 bg-white/90 backdrop-blur">
-      <div class="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6">
-        <div class="flex items-start justify-between gap-4">
-          <div class="min-w-0">
-            <p class="eyebrow">Operasional Mess</p>
-            <h1 class="mt-1 text-2xl font-semibold tracking-[-0.03em] text-ink">{APP_NAME}</h1>
-            <p class="mt-1 text-sm text-slate-500">
-              {currentItem?.label || 'Beranda'} untuk operasional harian mess.
-            </p>
-          </div>
-
-          <div class="flex shrink-0 items-start gap-2">
-            <a
-              href="/notifications"
-              class={`relative inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 transition hover:border-slate-300 hover:text-slate-950 ${
-                isCurrentPath('/notifications') ? 'border-sky-200 bg-sky-50 text-sky-700' : ''
-              }`}
-              aria-label="Notifications"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.8"
-                class="h-5 w-5"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M14.857 17H9.143M18 17V11.5a6 6 0 0 0-12 0V17l-1.2 1.6A1 1 0 0 0 5.6 20h12.8a1 1 0 0 0 .8-1.4L18 17ZM13.73 20a2 2 0 0 1-3.46 0"
-                />
-              </svg>
-
-              {#if unreadCount > 0}
-                <span class="absolute -right-1 -top-1 inline-flex min-w-[1.35rem] items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              {/if}
-            </a>
-
-            {#if user}
-              <div class="hidden rounded-2xl border border-line bg-slate-50 px-3 py-2 text-right text-xs sm:block">
-                <p class="font-semibold text-ink">{user.name}</p>
-                <p class="text-slate-500">{roleLabels[user.role] ?? user.role}</p>
-              </div>
-            {/if}
-
-            <form method="POST" action="/logout" on:submit={handleSignOut}>
-              <button type="submit" class="btn-secondary px-3 py-2 text-xs">Keluar</button>
-            </form>
-          </div>
+  <div class="shell-layout">
+    <aside class="shell-sidebar">
+      <a href="/dashboard" class="shell-brand">
+        <div class="shell-brand-mark">M</div>
+        <div class="min-w-0">
+          <p class="shell-brand-kicker">Mess Traspac Menyala</p>
+          <h1 class="shell-brand-title">{APP_NAME}</h1>
+          <p class="shell-brand-copy">Operasional harian yang rapi, ringan, dan nyaman dibuka dari HP maupun desktop.</p>
         </div>
+      </a>
 
-        {#if user}
-          <div class="sm:hidden">
-            <div class="inline-flex rounded-full border border-line bg-slate-50 px-3 py-1.5 text-xs text-slate-600">
-              <span class="font-semibold text-ink">{user.name}</span>
-              <span class="mx-2 text-slate-300">/</span>
-              <span>{roleLabels[user.role] ?? user.role}</span>
-            </div>
-          </div>
-        {/if}
+      <section class="shell-sidebar-card">
+        <p class="helper-label">Sedang dibuka</p>
+        <h2 class="mt-3 text-xl font-semibold text-ink">{currentItem?.label ?? currentMeta.title}</h2>
+        <p class="mt-2 text-sm leading-6 text-muted">{currentMeta.description}</p>
+      </section>
 
-        <div class="flex gap-2 overflow-x-auto pb-1">
-          {#each utilityItems as item}
+      <nav class="nav-section">
+        <p class="nav-section-label">Utama</p>
+        <div class="nav-stack">
+          {#each navGroups.primary as item}
             <a
               href={item.href}
-              class={`nav-chip ${isCurrentPath(item.href) ? 'nav-chip-active' : ''}`}
+              class={`nav-link ${isPathActive(currentPath, item.href) ? 'nav-link-active' : ''}`}
             >
-              {item.label}
+              <span class="nav-link-icon">
+                <AppIcon icon={item.icon} className="h-5 w-5" />
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="nav-link-label">{item.label}</span>
+                <span class="nav-link-copy">{item.description}</span>
+              </span>
+              <AppIcon icon="lucide:chevron-right" className="nav-link-chevron" />
             </a>
           {/each}
         </div>
-      </div>
-    </header>
+      </nav>
 
-    <PwaControlBar />
-
-    <main class="page-container flex-1">
-      <slot />
-    </main>
-
-    <nav class="sticky bottom-0 z-20 border-t border-line/80 bg-white/95 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur">
-      <div class="mx-auto grid w-full max-w-4xl grid-cols-5 gap-2">
-        {#each navItems as item}
-          <a
-            href={item.href}
-            class={`bottom-nav-link ${
-              isCurrentPath(item.href) ? 'bottom-nav-link-active' : 'bg-white hover:bg-slate-50'
-            }`}
-          >
-            <span class="bottom-nav-icon" aria-hidden="true">
-              {#if item.icon === 'dashboard'}
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-4.5v-5.5h-5V21H5a1 1 0 0 1-1-1v-8.5Z" />
-                </svg>
-              {:else if item.icon === 'feed'}
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 6.5h12M6 12h12M6 17.5h7" />
-                </svg>
-              {:else if item.icon === 'wallet'}
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 8.5A2.5 2.5 0 0 1 6.5 6H18a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6.5A2.5 2.5 0 0 1 4 15.5v-7Z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12h5M17 12h.01" />
-                </svg>
-              {:else if item.icon === 'wifi'}
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 9.5a11 11 0 0 1 15 0M7.5 12.5a7 7 0 0 1 9 0M10.5 15.5a3 3 0 0 1 3 0" />
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 19.5h.01" />
-                </svg>
+      <nav class="nav-section">
+        <p class="nav-section-label">Ruang Kerja</p>
+        <div class="nav-stack">
+          {#each [...navGroups.workspace, ...navGroups.admin] as item}
+            <a
+              href={item.href}
+              class={`nav-link ${isPathActive(currentPath, item.href) ? 'nav-link-active' : ''}`}
+            >
+              <span class="nav-link-icon">
+                <AppIcon icon={item.icon} className="h-5 w-5" />
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="nav-link-label">{item.label}</span>
+                <span class="nav-link-copy">{item.description}</span>
+              </span>
+              {#if item.href === '/notifications' && unreadCount > 0}
+                <span class="nav-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
               {:else}
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM5 20a7 7 0 0 1 14 0" />
-                </svg>
+                <AppIcon icon="lucide:chevron-right" className="nav-link-chevron" />
               {/if}
-            </span>
-            <span>{item.label}</span>
+            </a>
+          {/each}
+        </div>
+      </nav>
+
+      {#if user}
+        <section class="shell-sidebar-card shell-user-card">
+          <div class="avatar-chip">{user.name.slice(0, 1)}</div>
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-ink">{user.name}</p>
+            <p class="mt-1 truncate text-sm text-muted">@{user.username}</p>
+            <p class="mt-1 text-xs uppercase tracking-[0.16em] text-dusty">{roleLabels[user.role] ?? user.role}</p>
+          </div>
+        </section>
+      {/if}
+    </aside>
+
+    <div class="shell-content">
+      <header class="shell-header">
+        <div class="shell-header-intro">
+          <div class="lg:hidden">
+            <p class="shell-mobile-kicker">{APP_NAME}</p>
+            <h1 class="shell-mobile-title">{currentItem?.label ?? currentMeta.title}</h1>
+          </div>
+
+          <div class="hidden lg:block">
+            <p class="eyebrow">Operasional Mess</p>
+            <h1 class="mt-2 text-3xl font-semibold tracking-[-0.04em] text-ink">{currentMeta.title}</h1>
+            <p class="mt-2 max-w-2xl text-sm leading-6 text-muted">{currentMeta.description}</p>
+          </div>
+        </div>
+
+        <div class="shell-header-actions">
+          <a
+            href="/notifications"
+            class={`icon-button ${isPathActive(currentPath, '/notifications') ? 'icon-button-active' : ''}`}
+            aria-label="Buka notifikasi"
+          >
+            <AppIcon icon="lucide:bell-ring" className="h-5 w-5" />
+            {#if unreadCount > 0}
+              <span class="notification-dot">{unreadCount > 9 ? '9+' : unreadCount}</span>
+            {/if}
           </a>
-        {/each}
-      </div>
-    </nav>
+
+          <button
+            type="button"
+            class="icon-button lg:hidden"
+            aria-expanded={mobileMenuOpen}
+            aria-label="Buka menu"
+            on:click={toggleMobileMenu}
+          >
+            <AppIcon icon={mobileMenuOpen ? 'lucide:x' : 'lucide:menu'} className="h-5 w-5" />
+          </button>
+
+          {#if user}
+            <div class="relative">
+              <button
+                type="button"
+                class={`profile-trigger ${userMenuOpen ? 'profile-trigger-active' : ''}`}
+                aria-expanded={userMenuOpen}
+                aria-label="Buka menu akun"
+                on:click={toggleUserMenu}
+              >
+                <div class="avatar-chip avatar-chip-sm">{user.name.slice(0, 1)}</div>
+                <div class="hidden min-w-0 text-left sm:block">
+                  <p class="truncate text-sm font-semibold text-ink">{user.name}</p>
+                  <p class="truncate text-xs text-muted">@{user.username}</p>
+                </div>
+                <AppIcon icon="lucide:chevrons-up-down" className="hidden h-4 w-4 text-muted sm:block" />
+              </button>
+
+              {#if userMenuOpen}
+                <div class="menu-popover" transition:fly={{ y: -6, duration: 160 }}>
+                  <div class="menu-profile">
+                    <div class="avatar-chip">{user.name.slice(0, 1)}</div>
+                    <div class="min-w-0">
+                      <p class="truncate text-sm font-semibold text-ink">{user.name}</p>
+                      <p class="mt-1 truncate text-sm text-muted">{user.email}</p>
+                      <p class="mt-1 text-xs uppercase tracking-[0.16em] text-dusty">
+                        {roleLabels[user.role] ?? user.role}
+                      </p>
+                    </div>
+                  </div>
+
+                  <a href="/profile" class="menu-link">
+                    <AppIcon icon="lucide:user-round" className="h-4 w-4" />
+                    <span>Profile</span>
+                  </a>
+
+                  {#if user.role === 'admin'}
+                    <a href="/settings" class="menu-link">
+                      <AppIcon icon="lucide:settings-2" className="h-4 w-4" />
+                      <span>Settings</span>
+                    </a>
+                  {/if}
+
+                  <form method="POST" action="/logout" on:submit={handleSignOut}>
+                    <button type="submit" class="menu-link menu-link-danger w-full">
+                      <AppIcon icon="lucide:log-out" className="h-4 w-4" />
+                      <span>Keluar</span>
+                    </button>
+                  </form>
+                </div>
+              {/if}
+            </div>
+          {/if}
+        </div>
+      </header>
+
+      {#if mobileMenuOpen}
+        <section class="mobile-menu" transition:fade={{ duration: 160 }}>
+          <div class="mobile-menu-grid">
+            {#each [...navGroups.primary, ...navGroups.workspace, ...navGroups.admin] as item}
+              <a
+                href={item.href}
+                class={`mobile-menu-link ${isPathActive(currentPath, item.href) ? 'mobile-menu-link-active' : ''}`}
+              >
+                <AppIcon icon={item.icon} className="h-5 w-5" />
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold">{item.label}</p>
+                  <p class="mt-1 text-xs leading-5 text-muted">{item.description}</p>
+                </div>
+              </a>
+            {/each}
+          </div>
+        </section>
+      {/if}
+
+      <PwaControlBar />
+
+      <main class="page-container">
+        <div class="page-stack">
+          {#key currentPath}
+            <div class="page-transition-frame" transition:fly={{ y: 12, duration: 180 }}>
+              <slot />
+            </div>
+          {/key}
+        </div>
+      </main>
+
+      <nav class="bottom-nav-bar lg:hidden">
+        <div class="bottom-nav-grid">
+          {#each navGroups.bottom as item}
+            <a
+              href={item.href}
+              class={`bottom-nav-link ${isPathActive(currentPath, item.href) ? 'bottom-nav-link-active' : ''}`}
+            >
+              <span class="bottom-nav-icon">
+                <AppIcon icon={item.icon} className="h-5 w-5" />
+              </span>
+              <span>{item.label}</span>
+            </a>
+          {/each}
+        </div>
+      </nav>
+    </div>
   </div>
 </div>

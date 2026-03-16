@@ -3,6 +3,8 @@
   import { invalidateAll } from '$app/navigation';
   import { navigating } from '$app/stores';
   import type { SubmitFunction } from '@sveltejs/kit';
+  import FeedbackBanner from '$lib/components/FeedbackBanner.svelte';
+  import PageSkeleton from '$lib/components/PageSkeleton.svelte';
   import PullToRefresh from '$lib/components/PullToRefresh.svelte';
   import PageCard from '$lib/components/PageCard.svelte';
   import StatePanel from '$lib/components/StatePanel.svelte';
@@ -17,11 +19,11 @@
   let offlineQueueMessage: string | null = null;
 
   const activityLabels: Record<ActivityType, string> = {
-    contribution: 'Contribution',
-    food: 'Food',
-    rice: 'Rice',
-    announcement: 'Announcement',
-    other: 'Other'
+    contribution: 'Kontribusi',
+    food: 'Makanan',
+    rice: 'Nasi',
+    announcement: 'Pengumuman',
+    other: 'Lainnya'
   };
 
   function formatDate(value: string | null, withTime = true) {
@@ -44,19 +46,19 @@
 
   function activityBadgeClass(type: ActivityType) {
     if (type === 'contribution') {
-      return 'badge bg-emerald-100 text-emerald-700';
+      return 'badge-success';
     }
 
     if (type === 'food') {
-      return 'badge bg-amber-100 text-amber-700';
+      return 'badge-warning';
     }
 
     if (type === 'rice') {
-      return 'badge bg-sky-100 text-sky-700';
+      return 'badge-info';
     }
 
     if (type === 'announcement') {
-      return 'badge bg-slate-950 text-white';
+      return 'badge-strong';
     }
 
     return 'badge-muted';
@@ -114,7 +116,7 @@
         const pointsValue = Number(String(formData.get('points') ?? '0').trim());
 
         if (type === 'contribution' && (!Number.isInteger(pointsValue) || pointsValue <= 0)) {
-          offlineQueueMessage = 'Contribution membutuhkan points lebih dari 0 sebelum dimasukkan ke outbox.';
+          offlineQueueMessage = 'Aktivitas kontribusi membutuhkan poin lebih dari 0 sebelum dimasukkan ke outbox.';
           return;
         }
 
@@ -183,62 +185,58 @@
 <PullToRefresh onRefresh={refreshPage}>
 <div class="space-y-4">
   <PageCard
+    eyebrow="Feed"
+    icon="lucide:newspaper"
     title="Feed"
-    description="Aktivitas mess, klaim makanan, rencana nasi, komentar, dan reaction untuk Step 5."
+    description="Aktivitas mess, klaim makanan, rencana nasi, komentar, dan reaksi dalam satu alur yang lebih hidup."
   >
     {#if $navigating?.to?.url.pathname === '/feed' || pendingAction}
-      <StatePanel tone="loading" title="Loading" message="Memuat ulang feed, komentar, dan reaction terbaru..." />
+      <PageSkeleton statCards={1} rows={4} />
     {/if}
 
     {#if form?.message}
       <StatePanel
         tone="error"
-        title="Error"
+        title="Belum bisa memproses"
         message={form.message}
         requestId={form && 'requestId' in form && typeof form.requestId === 'string' ? form.requestId : null}
       />
     {:else if form?.success}
-      <div class="helper-box mb-4 border-emerald-200 bg-emerald-50/80">
-        <p class="helper-label text-emerald-700">Success</p>
-        <p class="mt-2 text-sm leading-6 text-emerald-800">{form.success}</p>
-      </div>
+      <FeedbackBanner tone="success" title="Berhasil" message={form.success} />
     {/if}
 
     {#if offlineQueueMessage}
-      <div class="helper-box mb-4 border-sky-200 bg-sky-50/90">
-        <p class="helper-label text-sky-700">Outbox</p>
-        <p class="mt-2 text-sm leading-6 text-sky-900">{offlineQueueMessage}</p>
-      </div>
+      <FeedbackBanner tone="info" title="Outbox" message={offlineQueueMessage} />
     {/if}
 
     {#if data.loadError}
-      <StatePanel tone="error" title="Error" message={data.loadError} />
+      <StatePanel tone="error" title="Belum bisa memuat feed" message={data.loadError} />
     {:else}
       <article class="app-panel p-5">
-        <p class="eyebrow">Post Activity</p>
+        <p class="eyebrow">Aktivitas Baru</p>
         <h2 class="section-title mt-1">Tambah aktivitas baru</h2>
         <p class="section-subtitle mt-2">
-          Contribution akan masuk ke leaderboard. Food dan rice otomatis punya masa aktif sementara.
+          Kontribusi akan masuk ke leaderboard. Post makanan dan nasi otomatis punya masa aktif sementara.
         </p>
 
         <form method="POST" action="?/createActivity" class="mt-4 space-y-4" use:enhance={enhanceCreateActivity()}>
           <label>
-            <span class="field-label">Type</span>
+            <span class="field-label">Jenis aktivitas</span>
             <select class="input-field" name="type">
-              <option value="food" selected={createActivityValue('type') === 'food'}>Food</option>
-              <option value="rice" selected={createActivityValue('type') === 'rice'}>Rice</option>
+              <option value="food" selected={createActivityValue('type') === 'food'}>Makanan</option>
+              <option value="rice" selected={createActivityValue('type') === 'rice'}>Nasi</option>
               <option value="contribution" selected={createActivityValue('type') === 'contribution'}>
-                Contribution
+                Kontribusi
               </option>
               <option value="announcement" selected={createActivityValue('type') === 'announcement'}>
-                Announcement
+                Pengumuman
               </option>
-              <option value="other" selected={createActivityValue('type') === 'other'}>Other</option>
+              <option value="other" selected={createActivityValue('type') === 'other'}>Lainnya</option>
             </select>
           </label>
 
           <label>
-            <span class="field-label">Title</span>
+            <span class="field-label">Judul</span>
             <input
               class="input-field"
               type="text"
@@ -250,7 +248,7 @@
           </label>
 
           <label>
-            <span class="field-label">Content</span>
+            <span class="field-label">Isi</span>
             <textarea
               class="input-field min-h-[120px]"
               name="content"
@@ -260,7 +258,7 @@
           </label>
 
           <label>
-            <span class="field-label">Points</span>
+            <span class="field-label">Poin</span>
             <input
               class="input-field"
               type="number"
@@ -269,17 +267,17 @@
               step="1"
               value={createActivityValue('points')}
             />
-            <p class="mt-2 text-xs text-slate-500">Dipakai saat type = contribution. Tipe lain akan mengabaikan nilai ini.</p>
+            <p class="mt-2 text-xs text-slate-500">Dipakai saat jenis aktivitas = kontribusi. Tipe lain akan mengabaikan nilai ini.</p>
           </label>
 
           <button type="submit" class="btn-primary w-full px-4 py-3" disabled={pendingAction === 'createActivity'}>
-            {pendingAction === 'createActivity' ? 'Posting...' : 'Post activity'}
+            {pendingAction === 'createActivity' ? 'Menerbitkan...' : 'Terbitkan aktivitas'}
           </button>
         </form>
       </article>
 
       {#if data.activities.length === 0}
-        <StatePanel tone="empty" title="Empty" message="Belum ada aktivitas. Posting item pertama dari form di atas." />
+        <StatePanel tone="empty" title="Belum ada aktivitas" message="Belum ada aktivitas. Terbitkan item pertama dari form di atas." />
       {:else}
         <div class="mt-4 space-y-4">
           {#each data.activities as item}
@@ -291,10 +289,10 @@
                       {activityLabels[item.activity.type]}
                     </span>
                     {#if item.activity.type === 'contribution'}
-                      <span class="badge bg-emerald-50 text-emerald-700">{item.activity.points} pts</span>
+                      <span class="badge bg-emerald-50 text-emerald-700">{item.activity.points} poin</span>
                     {/if}
                     {#if isExpired(item)}
-                      <span class="badge-muted">Expired</span>
+                      <span class="badge-muted">Sudah berakhir</span>
                     {/if}
                   </div>
 
@@ -313,15 +311,15 @@
 
               {#if item.activity.type === 'food'}
                 <div class="helper-box mt-4">
-                  <p class="helper-label">Food claims</p>
-                  <p class="mt-2 text-sm text-slate-600">Claimed by: {joinNames(item.claims)}</p>
+                  <p class="helper-label">Klaim makanan</p>
+                  <p class="mt-2 text-sm text-slate-600">Sudah diambil oleh: {joinNames(item.claims)}</p>
                 </div>
               {/if}
 
               {#if item.activity.type === 'rice'}
                 <div class="helper-box mt-4">
-                  <p class="helper-label">Rice responses</p>
-                  <p class="mt-2 text-sm text-slate-600">Responded by: {joinNames(item.rice_responses)}</p>
+                  <p class="helper-label">Respons nasi</p>
+                  <p class="mt-2 text-sm text-slate-600">Yang ikut: {joinNames(item.rice_responses)}</p>
                 </div>
               {/if}
 
@@ -332,7 +330,7 @@
                     type="submit"
                     class={reactionState(item)?.reacted ? 'btn-primary px-4 py-2.5' : 'btn-secondary px-4 py-2.5'}
                   >
-                    {reactionState(item)?.reacted ? 'Liked' : 'Like'} ({reactionState(item)?.count ?? 0})
+                    {reactionState(item)?.reacted ? 'Disukai' : 'Suka'} ({reactionState(item)?.count ?? 0})
                   </button>
                 </form>
 
@@ -344,7 +342,7 @@
                       class="btn-secondary px-4 py-2.5"
                       disabled={hasClaimed(item)}
                     >
-                      {hasClaimed(item) ? 'Sudah claim' : 'Claim food'}
+                      {hasClaimed(item) ? 'Sudah diambil' : 'Ambil makanan'}
                     </button>
                   </form>
                 {/if}
@@ -365,12 +363,12 @@
 
               <div class="mt-4 space-y-3">
                 <div class="flex items-center justify-between">
-                  <p class="helper-label">Comments</p>
+                  <p class="helper-label">Komentar</p>
                   <span class="badge-muted">{item.comments.length}</span>
                 </div>
 
                 {#if item.comments.length === 0}
-                  <StatePanel tone="empty" title="Empty" message="Belum ada komentar." />
+                  <StatePanel tone="empty" title="Belum ada komentar" message="Belum ada komentar untuk aktivitas ini." />
                 {:else}
                   <div class="space-y-2">
                     {#each item.comments as comment}
@@ -398,7 +396,7 @@
                     class="btn-secondary w-full px-4 py-3"
                     disabled={pendingAction === `comment-${item.activity.id}`}
                   >
-                    {pendingAction === `comment-${item.activity.id}` ? 'Saving...' : 'Add comment'}
+                    {pendingAction === `comment-${item.activity.id}` ? 'Menyimpan...' : 'Kirim komentar'}
                   </button>
                 </form>
               </div>

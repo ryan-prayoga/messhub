@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"strings"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/ryanprayoga/messhub/backend/internal/response"
 	"github.com/ryanprayoga/messhub/backend/internal/services"
@@ -23,9 +25,16 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		return invalidPayload(c, "login")
 	}
 
+	request.Identifier = strings.TrimSpace(request.Identifier)
+	request.Email = strings.TrimSpace(request.Email)
+
+	identifier := request.Identifier
+	if identifier == "" {
+		identifier = request.Email
+	}
+
 	details := validation.NewErrors()
-	details.RequiredString("email", request.Email, "email is required")
-	details.Email("email", request.Email, "email must be valid")
+	details.RequiredString("identifier", identifier, "identifier is required")
 	details.RequiredString("password", request.Password, "password is required")
 	if details.HasAny() {
 		return validationFailed(c, details)
@@ -45,9 +54,9 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 
 		switch status {
 		case fiber.StatusBadRequest:
-			return response.InvalidRequest(c, "Email dan password wajib diisi.")
+			return response.InvalidRequest(c, "Email atau username dan password wajib diisi.")
 		case fiber.StatusUnauthorized:
-			return response.Unauthorized(c, "Email atau password salah.")
+			return response.Unauthorized(c, "Email, username, atau password salah.")
 		case fiber.StatusForbidden:
 			return response.Forbidden(c, "Akun ini sedang nonaktif. Hubungi admin mess.")
 		default:
