@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { invalidateAll } from '$app/navigation';
   import { navigating } from '$app/stores';
+  import PullToRefresh from '$lib/components/PullToRefresh.svelte';
   import PageCard from '$lib/components/PageCard.svelte';
   import StatePanel from '$lib/components/StatePanel.svelte';
   import type { PageData } from './$types';
@@ -88,8 +90,13 @@
 
     return 'badge bg-slate-100 text-slate-600';
   }
+
+  async function refreshPage() {
+    await invalidateAll();
+  }
 </script>
 
+<PullToRefresh onRefresh={refreshPage}>
 <div class="space-y-4">
   {#if $navigating?.to?.url.pathname === '/dashboard'}
     <StatePanel
@@ -243,3 +250,4 @@
     </div>
   </PageCard>
 </div>
+</PullToRefresh>

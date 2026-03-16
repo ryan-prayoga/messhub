@@ -45,6 +45,7 @@ export class ApiError extends Error {
 export function buildRequestInit(options: RequestOptions = {}): RequestInit {
   return {
     method: options.method || 'GET',
+    credentials: 'same-origin',
     headers: {
       'Content-Type': 'application/json',
       ...(options.token ? { Authorization: `Bearer ${options.token}` } : {})

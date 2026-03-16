@@ -127,3 +127,11 @@
 - Rationale: This keeps debugging and permission checks centered in the existing app runtime, improves misuse resistance, and gives frontend/server actions one stable contract for unauthorized/forbidden/network handling without introducing a larger platform migration.
 - Impact: Future backend handlers should validate request payloads before service calls, reuse the shared error helper, preserve request IDs in logs and client-visible failures, and treat backend route guards as the source of truth for access control.
 - Follow-up: Revisit fuller observability, alerting, and reverse-proxy header policy once live VPS validation confirms the current hardening defaults do not conflict with Nginx.
+
+## Decision 17
+- Date: 2026-03-16
+- Context: STEP 8 adds installability, browser-side push subscription, service-worker background sync, and offline queue replay, but the backend previously accepted authenticated requests only through bearer headers while the frontend session token is intentionally stored as an httpOnly cookie.
+- Decision: Keep the existing split SvelteKit + Fiber architecture, extend the backend auth middleware to accept the existing `mh_access_token` cookie in addition to bearer tokens, and let browser/service-worker PWA features call the same-origin `/api/v1` routes directly while service-worker caches remain versioned and restricted to whitelisted static assets plus safe GET routes.
+- Rationale: This preserves the current cookie security model, avoids exposing tokens to client JavaScript just to support Push/Background Sync, and keeps PWA/offline behavior incremental on top of the native SvelteKit service worker baseline instead of introducing a parallel proxy/auth stack.
+- Impact: Future client-side PWA features should prefer same-origin `/api/v1` calls that rely on the existing auth cookie, and any new service-worker caching should stay on explicit allowlists rather than broad authenticated API caching.
+- Follow-up: Validate the cookie-auth + service-worker flow on the live HTTPS origin and revisit the cache allowlist if later phases add more offline-safe routes or more sensitive browser-side data.

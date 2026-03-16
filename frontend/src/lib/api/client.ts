@@ -234,6 +234,34 @@ export const notificationsApi = {
     })
 };
 
+export const pushApi = {
+  subscribe: (payload: {
+    endpoint: string;
+    keys: {
+      p256dh: string;
+      auth: string;
+    };
+  }) =>
+    apiRequest<{
+      id: string;
+      user_id: string;
+      endpoint: string;
+      p256dh_key: string;
+      auth_key: string;
+      created_at: string;
+    }>('/push/subscribe', {
+      method: 'POST',
+      body: payload
+    }),
+  unsubscribe: (endpoint: string) =>
+    apiRequest<{ removed: boolean }>('/push/unsubscribe', {
+      method: 'DELETE',
+      body: {
+        endpoint
+      }
+    })
+};
+
 export const walletApi = {
   summary: (token: string) => apiRequest<WalletSummary>('/wallet', { token }),
   listTransactions: (

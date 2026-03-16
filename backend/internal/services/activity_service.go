@@ -162,7 +162,7 @@ func (s *ActivityService) CreateActivity(ctx context.Context, actorID string, ac
 		return nil, err
 	}
 
-	if err := s.notificationService.NotifyAllActiveExceptTx(
+	pushNotifications, err := s.notificationService.NotifyAllActiveExceptTx(
 		ctx,
 		tx,
 		actorID,
@@ -170,13 +170,16 @@ func (s *ActivityService) CreateActivity(ctx context.Context, actorID string, ac
 		fmt.Sprintf("%s membuat %s baru: %s", displayActorName(actorName), activityTypeLabel(activityType), title),
 		"activity_created",
 		stringPtr(activity.ID),
-	); err != nil {
+	)
+	if err != nil {
 		return nil, err
 	}
 
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
+
+	s.notificationService.DispatchPush(ctx, pushNotifications)
 
 	return s.GetActivityItem(ctx, activity.ID, actorID)
 }
@@ -227,7 +230,7 @@ func (s *ActivityService) AddComment(ctx context.Context, activityID string, act
 		return nil, err
 	}
 
-	if err := s.notificationService.NotifyAllActiveExceptTx(
+	pushNotifications, err := s.notificationService.NotifyAllActiveExceptTx(
 		ctx,
 		tx,
 		actorID,
@@ -235,13 +238,16 @@ func (s *ActivityService) AddComment(ctx context.Context, activityID string, act
 		fmt.Sprintf("%s mengomentari %s", displayActorName(actorName), activity.Title),
 		"comment_created",
 		stringPtr(activity.ID),
-	); err != nil {
+	)
+	if err != nil {
 		return nil, err
 	}
 
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
+
+	s.notificationService.DispatchPush(ctx, pushNotifications)
 
 	return s.GetActivityItem(ctx, activityID, actorID)
 }

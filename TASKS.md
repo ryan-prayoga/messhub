@@ -22,6 +22,13 @@
 - None observed.
 
 ## Done
+- ID: OPS-004
+  Title: Implement STEP 8 PWA upgrade and mobile experience
+  Priority: P1
+  Owner/Agent: Codex
+  Dependencies: OPS-003
+  Notes: Added install-ready manifest/icons, install prompt UI, versioned service worker caching with `/offline` fallback, Web Push subscriptions plus backend fan-out for wifi/feed events, lightweight activity/comment outbox background sync, cookie-auth browser/service-worker API access, mobile bottom navigation, and pull-to-refresh on dashboard/feed.
+
 - ID: OPS-003
   Title: Implement STEP 7 production hardening and reliability
   Priority: P1

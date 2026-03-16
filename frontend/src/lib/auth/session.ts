@@ -5,6 +5,8 @@ export const AUTH_COOKIE_KEYS = {
 } as const;
 
 export const PUBLIC_ROUTES = ['/login'];
+export const SHELLLESS_ROUTES = ['/login', '/offline'];
+export const ALWAYS_AVAILABLE_ROUTES = ['/offline'];
 
 export function buildAuthCookieOptions(url: URL) {
   return {

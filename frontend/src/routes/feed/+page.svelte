@@ -1,12 +1,20 @@
 <script lang="ts">
+  import { enhance } from '$app/forms';
+  import { invalidateAll } from '$app/navigation';
   import { navigating } from '$app/stores';
+  import type { SubmitFunction } from '@sveltejs/kit';
+  import PullToRefresh from '$lib/components/PullToRefresh.svelte';
   import PageCard from '$lib/components/PageCard.svelte';
   import StatePanel from '$lib/components/StatePanel.svelte';
   import type { ActivityFeedItem, ActivityType } from '$lib/api/types';
+  import { queueCreateActivity, queueCreateComment } from '$lib/pwa/feed-sync';
   import type { ActionData, PageData } from './$types';
 
   export let data: PageData;
   export let form: ActionData;
+
+  let pendingAction: string | null = null;
+  let offlineQueueMessage: string | null = null;
 
   const activityLabels: Record<ActivityType, string> = {
     contribution: 'Contribution',
@@ -90,14 +98,95 @@
   function isExpired(item: ActivityFeedItem) {
     return !!item.activity.expires_at && new Date(item.activity.expires_at).getTime() < Date.now();
   }
+
+  function enhanceCreateActivity(): SubmitFunction {
+    return ({ formData, formElement, cancel }) => {
+      pendingAction = 'createActivity';
+      offlineQueueMessage = null;
+
+      if (!navigator.onLine) {
+        cancel();
+        pendingAction = null;
+
+        const type = String(formData.get('type') ?? '').trim() as ActivityType;
+        const title = String(formData.get('title') ?? '').trim();
+        const content = String(formData.get('content') ?? '').trim();
+        const pointsValue = Number(String(formData.get('points') ?? '0').trim());
+
+        if (type === 'contribution' && (!Number.isInteger(pointsValue) || pointsValue <= 0)) {
+          offlineQueueMessage = 'Contribution membutuhkan points lebih dari 0 sebelum dimasukkan ke outbox.';
+          return;
+        }
+
+        void queueCreateActivity({
+          type,
+          title,
+          content,
+          ...(type === 'contribution' ? { points: pointsValue } : {})
+        })
+          .then(() => {
+            formElement.reset();
+            offlineQueueMessage = 'Aktivitas disimpan di outbox dan akan dikirim otomatis saat online.';
+          })
+          .catch((error) => {
+            offlineQueueMessage =
+              error instanceof Error ? error.message : 'Gagal menyimpan aktivitas ke outbox.';
+          });
+
+        return;
+      }
+
+      return async ({ update }) => {
+        await update();
+        pendingAction = null;
+      };
+    };
+  }
+
+  function enhanceComment(activityID: string): SubmitFunction {
+    return ({ formData, formElement, cancel }) => {
+      pendingAction = `comment-${activityID}`;
+      offlineQueueMessage = null;
+
+      if (!navigator.onLine) {
+        cancel();
+        pendingAction = null;
+
+        void queueCreateComment({
+          activityID,
+          comment: String(formData.get('comment') ?? '').trim()
+        })
+          .then(() => {
+            formElement.reset();
+            offlineQueueMessage = 'Komentar masuk ke outbox dan akan dikirim otomatis saat online.';
+          })
+          .catch((error) => {
+            offlineQueueMessage =
+              error instanceof Error ? error.message : 'Gagal menyimpan komentar ke outbox.';
+          });
+
+        return;
+      }
+
+      return async ({ update }) => {
+        await update();
+        pendingAction = null;
+      };
+    };
+  }
+
+  async function refreshPage() {
+    await invalidateAll();
+  }
 </script>
 
+<PullToRefresh onRefresh={refreshPage}>
 <div class="space-y-4">
   <PageCard
     title="Feed"
     description="Aktivitas mess, klaim makanan, rencana nasi, komentar, dan reaction untuk Step 5."
   >
-    {#if $navigating?.to?.url.pathname === '/feed'}
+    {#if $navigating?.to?.url.pathname === '/feed' || pendingAction}
       <StatePanel tone="loading" title="Loading" message="Memuat ulang feed, komentar, dan reaction terbaru..." />
     {/if}
 
@@ -115,6 +204,13 @@
       </div>
     {/if}
 
+    {#if offlineQueueMessage}
+      <div class="helper-box mb-4 border-sky-200 bg-sky-50/90">
+        <p class="helper-label text-sky-700">Outbox</p>
+        <p class="mt-2 text-sm leading-6 text-sky-900">{offlineQueueMessage}</p>
+      </div>
+    {/if}
+
     {#if data.loadError}
       <StatePanel tone="error" title="Error" message={data.loadError} />
     {:else}
@@ -125,7 +221,7 @@
           Contribution akan masuk ke leaderboard. Food dan rice otomatis punya masa aktif sementara.
         </p>
 
-        <form method="POST" action="?/createActivity" class="mt-4 space-y-4">
+        <form method="POST" action="?/createActivity" class="mt-4 space-y-4" use:enhance={enhanceCreateActivity()}>
           <label>
             <span class="field-label">Type</span>
             <select class="input-field" name="type">
@@ -176,7 +272,9 @@
             <p class="mt-2 text-xs text-slate-500">Dipakai saat type = contribution. Tipe lain akan mengabaikan nilai ini.</p>
           </label>
 
-          <button type="submit" class="btn-primary w-full px-4 py-3">Post activity</button>
+          <button type="submit" class="btn-primary w-full px-4 py-3" disabled={pendingAction === 'createActivity'}>
+            {pendingAction === 'createActivity' ? 'Posting...' : 'Post activity'}
+          </button>
         </form>
       </article>
 
@@ -287,7 +385,7 @@
                   </div>
                 {/if}
 
-                <form method="POST" action="?/comment" class="space-y-3">
+                <form method="POST" action="?/comment" class="space-y-3" use:enhance={enhanceComment(item.activity.id)}>
                   <input type="hidden" name="activity_id" value={item.activity.id} />
                   <textarea
                     class="input-field min-h-[96px]"
@@ -295,7 +393,13 @@
                     placeholder="Tambahkan komentar singkat..."
                     required
                   ></textarea>
-                  <button type="submit" class="btn-secondary w-full px-4 py-3">Add comment</button>
+                  <button
+                    type="submit"
+                    class="btn-secondary w-full px-4 py-3"
+                    disabled={pendingAction === `comment-${item.activity.id}`}
+                  >
+                    {pendingAction === `comment-${item.activity.id}` ? 'Saving...' : 'Add comment'}
+                  </button>
                 </form>
               </div>
             </article>
@@ -305,3 +409,4 @@
     {/if}
   </PageCard>
 </div>
+</PullToRefresh>

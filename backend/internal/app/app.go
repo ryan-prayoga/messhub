@@ -61,13 +61,15 @@ func New() (*App, error) {
 	activityRepository := repository.NewActivityRepository(db)
 	auditRepository := repository.NewAuditLogRepository(db)
 	notificationRepository := repository.NewNotificationRepository(db)
+	pushSubscriptionRepository := repository.NewPushSubscriptionRepository(db)
 	authService := services.NewAuthService(cfg, userRepository)
 	auditService := services.NewAuditService(auditRepository)
 	settingsService := services.NewSettingsService(cfg, db, settingsRepository, auditService)
 	systemService := services.NewSystemService(cfg, db)
+	pushService := services.NewPushService(cfg, pushSubscriptionRepository)
 	userService := services.NewUserService(db, userRepository, auditService)
 	walletService := services.NewWalletService(db, walletRepository, auditService)
-	notificationService := services.NewNotificationService(db, notificationRepository, userRepository, auditService)
+	notificationService := services.NewNotificationService(db, notificationRepository, userRepository, pushService, auditService)
 	wifiService := services.NewWifiService(db, wifiRepository, settingsService, auditService, notificationService)
 	activityService := services.NewActivityService(db, activityRepository, notificationService, auditService)
 	authMiddleware := middleware.NewAuthMiddleware(cfg, userRepository)
@@ -81,6 +83,7 @@ func New() (*App, error) {
 	wifiHandler := handlers.NewWifiHandler(wifiService)
 	activityHandler := handlers.NewActivityHandler(activityService)
 	notificationHandler := handlers.NewNotificationHandler(notificationService)
+	pushHandler := handlers.NewPushHandler(pushService)
 
 	routes.Register(
 		web,
@@ -94,6 +97,7 @@ func New() (*App, error) {
 		wifiHandler,
 		activityHandler,
 		notificationHandler,
+		pushHandler,
 		authMiddleware,
 	)
 

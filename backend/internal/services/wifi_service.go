@@ -166,7 +166,7 @@ func (s *WifiService) CreateBill(ctx context.Context, createdBy string, input Cr
 		return nil, err
 	}
 
-	if err := s.notificationService.NotifyAllActiveExceptTx(
+	pushNotifications, err := s.notificationService.NotifyAllActiveExceptTx(
 		ctx,
 		tx,
 		createdBy,
@@ -174,13 +174,16 @@ func (s *WifiService) CreateBill(ctx context.Context, createdBy string, input Cr
 		fmt.Sprintf("Tagihan wifi %s %d telah dibuat.", monthNameID(bill.Month), bill.Year),
 		"wifi_bill_created",
 		stringPtr(bill.ID),
-	); err != nil {
+	)
+	if err != nil {
 		return nil, err
 	}
 
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
+
+	s.notificationService.DispatchPush(ctx, pushNotifications)
 
 	return s.GetBillDetail(ctx, bill.ID)
 }
@@ -372,7 +375,7 @@ func (s *WifiService) VerifyPayment(ctx context.Context, billID string, memberID
 		return nil, err
 	}
 
-	if err := s.notificationService.NotifyUserTx(
+	pushNotifications, err := s.notificationService.NotifyUserTx(
 		ctx,
 		tx,
 		updated.UserID,
@@ -380,13 +383,16 @@ func (s *WifiService) VerifyPayment(ctx context.Context, billID string, memberID
 		fmt.Sprintf("Pembayaran wifi %s %d kamu sudah diverifikasi.", monthNameID(bill.Month), bill.Year),
 		"wifi_payment_verified",
 		stringPtr(updated.ID),
-	); err != nil {
+	)
+	if err != nil {
 		return nil, err
 	}
 
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
+
+	s.notificationService.DispatchPush(ctx, pushNotifications)
 
 	return updated, nil
 }

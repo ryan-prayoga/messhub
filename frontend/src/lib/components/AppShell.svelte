@@ -1,9 +1,12 @@
 <script lang="ts">
   import { APP_NAME } from '$lib/config/env';
+  import PwaControlBar from '$lib/components/PwaControlBar.svelte';
+  import { clearOfflineSessionArtifacts } from '$lib/pwa/runtime';
 
   type NavItem = {
     href: string;
     label: string;
+    icon: 'dashboard' | 'feed' | 'wallet' | 'wifi' | 'profile' | 'members' | 'contrib' | 'notifications' | 'shared' | 'proposals' | 'settings';
   };
 
   export let user: App.Locals['user'];
@@ -13,39 +16,43 @@
   };
 
   const navItems: NavItem[] = [
-    { href: '/dashboard', label: 'Dashboard' },
-    { href: '/members', label: 'Members' },
-    { href: '/wallet', label: 'Wallet' },
-    { href: '/wifi', label: 'Wifi' },
-    { href: '/feed', label: 'Feed' }
+    { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
+    { href: '/feed', label: 'Feed', icon: 'feed' },
+    { href: '/wallet', label: 'Wallet', icon: 'wallet' },
+    { href: '/wifi', label: 'Wifi', icon: 'wifi' },
+    { href: '/profile', label: 'Profile', icon: 'profile' }
   ];
 
   const utilityBaseItems: NavItem[] = [
-    { href: '/shared-expenses', label: 'Shared' },
-    { href: '/contributions', label: 'Contrib' },
-    { href: '/proposals', label: 'Proposals' },
-    { href: '/profile', label: 'Profile' }
+    { href: '/members', label: 'Members', icon: 'members' },
+    { href: '/notifications', label: 'Inbox', icon: 'notifications' },
+    { href: '/contributions', label: 'Contrib', icon: 'contrib' },
+    { href: '/shared-expenses', label: 'Shared', icon: 'shared' },
+    { href: '/proposals', label: 'Proposals', icon: 'proposals' }
   ];
 
-  const shellOnlyItems: NavItem[] = [{ href: '/notifications', label: 'Notifications' }];
   let utilityItems: NavItem[] = utilityBaseItems;
 
   const isCurrentPath = (href: string) =>
     currentPath === href || (href !== '/' && currentPath.startsWith(`${href}/`));
 
   $: utilityItems = user?.role === 'admin'
-    ? [...utilityBaseItems, { href: '/settings', label: 'Settings' }]
+    ? [...utilityBaseItems, { href: '/settings', label: 'Settings', icon: 'settings' }]
     : utilityBaseItems;
-  $: currentItem = [...navItems, ...utilityItems, ...shellOnlyItems].find((item) =>
+  $: currentItem = [...navItems, ...utilityItems].find((item) =>
     isCurrentPath(item.href)
   );
   $: unreadCount = notificationSummary?.unread_count ?? 0;
+
+  function handleSignOut() {
+    void clearOfflineSessionArtifacts();
+  }
 </script>
 
 <div class="app-shell">
   <div class="mx-auto flex min-h-screen w-full max-w-4xl flex-col">
     <header class="sticky top-0 z-20 border-b border-line/80 bg-white/90 backdrop-blur">
-      <div class="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 pb-4 pt-4 sm:px-6">
+      <div class="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6">
         <div class="flex items-start justify-between gap-4">
           <div class="min-w-0">
             <p class="eyebrow">Internal Mess App</p>
@@ -92,7 +99,7 @@
               </div>
             {/if}
 
-            <form method="POST" action="/logout">
+            <form method="POST" action="/logout" on:submit={handleSignOut}>
               <button type="submit" class="btn-secondary px-3 py-2 text-xs">Sign out</button>
             </form>
           </div>
@@ -121,6 +128,8 @@
       </div>
     </header>
 
+    <PwaControlBar />
+
     <main class="page-container flex-1">
       <slot />
     </main>
@@ -134,7 +143,32 @@
               isCurrentPath(item.href) ? 'bottom-nav-link-active' : 'bg-white hover:bg-slate-50'
             }`}
           >
-            {item.label}
+            <span class="bottom-nav-icon" aria-hidden="true">
+              {#if item.icon === 'dashboard'}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-4.5v-5.5h-5V21H5a1 1 0 0 1-1-1v-8.5Z" />
+                </svg>
+              {:else if item.icon === 'feed'}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 6.5h12M6 12h12M6 17.5h7" />
+                </svg>
+              {:else if item.icon === 'wallet'}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 8.5A2.5 2.5 0 0 1 6.5 6H18a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6.5A2.5 2.5 0 0 1 4 15.5v-7Z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12h5M17 12h.01" />
+                </svg>
+              {:else if item.icon === 'wifi'}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 9.5a11 11 0 0 1 15 0M7.5 12.5a7 7 0 0 1 9 0M10.5 15.5a3 3 0 0 1 3 0" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 19.5h.01" />
+                </svg>
+              {:else}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM5 20a7 7 0 0 1 14 0" />
+                </svg>
+              {/if}
+            </span>
+            <span>{item.label}</span>
           </a>
         {/each}
       </div>

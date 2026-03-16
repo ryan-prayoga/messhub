@@ -27,16 +27,11 @@ func NewAuthMiddleware(cfg config.Config, userRepository *repository.UserReposit
 
 func (m *AuthMiddleware) RequireAuth() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		authorization := c.Get("Authorization")
-		if authorization == "" {
+		tokenString := resolveAuthToken(c, m.config.AuthCookieName)
+		if tokenString == "" {
 			return response.Unauthorized(c, "authentication required")
 		}
 
-		if !strings.HasPrefix(authorization, "Bearer ") {
-			return response.Unauthorized(c, "authentication required")
-		}
-
-		tokenString := strings.TrimSpace(strings.TrimPrefix(authorization, "Bearer "))
 		token, err := jwt.ParseWithClaims(tokenString, &types.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
 			if token.Method == nil || token.Method.Alg() != jwt.SigningMethodHS256.Alg() {
 				return nil, errors.New("unexpected signing method")
@@ -75,6 +70,23 @@ func (m *AuthMiddleware) RequireAuth() fiber.Handler {
 
 		return c.Next()
 	}
+}
+
+func resolveAuthToken(c *fiber.Ctx, cookieName string) string {
+	authorization := strings.TrimSpace(c.Get("Authorization"))
+	if strings.HasPrefix(authorization, "Bearer ") {
+		tokenString := strings.TrimSpace(strings.TrimPrefix(authorization, "Bearer "))
+		if tokenString != "" {
+			return tokenString
+		}
+	}
+
+	cookieToken := strings.TrimSpace(c.Cookies(cookieName))
+	if cookieToken != "" {
+		return cookieToken
+	}
+
+	return ""
 }
 
 func RequireRoles(roles ...string) fiber.Handler {

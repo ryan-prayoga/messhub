@@ -15,10 +15,14 @@ type Config struct {
 	BackendHost           string
 	BackendPort           string
 	DatabaseURL           string
+	AuthCookieName        string
 	JWTSecret             string
 	JWTExpiresInHours     int
 	CORSOrigin            string
 	ContentSecurityPolicy string
+	VAPIDPublicKey        string
+	VAPIDPrivateKey       string
+	VAPIDSubject          string
 	SeedAdminName         string
 	SeedAdminEmail        string
 	SeedAdminPassword     string
@@ -36,6 +40,7 @@ func Load() Config {
 		BackendHost:       getEnv("BACKEND_HOST", "0.0.0.0"),
 		BackendPort:       getEnv("PORT", getEnv("BACKEND_PORT", "4100")),
 		DatabaseURL:       getEnv("DATABASE_URL", "postgres://messhub:messhub@127.0.0.1:5432/messhub?sslmode=disable"),
+		AuthCookieName:    getEnv("AUTH_COOKIE_NAME", "mh_access_token"),
 		JWTSecret:         getEnv("JWT_SECRET", "change-this-secret"),
 		JWTExpiresInHours: getEnvInt("JWT_EXPIRES_IN_HOURS", 72),
 		CORSOrigin:        getEnv("CORS_ORIGIN", "http://127.0.0.1:4101,http://localhost:4101"),
@@ -43,6 +48,9 @@ func Load() Config {
 			"CONTENT_SECURITY_POLICY",
 			"default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'",
 		),
+		VAPIDPublicKey:    getEnv("VAPID_PUBLIC_KEY", ""),
+		VAPIDPrivateKey:   getEnv("VAPID_PRIVATE_KEY", ""),
+		VAPIDSubject:      getEnv("VAPID_SUBJECT", "mailto:admin@messhub.local"),
 		SeedAdminName:     getEnv("SEED_ADMIN_NAME", "MessHub Admin"),
 		SeedAdminEmail:    getEnv("SEED_ADMIN_EMAIL", "admin@messhub.local"),
 		SeedAdminPassword: getEnv("SEED_ADMIN_PASSWORD", "ChangeMe123!"),

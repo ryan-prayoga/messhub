@@ -15,6 +15,7 @@
   html {
     min-height: 100%;
     background: #eef4fb;
+    overscroll-behavior-y: none;
   }
 
   body {
@@ -25,6 +26,7 @@
     color: #0f172a;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    overscroll-behavior-y: none;
   }
 
   *,
@@ -51,6 +53,8 @@
   textarea,
   select {
     font: inherit;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 
   ::selection {
@@ -69,7 +73,7 @@
   }
 
   .page-container {
-    @apply mx-auto w-full max-w-4xl px-4 pb-28 pt-4 sm:px-6 sm:pt-6;
+    @apply mx-auto w-full max-w-4xl px-4 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-4 sm:px-6 sm:pt-6;
   }
 
   .app-panel {
@@ -145,10 +149,26 @@
   }
 
   .bottom-nav-link {
-    @apply flex items-center justify-center rounded-2xl px-3 py-2.5 text-[11px] font-medium text-slate-500 transition;
+    @apply flex min-h-[4.25rem] flex-col items-center justify-center gap-1 rounded-[1.4rem] px-3 py-2 text-[11px] font-medium text-slate-500 transition;
   }
 
   .bottom-nav-link-active {
     @apply bg-slate-950 text-white shadow-[0_12px_28px_-18px_rgba(15,23,42,0.6)];
+  }
+
+  .bottom-nav-icon {
+    @apply flex h-5 w-5 items-center justify-center;
+  }
+
+  .bottom-nav-icon svg {
+    @apply h-5 w-5;
+  }
+
+  .native-banner {
+    @apply flex flex-col gap-3 rounded-[24px] border border-slate-200 bg-slate-50/85 p-4 text-slate-700 md:flex-row md:items-center md:justify-between;
+  }
+
+  .native-banner-offline {
+    @apply border-amber-200 bg-amber-50/95 text-amber-950;
   }
 }

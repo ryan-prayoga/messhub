@@ -19,6 +19,7 @@ func Register(
 	wifiHandler *handlers.WifiHandler,
 	activityHandler *handlers.ActivityHandler,
 	notificationHandler *handlers.NotificationHandler,
+	pushHandler *handlers.PushHandler,
 	authMiddleware *middleware.AuthMiddleware,
 ) {
 	api := app.Group("/api/v1")
@@ -45,6 +46,8 @@ func Register(
 	authenticated.Get("/contributions/leaderboard", activityHandler.GetContributionLeaderboard)
 	authenticated.Get("/notifications", notificationHandler.List)
 	authenticated.Post("/notifications/read", notificationHandler.MarkRead)
+	authenticated.Post("/push/subscribe", pushHandler.Subscribe)
+	authenticated.Delete("/push/unsubscribe", pushHandler.Unsubscribe)
 	authenticated.Get("/wallet", walletHandler.GetSummary)
 	authenticated.Get("/wallet/transactions", walletHandler.ListTransactions)
 	authenticated.Get("/wifi/active", wifiHandler.GetActiveBill)

@@ -28,6 +28,7 @@ type NotificationService struct {
 	db                     *sql.DB
 	notificationRepository *repository.NotificationRepository
 	userRepository         *repository.UserRepository
+	pushService            *PushService
 	auditService           *AuditService
 }
 
@@ -35,12 +36,14 @@ func NewNotificationService(
 	db *sql.DB,
 	notificationRepository *repository.NotificationRepository,
 	userRepository *repository.UserRepository,
+	pushService *PushService,
 	auditService *AuditService,
 ) *NotificationService {
 	return &NotificationService{
 		db:                     db,
 		notificationRepository: notificationRepository,
 		userRepository:         userRepository,
+		pushService:            pushService,
 		auditService:           auditService,
 	}
 }
@@ -124,10 +127,10 @@ func (s *NotificationService) NotifyAllActiveExceptTx(
 	message string,
 	notificationType string,
 	entityID *string,
-) error {
+) ([]models.Notification, error) {
 	users, err := s.userRepository.ListActive(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	recipientIDs := make([]string, 0, len(users))
@@ -150,12 +153,20 @@ func (s *NotificationService) NotifyUserTx(
 	message string,
 	notificationType string,
 	entityID *string,
-) error {
+) ([]models.Notification, error) {
 	if strings.TrimSpace(userID) == "" {
-		return nil
+		return nil, nil
 	}
 
 	return s.notifyUsersTx(ctx, tx, []string{userID}, title, message, notificationType, entityID)
+}
+
+func (s *NotificationService) DispatchPush(ctx context.Context, notifications []models.Notification) {
+	if s.pushService == nil || len(notifications) == 0 {
+		return
+	}
+
+	s.pushService.DispatchNotifications(ctx, notifications)
 }
 
 func (s *NotificationService) notifyUsersTx(
@@ -166,16 +177,17 @@ func (s *NotificationService) notifyUsersTx(
 	message string,
 	notificationType string,
 	entityID *string,
-) error {
+) ([]models.Notification, error) {
 	title = strings.TrimSpace(title)
 	message = strings.TrimSpace(message)
 	notificationType = strings.TrimSpace(notificationType)
 
 	if len(userIDs) == 0 || title == "" || message == "" || notificationType == "" {
-		return nil
+		return nil, nil
 	}
 
 	seen := make(map[string]struct{}, len(userIDs))
+	created := make([]models.Notification, 0, len(userIDs))
 	for _, userID := range userIDs {
 		userID = strings.TrimSpace(userID)
 		if userID == "" {
@@ -186,16 +198,19 @@ func (s *NotificationService) notifyUsersTx(
 		}
 
 		seen[userID] = struct{}{}
-		if _, err := s.notificationRepository.CreateTx(ctx, tx, repository.CreateNotificationParams{
+		item, err := s.notificationRepository.CreateTx(ctx, tx, repository.CreateNotificationParams{
 			UserID:   userID,
 			Title:    title,
 			Message:  message,
 			Type:     notificationType,
 			EntityID: entityID,
-		}); err != nil {
-			return err
+		})
+		if err != nil {
+			return nil, err
 		}
+
+		created = append(created, *item)
 	}
 
-	return nil
+	return created, nil
 }

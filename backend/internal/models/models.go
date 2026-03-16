@@ -316,6 +316,15 @@ type Notification struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type PushSubscription struct {
+	ID        string    `json:"id"`
+	UserID    string    `json:"user_id"`
+	Endpoint  string    `json:"endpoint"`
+	P256DHKey string    `json:"p256dh_key"`
+	AuthKey   string    `json:"auth_key"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type AuditLog struct {
 	ID         string          `json:"id"`
 	UserID     *string         `json:"user_id"`
