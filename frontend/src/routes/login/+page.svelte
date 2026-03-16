@@ -28,7 +28,7 @@
     <section class="app-panel w-full max-w-md p-6 sm:p-8">
       <div class="mb-8">
         <div class="flex items-center justify-between gap-3">
-          <span class="badge-brand">MessHub Traspac Menyala</span>
+          <span class="badge-brand">MessHub</span>
           <span class="badge-muted">Internal PWA</span>
         </div>
 
