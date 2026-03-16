@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/ryanprayoga/messhub/backend/internal/response"
 	"github.com/ryanprayoga/messhub/backend/internal/services"
+	"github.com/ryanprayoga/messhub/backend/internal/types"
 )
 
 type AuthHandler struct {
@@ -17,34 +19,36 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	request := new(services.LoginInput)
 
 	if err := c.BodyParser(request); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"message": "invalid login payload",
-		})
+		return response.Error(c, fiber.StatusBadRequest, "invalid login payload", "invalid_payload")
 	}
 
-	response, err := h.authService.Login(c.UserContext(), *request)
+	loginResponse, err := h.authService.Login(c.UserContext(), *request)
 	if err != nil {
 		status := fiber.StatusInternalServerError
-		if err == services.ErrInvalidCredentials {
+		code := "login_failed"
+		switch err {
+		case services.ErrInvalidLoginInput:
+			status = fiber.StatusBadRequest
+			code = "invalid_login_input"
+		case services.ErrInvalidCredentials:
 			status = fiber.StatusUnauthorized
+			code = "invalid_credentials"
+		case services.ErrInactiveUser:
+			status = fiber.StatusForbidden
+			code = "user_inactive"
 		}
 
-		return c.Status(status).JSON(fiber.Map{
-			"message": err.Error(),
-		})
+		return response.Error(c, status, err.Error(), code)
 	}
 
-	return c.JSON(fiber.Map{
-		"message": "login success",
-		"data":    response,
-	})
+	return response.Success(c, fiber.StatusOK, "login success", loginResponse)
 }
 
 func (h *AuthHandler) Me(c *fiber.Ctx) error {
-	user := c.Locals("user")
+	user, ok := c.Locals("user").(types.AuthUser)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "missing authenticated user", "missing_authenticated_user")
+	}
 
-	return c.JSON(fiber.Map{
-		"message": "current user",
-		"data":    user,
-	})
+	return response.Success(c, fiber.StatusOK, "current user", user)
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -15,6 +16,8 @@ import (
 )
 
 var ErrInvalidCredentials = errors.New("invalid email or password")
+var ErrInactiveUser = errors.New("user is inactive")
+var ErrInvalidLoginInput = errors.New("email and password are required")
 
 type LoginInput struct {
 	Email    string `json:"email"`
@@ -39,7 +42,13 @@ func NewAuthService(cfg config.Config, userRepository *repository.UserRepository
 }
 
 func (s *AuthService) Login(ctx context.Context, input LoginInput) (*LoginResponse, error) {
-	user, err := s.userRepository.FindByEmail(ctx, input.Email)
+	email := normalizeEmail(input.Email)
+	password := strings.TrimSpace(input.Password)
+	if email == "" || password == "" {
+		return nil, ErrInvalidLoginInput
+	}
+
+	user, err := s.userRepository.FindByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrInvalidCredentials
@@ -49,10 +58,10 @@ func (s *AuthService) Login(ctx context.Context, input LoginInput) (*LoginRespon
 	}
 
 	if !user.IsActive {
-		return nil, errors.New("user is inactive")
+		return nil, ErrInactiveUser
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
 		return nil, ErrInvalidCredentials
 	}
 

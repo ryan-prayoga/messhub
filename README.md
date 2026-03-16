@@ -74,7 +74,7 @@ Frontend sekarang diarahkan ke runtime Node production, bukan preview server:
 
 - adapter: `@sveltejs/adapter-node`
 - script start: `npm run start`
-- env utama: `PORT`, `HOST`, `ORIGIN`, `PUBLIC_API_BASE_URL`
+- env utama: `PORT`, `HOST`, `ORIGIN`, `PUBLIC_API_BASE_URL`, `PRIVATE_API_BASE_URL`
 - default API URL: `/api/v1`
 
 Ini membuat frontend cocok untuk:
@@ -119,6 +119,7 @@ cd backend
 cp .env.example .env
 go mod tidy
 psql "postgres://messhub:messhub@127.0.0.1:5432/messhub?sslmode=disable" -f db/migrations/001_init.sql
+psql "postgres://messhub:messhub@127.0.0.1:5432/messhub?sslmode=disable" -f db/migrations/002_auth_foundation.sql
 go run ./cmd/seed-admin
 go run ./cmd/api
 ```
@@ -137,6 +138,7 @@ npm run dev
 Frontend akan listen di `http://127.0.0.1:4101`.
 
 Dev proxy akan mengarahkan `/api/*` dari frontend ke backend `4100`.
+Server-side auth/data loads akan memakai `PRIVATE_API_BASE_URL`, yang default-nya diarahkan ke `http://127.0.0.1:4100/api/v1`.
 
 ## Workflow VPS Dengan GAS CLI
 
@@ -202,8 +204,8 @@ Docker tidak dipakai untuk menjalankan frontend atau backend di VPS production.
 
 ## Next Steps
 
-1. Tambahkan CRUD `members`.
+1. Tambahkan create/edit members UI untuk admin bila STEP 1 perlu diperdalam di frontend.
 2. Implement `wallet_transactions`.
 3. Implement `wifi_bills` dan `wifi_bill_members`.
 4. Tambahkan flow upload bukti pembayaran.
-5. Tambahkan hardening env production per domain VPS.
+5. Tambahkan hardening env production per domain VPS, termasuk final `PRIVATE_API_BASE_URL`.

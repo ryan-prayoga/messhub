@@ -10,7 +10,7 @@
   export let currentPath: string;
 
   const navItems: NavItem[] = [
-    { href: '/', label: 'Home' },
+    { href: '/dashboard', label: 'Dashboard' },
     { href: '/members', label: 'Members' },
     { href: '/wallet', label: 'Wallet' },
     { href: '/wifi', label: 'Wifi' },
@@ -25,7 +25,10 @@
     { href: '/settings', label: 'Settings' }
   ];
 
-  $: currentItem = [...navItems, ...utilityItems].find((item) => item.href === currentPath);
+  const isCurrentPath = (href: string) =>
+    currentPath === href || (href !== '/' && currentPath.startsWith(`${href}/`));
+
+  $: currentItem = [...navItems, ...utilityItems].find((item) => isCurrentPath(item.href));
 </script>
 
 <div class="app-shell">
@@ -69,7 +72,7 @@
           {#each utilityItems as item}
             <a
               href={item.href}
-              class={`nav-chip ${currentPath === item.href ? 'nav-chip-active' : ''}`}
+              class={`nav-chip ${isCurrentPath(item.href) ? 'nav-chip-active' : ''}`}
             >
               {item.label}
             </a>
@@ -88,7 +91,7 @@
           <a
             href={item.href}
             class={`bottom-nav-link ${
-              currentPath === item.href ? 'bottom-nav-link-active' : 'bg-white hover:bg-slate-50'
+              isCurrentPath(item.href) ? 'bottom-nav-link-active' : 'bg-white hover:bg-slate-50'
             }`}
           >
             {item.label}

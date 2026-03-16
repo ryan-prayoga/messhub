@@ -2,11 +2,11 @@
   import '../app.css';
   import { page } from '$app/stores';
   import AppShell from '$lib/components/AppShell.svelte';
-  import { authUser } from '$lib/stores/auth';
+  import { authState } from '$lib/stores/auth';
 
   export let data: App.PageData;
 
-  $: authUser.set(data.user);
+  $: authState.sync(data.user);
   $: isPublicRoute = $page.url.pathname === '/login';
 </script>
 

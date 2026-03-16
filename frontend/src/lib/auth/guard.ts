@@ -7,6 +7,6 @@ export function requireAuth(pathname: string, user: App.Locals['user']) {
   }
 
   if (PUBLIC_ROUTES.includes(pathname) && user) {
-    throw redirect(303, '/');
+    throw redirect(303, '/dashboard');
   }
 }

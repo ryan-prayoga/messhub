@@ -1,9 +1,23 @@
+import type { Cookies } from '@sveltejs/kit';
+
 export const AUTH_COOKIE_KEYS = {
-  token: 'mh_access_token',
-  userId: 'mh_user_id',
-  userEmail: 'mh_user_email',
-  userName: 'mh_user_name',
-  userRole: 'mh_user_role'
+  token: 'mh_access_token'
 } as const;
 
 export const PUBLIC_ROUTES = ['/login'];
+
+export function buildAuthCookieOptions(url: URL) {
+  return {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    secure: url.protocol === 'https:',
+    maxAge: 60 * 60 * 72
+  };
+}
+
+export function clearAuthCookies(cookies: Cookies) {
+  cookies.delete(AUTH_COOKIE_KEYS.token, {
+    path: '/'
+  });
+}

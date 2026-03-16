@@ -1,11 +1,11 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { API_BASE_URL } from '$lib/config/env';
-import { AUTH_COOKIE_KEYS } from '$lib/auth/session';
+import { ApiError, authServerApi } from '$lib/api/server';
+import { AUTH_COOKIE_KEYS, buildAuthCookieOptions } from '$lib/auth/session';
 
 export const load: PageServerLoad = async ({ locals }) => {
   if (locals.user) {
-    throw redirect(303, '/');
+    throw redirect(303, '/dashboard');
   }
 
   return {};
@@ -22,56 +22,25 @@ export const actions: Actions = {
       return fail(400, { message: 'Email dan password wajib diisi.', values });
     }
 
-    let response: Response;
-
     try {
-      response = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email, password })
-      });
-    } catch {
+      const payload = await authServerApi.login(fetch, { email, password });
+      const { token } = payload.data;
+
+      cookies.set(AUTH_COOKIE_KEYS.token, token, buildAuthCookieOptions(url));
+    } catch (error) {
+      if (error instanceof ApiError) {
+        return fail(error.status, {
+          message: error.message,
+          values
+        });
+      }
+
       return fail(503, {
         message: 'Backend auth belum terjangkau. Cek service API di VPS atau env frontend.',
         values
       });
     }
 
-    const payload = (await response.json().catch(() => null)) as
-      | {
-          data?: {
-            token: string;
-            user: { id: string; name: string; email: string; role: 'admin' | 'treasurer' | 'member' };
-          };
-          message?: string;
-        }
-      | null;
-
-    if (!response.ok || !payload?.data) {
-      return fail(response.status, {
-        message: payload?.message || 'Login gagal. Cek backend atau kredensial.',
-        values
-      });
-    }
-
-    const { token, user } = payload.data;
-    const secure = url.protocol === 'https:';
-    const cookieOptions = {
-      path: '/',
-      httpOnly: true,
-      sameSite: 'lax' as const,
-      secure,
-      maxAge: 60 * 60 * 72
-    };
-
-    cookies.set(AUTH_COOKIE_KEYS.token, token, cookieOptions);
-    cookies.set(AUTH_COOKIE_KEYS.userId, user.id, cookieOptions);
-    cookies.set(AUTH_COOKIE_KEYS.userEmail, user.email, cookieOptions);
-    cookies.set(AUTH_COOKIE_KEYS.userName, user.name, cookieOptions);
-    cookies.set(AUTH_COOKIE_KEYS.userRole, user.role, cookieOptions);
-
-    throw redirect(303, '/');
+    throw redirect(303, '/dashboard');
   }
 };

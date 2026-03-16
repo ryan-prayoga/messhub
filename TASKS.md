@@ -1,13 +1,6 @@
 # TASKS.md
 
 ## Todo
-- ID: T-003
-  Title: Implement member management
-  Priority: P1
-  Owner/Agent: Unassigned
-  Dependencies: T-002
-  Notes: Support dynamic active members with `joined_at` and optional `left_at`.
-
 - ID: T-004
   Title: Implement wallet transactions module
   Priority: P1
@@ -98,6 +91,13 @@
   Owner/Agent: Codex
   Dependencies: T-001
   Notes: Basic login endpoint, JWT middleware, role middleware, frontend cookie auth guard, and login/logout flow are scaffolded.
+
+- ID: T-003
+  Title: Implement member management
+  Priority: P1
+  Owner/Agent: Codex
+  Dependencies: T-002
+  Notes: Users schema is now hardened with `joined_at` support, admin seed remains non-duplicating, backend users API is live, and the frontend members list is connected with role-aware states.
 
 - ID: CTX-001
   Title: Normalize shared project context

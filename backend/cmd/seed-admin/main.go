@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"time"
 
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/ryanprayoga/messhub/backend/internal/config"
+	"github.com/ryanprayoga/messhub/backend/internal/models"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -23,21 +25,33 @@ func main() {
 		log.Fatalf("ping database: %v", err)
 	}
 
+	if !models.IsValidRole(cfg.SeedAdminRole) {
+		log.Fatalf("invalid SEED_ADMIN_ROLE: %s", cfg.SeedAdminRole)
+	}
+
+	var existingID string
+	err := db.QueryRowContext(
+		ctx,
+		`SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1`,
+		cfg.SeedAdminEmail,
+	).Scan(&existingID)
+	if err == nil {
+		log.Printf("admin already exists: %s", cfg.SeedAdminEmail)
+		return
+	}
+
+	if err != nil && err != sql.ErrNoRows {
+		log.Fatalf("check seed admin: %v", err)
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(cfg.SeedAdminPassword), bcrypt.DefaultCost)
 	if err != nil {
 		log.Fatalf("hash password: %v", err)
 	}
 
 	query := `
-		INSERT INTO users (name, email, password_hash, role, is_active)
-		VALUES ($1, $2, $3, $4, TRUE)
-		ON CONFLICT (email)
-		DO UPDATE SET
-			name = EXCLUDED.name,
-			password_hash = EXCLUDED.password_hash,
-			role = EXCLUDED.role,
-			is_active = TRUE,
-			updated_at = NOW()
+		INSERT INTO users (name, email, password_hash, role, is_active, joined_at)
+		VALUES ($1, LOWER($2), $3, $4, TRUE, NOW())
 	`
 
 	if _, err := db.ExecContext(

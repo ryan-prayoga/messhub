@@ -1,6 +1,9 @@
 package handlers
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"github.com/gofiber/fiber/v2"
+	"github.com/ryanprayoga/messhub/backend/internal/response"
+)
 
 type HealthHandler struct{}
 
@@ -9,10 +12,7 @@ func NewHealthHandler() *HealthHandler {
 }
 
 func (h *HealthHandler) Health(c *fiber.Ctx) error {
-	return c.JSON(fiber.Map{
-		"message": "MessHub API is healthy",
-		"data": fiber.Map{
-			"status": "ok",
-		},
+	return response.Success(c, fiber.StatusOK, "MessHub API is healthy", fiber.Map{
+		"status": "ok",
 	})
 }

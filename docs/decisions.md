@@ -79,3 +79,11 @@
 - Rationale: This preserves baseline installability, removes deprecated install noise caused by the Workbox dependency chain, and makes the generated SvelteKit TypeScript config available on fresh installs.
 - Impact: Future PWA work should extend the native service worker/manifest baseline first; reintroducing a plugin should only happen if it solves a concrete feature gap without reintroducing the Node 24 install warnings.
 - Follow-up: Revisit richer offline caching or push-related features only when the actual product requirements exceed the native baseline.
+
+## Decision 11
+- Date: 2026-03-16
+- Context: STEP 1 needs stable auth/session behavior without adding a separate session store or trusting user profile cookies copied into the browser.
+- Decision: Keep a single `mh_access_token` httpOnly cookie on the frontend, then verify the current user server-side through `GET /api/v1/auth/me` on SvelteKit loads by calling the backend through `PRIVATE_API_BASE_URL`.
+- Rationale: This keeps the runtime aligned with the existing split frontend/backend deploy, avoids trusting tamperable identity cookies, and gives later modules a verified current-user source without introducing refresh-token/session-store complexity yet.
+- Impact: Protected frontend routes should fetch user-aware data from server loads/actions, and future domain work should reuse the same verified session flow instead of reading role/name/email directly from client-stored cookies.
+- Follow-up: Add refresh/logout invalidation strategy before production hardening if session duration or device switching becomes more complex.

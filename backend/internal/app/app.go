@@ -9,6 +9,7 @@ import (
 	"github.com/ryanprayoga/messhub/backend/internal/config"
 	"github.com/ryanprayoga/messhub/backend/internal/database"
 	"github.com/ryanprayoga/messhub/backend/internal/handlers"
+	"github.com/ryanprayoga/messhub/backend/internal/middleware"
 	"github.com/ryanprayoga/messhub/backend/internal/repository"
 	"github.com/ryanprayoga/messhub/backend/internal/routes"
 	"github.com/ryanprayoga/messhub/backend/internal/services"
@@ -40,10 +41,13 @@ func New() (*App, error) {
 
 	userRepository := repository.NewUserRepository(db)
 	authService := services.NewAuthService(cfg, userRepository)
+	userService := services.NewUserService(userRepository)
+	authMiddleware := middleware.NewAuthMiddleware(cfg, userRepository)
 	healthHandler := handlers.NewHealthHandler()
 	authHandler := handlers.NewAuthHandler(authService)
+	userHandler := handlers.NewUserHandler(userService)
 
-	routes.Register(web, cfg, healthHandler, authHandler)
+	routes.Register(web, healthHandler, authHandler, userHandler, authMiddleware)
 
 	return &App{
 		config: cfg,

@@ -8,6 +8,15 @@ const (
 	RoleMember    = "member"
 )
 
+func IsValidRole(role string) bool {
+	switch role {
+	case RoleAdmin, RoleTreasurer, RoleMember:
+		return true
+	default:
+		return false
+	}
+}
+
 type User struct {
 	ID           string     `json:"id"`
 	Name         string     `json:"name"`
