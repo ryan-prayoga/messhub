@@ -95,3 +95,11 @@
 - Rationale: This removes manual login from the release path while preserving the existing GAS CLI, PM2 app names, ports, Nginx split routing, and VPS directory structure that are already proven in the project.
 - Impact: Repository secrets must provide `VPS_HOST`, `VPS_USER`, and `VPS_SSH_KEY`; the VPS checkout must already support non-interactive Git pulls; failed health checks should fail the workflow after the rebuild.
 - Follow-up: Validate the workflow against the live VPS and decide later whether notifications or manual rollback helpers are needed.
+
+## Decision 13
+- Date: 2026-03-16
+- Context: STEP 3 needs monthly wifi billing that stays separate from wallet accounting while remaining easy to verify from mobile and easy to audit on the backend.
+- Decision: Keep one wifi bill per month-year, snapshot active users into `wifi_bill_members` at bill creation time, use a simple `proof_url`/reference field plus optional note for transfer proof submission, and record important mutations through a reusable audit helper inside service-level database transactions.
+- Rationale: This matches the product rule that wifi is a monthly obligation, avoids mixing wallet and wifi ledgers, works even before a dedicated upload service exists, and keeps audit writes consistent with the main state changes.
+- Impact: Future wifi work should build on the existing monthly bill/member snapshot model, and new auditable financial/member mutations should reuse the same audit helper pattern instead of bespoke logging.
+- Follow-up: If file upload storage is added later, keep the `proof_url` contract stable so current submit/review flows do not need a breaking API change.

@@ -41,16 +41,21 @@ func New() (*App, error) {
 
 	userRepository := repository.NewUserRepository(db)
 	walletRepository := repository.NewWalletRepository(db)
+	wifiRepository := repository.NewWifiRepository(db)
+	auditRepository := repository.NewAuditLogRepository(db)
 	authService := services.NewAuthService(cfg, userRepository)
-	userService := services.NewUserService(userRepository)
-	walletService := services.NewWalletService(walletRepository)
+	auditService := services.NewAuditService(auditRepository)
+	userService := services.NewUserService(db, userRepository, auditService)
+	walletService := services.NewWalletService(db, walletRepository, auditService)
+	wifiService := services.NewWifiService(db, wifiRepository, auditService)
 	authMiddleware := middleware.NewAuthMiddleware(cfg, userRepository)
 	healthHandler := handlers.NewHealthHandler()
 	authHandler := handlers.NewAuthHandler(authService)
 	userHandler := handlers.NewUserHandler(userService)
 	walletHandler := handlers.NewWalletHandler(walletService)
+	wifiHandler := handlers.NewWifiHandler(wifiService)
 
-	routes.Register(web, healthHandler, authHandler, userHandler, walletHandler, authMiddleware)
+	routes.Register(web, healthHandler, authHandler, userHandler, walletHandler, wifiHandler, authMiddleware)
 
 	return &App{
 		config: cfg,

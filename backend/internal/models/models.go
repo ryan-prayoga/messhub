@@ -1,11 +1,23 @@
 package models
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 const (
 	RoleAdmin     = "admin"
 	RoleTreasurer = "treasurer"
 	RoleMember    = "member"
+
+	WifiBillStatusDraft  = "draft"
+	WifiBillStatusActive = "active"
+	WifiBillStatusClosed = "closed"
+
+	WifiPaymentStatusUnpaid              = "unpaid"
+	WifiPaymentStatusPendingVerification = "pending_verification"
+	WifiPaymentStatusVerified            = "verified"
+	WifiPaymentStatusRejected            = "rejected"
 )
 
 func IsValidRole(role string) bool {
@@ -57,6 +69,7 @@ type WifiBill struct {
 	Status           string    `json:"status"`
 	CreatedBy        string    `json:"created_by"`
 	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 type WifiBillMember struct {
@@ -66,10 +79,62 @@ type WifiBillMember struct {
 	Amount          int64      `json:"amount"`
 	PaymentStatus   string     `json:"payment_status"`
 	ProofURL        *string    `json:"proof_url"`
+	Note            *string    `json:"note"`
 	SubmittedAt     *time.Time `json:"submitted_at"`
 	VerifiedAt      *time.Time `json:"verified_at"`
 	VerifiedBy      *string    `json:"verified_by"`
 	RejectionReason *string    `json:"rejection_reason"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
+}
+
+type WifiBillSummary struct {
+	TotalMembers   int   `json:"total_members"`
+	VerifiedCount  int   `json:"verified_count"`
+	PendingCount   int   `json:"pending_count"`
+	UnpaidCount    int   `json:"unpaid_count"`
+	RejectedCount  int   `json:"rejected_count"`
+	TotalCollected int64 `json:"total_collected"`
+	TotalTarget    int64 `json:"total_target"`
+}
+
+type WifiBillMemberDetail struct {
+	WifiBillMember
+	UserName       string  `json:"user_name"`
+	UserEmail      string  `json:"user_email"`
+	VerifiedByName *string `json:"verified_by_name"`
+}
+
+type WifiBillWithSummary struct {
+	WifiBill
+	Summary WifiBillSummary `json:"summary"`
+}
+
+type WifiBillDetail struct {
+	Bill    WifiBill               `json:"bill"`
+	Summary WifiBillSummary        `json:"summary"`
+	Members []WifiBillMemberDetail `json:"members"`
+}
+
+type WifiMyBill struct {
+	MemberID         string     `json:"member_id"`
+	WifiBillID       string     `json:"wifi_bill_id"`
+	Month            int        `json:"month"`
+	Year             int        `json:"year"`
+	NominalPerPerson int64      `json:"nominal_per_person"`
+	DeadlineDate     time.Time  `json:"deadline_date"`
+	BillStatus       string     `json:"bill_status"`
+	Amount           int64      `json:"amount"`
+	PaymentStatus    string     `json:"payment_status"`
+	ProofURL         *string    `json:"proof_url"`
+	Note             *string    `json:"note"`
+	SubmittedAt      *time.Time `json:"submitted_at"`
+	VerifiedAt       *time.Time `json:"verified_at"`
+	RejectionReason  *string    `json:"rejection_reason"`
+	VerifiedBy       *string    `json:"verified_by"`
+	VerifiedByName   *string    `json:"verified_by_name"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
 }
 
 type SharedExpense struct {
@@ -162,12 +227,12 @@ type Notification struct {
 }
 
 type AuditLog struct {
-	ID         string    `json:"id"`
-	UserID     *string   `json:"user_id"`
-	Action     string    `json:"action"`
-	EntityType string    `json:"entity_type"`
-	EntityID   *string   `json:"entity_id"`
-	OldValue   []byte    `json:"old_value"`
-	NewValue   []byte    `json:"new_value"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID         string          `json:"id"`
+	UserID     *string         `json:"user_id"`
+	Action     string          `json:"action"`
+	EntityType string          `json:"entity_type"`
+	EntityID   *string         `json:"entity_id"`
+	OldValue   json.RawMessage `json:"old_value"`
+	NewValue   json.RawMessage `json:"new_value"`
+	CreatedAt  time.Time       `json:"created_at"`
 }

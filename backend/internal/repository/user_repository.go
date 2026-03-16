@@ -12,6 +12,10 @@ type UserRepository struct {
 	db *sql.DB
 }
 
+type userQueryRunner interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
 func NewUserRepository(db *sql.DB) *UserRepository {
 	return &UserRepository{db: db}
 }
@@ -108,6 +112,14 @@ type UpdateUserParams struct {
 }
 
 func (r *UserRepository) Update(ctx context.Context, params UpdateUserParams) (*models.User, error) {
+	return r.update(ctx, r.db, params)
+}
+
+func (r *UserRepository) UpdateTx(ctx context.Context, tx *sql.Tx, params UpdateUserParams) (*models.User, error) {
+	return r.update(ctx, tx, params)
+}
+
+func (r *UserRepository) update(ctx context.Context, runner userQueryRunner, params UpdateUserParams) (*models.User, error) {
 	query := `
 		UPDATE users
 		SET
@@ -124,7 +136,7 @@ func (r *UserRepository) Update(ctx context.Context, params UpdateUserParams) (*
 		RETURNING id, name, email, password_hash, role, is_active, joined_at, left_at, created_at, updated_at
 	`
 
-	row := r.db.QueryRowContext(
+	row := runner.QueryRowContext(
 		ctx,
 		query,
 		params.ID,

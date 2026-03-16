@@ -12,6 +12,10 @@ type WalletRepository struct {
 	db *sql.DB
 }
 
+type walletQueryRunner interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
 func NewWalletRepository(db *sql.DB) *WalletRepository {
 	return &WalletRepository{db: db}
 }
@@ -97,6 +101,14 @@ type CreateWalletTransactionParams struct {
 }
 
 func (r *WalletRepository) Create(ctx context.Context, params CreateWalletTransactionParams) (*models.WalletTransaction, error) {
+	return r.create(ctx, r.db, params)
+}
+
+func (r *WalletRepository) CreateTx(ctx context.Context, tx *sql.Tx, params CreateWalletTransactionParams) (*models.WalletTransaction, error) {
+	return r.create(ctx, tx, params)
+}
+
+func (r *WalletRepository) create(ctx context.Context, runner walletQueryRunner, params CreateWalletTransactionParams) (*models.WalletTransaction, error) {
 	query := `
 		INSERT INTO wallet_transactions (type, category, amount, description, created_by)
 		VALUES ($1, $2, $3, $4, $5)
@@ -104,7 +116,7 @@ func (r *WalletRepository) Create(ctx context.Context, params CreateWalletTransa
 	`
 
 	transaction := &models.WalletTransaction{}
-	if err := r.db.QueryRowContext(
+	if err := runner.QueryRowContext(
 		ctx,
 		query,
 		params.Type,

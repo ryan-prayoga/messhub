@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types';
-import { ApiError, usersServerApi, walletServerApi } from '$lib/api/server';
+import { ApiError, usersServerApi, walletServerApi, wifiServerApi } from '$lib/api/server';
 
 type MemberSummary = {
   total: number | null;
@@ -14,6 +14,19 @@ type WalletSummary = {
   totalIncome: number | null;
   totalExpense: number | null;
   state: 'ready' | 'error';
+  message: string | null;
+};
+
+type WifiSummary = {
+  monthLabel: string | null;
+  verified: number | null;
+  unpaid: number | null;
+  pending: number | null;
+  totalCollected: number | null;
+  totalTarget: number | null;
+  myStatus: string | null;
+  deadline: string | null;
+  state: 'ready' | 'empty' | 'error';
   message: string | null;
 };
 
@@ -36,18 +49,55 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
     message: 'Wallet summary unavailable'
   };
 
+  const wifiSummary: WifiSummary = {
+    monthLabel: null,
+    verified: null,
+    unpaid: null,
+    pending: null,
+    totalCollected: null,
+    totalTarget: null,
+    myStatus: null,
+    deadline: null,
+    state: 'empty',
+    message: 'No active wifi bill'
+  };
+
   if (locals.token) {
     try {
-      const response = await walletServerApi.summary(fetch, locals.token);
+      const [walletResponse, wifiResponse] = await Promise.all([
+        walletServerApi.summary(fetch, locals.token),
+        wifiServerApi.getActive(fetch, locals.token)
+      ]);
 
-      walletSummary.balance = response.data.balance;
-      walletSummary.totalIncome = response.data.total_income;
-      walletSummary.totalExpense = response.data.total_expense;
+      walletSummary.balance = walletResponse.data.balance;
+      walletSummary.totalIncome = walletResponse.data.total_income;
+      walletSummary.totalExpense = walletResponse.data.total_expense;
       walletSummary.state = 'ready';
       walletSummary.message = null;
+
+      if (wifiResponse.data) {
+        const bill = wifiResponse.data.bill;
+        const member = wifiResponse.data.members[0] ?? null;
+
+        wifiSummary.monthLabel = new Intl.DateTimeFormat('id-ID', {
+          month: 'long',
+          year: 'numeric'
+        }).format(new Date(bill.year, bill.month - 1, 1));
+        wifiSummary.verified = wifiResponse.data.summary.verified_count;
+        wifiSummary.unpaid = wifiResponse.data.summary.unpaid_count;
+        wifiSummary.pending = wifiResponse.data.summary.pending_count;
+        wifiSummary.totalCollected = wifiResponse.data.summary.total_collected;
+        wifiSummary.totalTarget = wifiResponse.data.summary.total_target;
+        wifiSummary.deadline = bill.deadline_date;
+        wifiSummary.myStatus = member?.payment_status ?? null;
+        wifiSummary.state = 'ready';
+        wifiSummary.message = null;
+      }
     } catch (error) {
       walletSummary.state = 'error';
       walletSummary.message = error instanceof Error ? error.message : 'Failed to load wallet summary';
+      wifiSummary.state = 'error';
+      wifiSummary.message = error instanceof Error ? error.message : 'Failed to load wifi summary';
     }
   }
 
@@ -74,6 +124,7 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
   return {
     authStatus: locals.user ? 'authenticated' : 'unauthenticated',
     memberSummary: summary,
-    walletSummary
+    walletSummary,
+    wifiSummary
   };
 };

@@ -3,6 +3,9 @@ import type {
   ApiEnvelope,
   MemberUser,
   SessionUser,
+  WifiBillDetail,
+  WifiBillWithSummary,
+  WifiMyBill,
   WalletSummary,
   WalletTransactionPage,
   WalletTransactionType
@@ -131,6 +134,74 @@ export const walletServerApi = {
   ) =>
     apiServerRequest(fetcher, '/wallet/transactions', {
       method: 'POST',
+      token,
+      body: payload
+    })
+};
+
+export const wifiServerApi = {
+  listBills: (fetcher: typeof fetch, token: string) =>
+    apiServerRequest<WifiBillWithSummary[]>(fetcher, '/wifi/bills', {
+      token
+    }),
+  getBill: (fetcher: typeof fetch, token: string, billID: string) =>
+    apiServerRequest<WifiBillDetail>(fetcher, `/wifi/bills/${billID}`, {
+      token
+    }),
+  getActive: (fetcher: typeof fetch, token: string) =>
+    apiServerRequest<WifiBillDetail | null>(fetcher, '/wifi/active', {
+      token
+    }),
+  getMyBills: (fetcher: typeof fetch, token: string) =>
+    apiServerRequest<WifiMyBill[]>(fetcher, '/wifi/my', {
+      token
+    }),
+  createBill: (
+    fetcher: typeof fetch,
+    token: string,
+    payload: {
+      month: number;
+      year: number;
+      nominal_per_person?: number;
+      deadline_date?: string;
+      status?: 'draft' | 'active' | 'closed';
+    }
+  ) =>
+    apiServerRequest<WifiBillDetail>(fetcher, '/wifi/bills', {
+      method: 'POST',
+      token,
+      body: payload
+    }),
+  submitProof: (
+    fetcher: typeof fetch,
+    token: string,
+    billID: string,
+    payload: {
+      proof_url: string;
+      note?: string;
+    }
+  ) =>
+    apiServerRequest(fetcher, `/wifi/bills/${billID}/submit`, {
+      method: 'POST',
+      token,
+      body: payload
+    }),
+  verifyPayment: (fetcher: typeof fetch, token: string, billID: string, memberID: string) =>
+    apiServerRequest(fetcher, `/wifi/bills/${billID}/verify/${memberID}`, {
+      method: 'PATCH',
+      token
+    }),
+  rejectPayment: (
+    fetcher: typeof fetch,
+    token: string,
+    billID: string,
+    memberID: string,
+    payload: {
+      reason: string;
+    }
+  ) =>
+    apiServerRequest(fetcher, `/wifi/bills/${billID}/reject/${memberID}`, {
+      method: 'PATCH',
       token,
       body: payload
     })

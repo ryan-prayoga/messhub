@@ -34,12 +34,64 @@
       maximumFractionDigits: 0
     }).format(value);
   }
+
+  function formatDate(value: string | null) {
+    if (!value) {
+      return '-';
+    }
+
+    return new Intl.DateTimeFormat('id-ID', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    }).format(new Date(value));
+  }
+
+  function wifiStatusLabel(status: string | null) {
+    if (status === 'pending_verification') {
+      return 'Pending';
+    }
+
+    if (status === 'verified') {
+      return 'Verified';
+    }
+
+    if (status === 'rejected') {
+      return 'Rejected';
+    }
+
+    if (status === 'unpaid') {
+      return 'Unpaid';
+    }
+
+    return 'No active bill';
+  }
+
+  function wifiStatusClass(status: string | null) {
+    if (status === 'verified') {
+      return 'badge bg-emerald-100 text-emerald-700';
+    }
+
+    if (status === 'pending_verification') {
+      return 'badge bg-amber-100 text-amber-700';
+    }
+
+    if (status === 'rejected') {
+      return 'badge bg-rose-100 text-rose-700';
+    }
+
+    if (status === 'unpaid') {
+      return 'badge-muted';
+    }
+
+    return 'badge bg-slate-100 text-slate-600';
+  }
 </script>
 
 <div class="space-y-4">
   <PageCard
     title={`Halo, ${data.user?.name ?? 'Member'}`}
-    description="Dashboard sekarang menampilkan fondasi auth/members plus ringkasan Wallet untuk STEP 2."
+    description="Dashboard sekarang menampilkan fondasi auth, members, wallet, dan wifi billing untuk STEP 3."
   >
     <div class="grid gap-3 md:grid-cols-3">
       <div class="stat-card">
@@ -105,11 +157,30 @@
       </a>
 
       <a href="/wifi" class="stat-card bg-white transition hover:border-slate-300 hover:bg-slate-50">
-        <p class="helper-label">Placeholder</p>
+        <p class="helper-label">Wifi</p>
         <p class="mt-2 text-base font-semibold text-ink">Wifi</p>
-        <p class="mt-2 text-sm leading-6 text-slate-500">
-          Billing wifi bulanan bisa dibangun di atas session dan role guard ini.
-        </p>
+        {#if data.wifiSummary.state === 'ready'}
+          <p class="mt-2 text-lg font-semibold text-ink">{data.wifiSummary.monthLabel}</p>
+          {#if data.user?.role === 'member'}
+            <div class="mt-2">
+              <span class={wifiStatusClass(data.wifiSummary.myStatus)}>
+                {wifiStatusLabel(data.wifiSummary.myStatus)}
+              </span>
+            </div>
+            <p class="mt-2 text-sm leading-6 text-slate-500">
+              Deadline {formatDate(data.wifiSummary.deadline)}.
+            </p>
+          {:else}
+            <p class="mt-2 text-2xl font-semibold tracking-[-0.04em] text-ink">
+              {data.wifiSummary.verified} verified
+            </p>
+            <p class="mt-2 text-sm leading-6 text-slate-500">
+              {data.wifiSummary.unpaid} unpaid / {data.wifiSummary.pending} pending
+            </p>
+          {/if}
+        {:else}
+          <p class="mt-2 text-sm leading-6 text-slate-500">{data.wifiSummary.message}</p>
+        {/if}
       </a>
     </div>
   </PageCard>
@@ -122,14 +193,14 @@
       <div class="helper-box-brand">
         <p class="helper-label text-sky-700">Backend</p>
         <p class="mt-2 text-sm leading-6 text-slate-700">
-          Login, me, auth middleware, role middleware, member API dasar, dan wallet summary plus transaction API.
+          Login, me, auth middleware, role middleware, member API, wallet summary plus transaction API, serta wifi billing with audit log.
         </p>
       </div>
 
       <div class="helper-box">
         <p class="helper-label">Frontend</p>
         <p class="mt-2 text-sm leading-6 text-slate-600">
-          Login end-to-end, route protection, dashboard summary, wallet list/form, dan members list mobile-first.
+          Login end-to-end, route protection, dashboard summary, wallet list/form, members list, dan halaman wifi mobile-first.
         </p>
       </div>
     </div>

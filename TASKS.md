@@ -1,13 +1,6 @@
 # TASKS.md
 
 ## Todo
-- ID: T-005
-  Title: Implement monthly wifi billing and proof verification
-  Priority: P1
-  Owner/Agent: Unassigned
-  Dependencies: T-003
-  Notes: Default nominal Rp20.000, deadline before day 10, statuses: unpaid, pending_verification, verified, rejected.
-
 - ID: T-006
   Title: Implement dashboard summary
   Priority: P2
@@ -105,6 +98,13 @@
   Owner/Agent: Codex
   Dependencies: T-002
   Notes: Added wallet summary and paginated transaction APIs, create-transaction role guard for admin/treasurer, a wallet migration follow-up, `/wallet` and `/wallet/new` frontend flows, and dashboard wallet summary integration while preserving the separation from wifi and non-cash shared expenses.
+
+- ID: T-005
+  Title: Implement monthly wifi billing and proof verification
+  Priority: P1
+  Owner/Agent: Codex
+  Dependencies: T-003
+  Notes: Added `backend/db/migrations/004_wifi_audit_step3.sql`, wifi billing APIs for create/list/detail/active/my/submit/verify/reject, auto-generated monthly member obligations from active users, frontend `/wifi` page with proof submission and review UI, dashboard wifi summary, and reusable audit logging for wifi, wallet transaction creation, and user role/activation updates.
 
 - ID: CTX-001
   Title: Normalize shared project context

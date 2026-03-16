@@ -13,6 +13,7 @@ func Register(
 	authHandler *handlers.AuthHandler,
 	userHandler *handlers.UserHandler,
 	walletHandler *handlers.WalletHandler,
+	wifiHandler *handlers.WifiHandler,
 	authMiddleware *middleware.AuthMiddleware,
 ) {
 	api := app.Group("/api/v1")
@@ -25,10 +26,18 @@ func Register(
 	authenticated.Get("/auth/me", authHandler.Me)
 	authenticated.Get("/wallet", walletHandler.GetSummary)
 	authenticated.Get("/wallet/transactions", walletHandler.ListTransactions)
+	authenticated.Get("/wifi/active", wifiHandler.GetActiveBill)
+	authenticated.Get("/wifi/my", wifiHandler.GetMyBills)
+	authenticated.Post("/wifi/bills/:id/submit", wifiHandler.SubmitPaymentProof)
 
 	userReaders := authenticated.Group("", middleware.RequireRoles("admin", "treasurer"))
 	userReaders.Get("/users", userHandler.List)
 	userReaders.Post("/wallet/transactions", walletHandler.CreateTransaction)
+	userReaders.Post("/wifi/bills", wifiHandler.CreateBill)
+	userReaders.Get("/wifi/bills", wifiHandler.ListBills)
+	userReaders.Get("/wifi/bills/:id", wifiHandler.GetBillDetail)
+	userReaders.Patch("/wifi/bills/:id/verify/:memberId", wifiHandler.VerifyPayment)
+	userReaders.Patch("/wifi/bills/:id/reject/:memberId", wifiHandler.RejectPayment)
 
 	adminOnly := authenticated.Group("", middleware.RequireRoles("admin"))
 	adminOnly.Post("/users", userHandler.Create)

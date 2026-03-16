@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/ryanprayoga/messhub/backend/internal/response"
 	"github.com/ryanprayoga/messhub/backend/internal/services"
+	"github.com/ryanprayoga/messhub/backend/internal/types"
 )
 
 type UserHandler struct {
@@ -54,7 +55,12 @@ func (h *UserHandler) Update(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusBadRequest, "invalid user payload", "invalid_payload")
 	}
 
-	user, err := h.userService.UpdateUser(c.UserContext(), c.Params("id"), *request)
+	authUser, ok := c.Locals("user").(types.AuthUser)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "missing authenticated user", "missing_authenticated_user")
+	}
+
+	user, err := h.userService.UpdateUser(c.UserContext(), authUser.ID, c.Params("id"), *request)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvalidUserInput), errors.Is(err, services.ErrInvalidRole):

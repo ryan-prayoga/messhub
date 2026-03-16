@@ -2,11 +2,11 @@
 
 ## Current Objective
 
-- Complete STEP 2 wallet / Kantong Duafa foundation on top of the existing auth, session, and user management runtime.
+- Complete STEP 3 wifi billing and audit log foundation on top of the existing auth, session, member, and wallet runtime.
 
 ## Current Phase
 
-- Phase 2 — Wallet / Kantong Duafa Foundation
+- Phase 3 — Wifi Billing and Audit Log Foundation
 
 ## Summary Status
 
@@ -23,6 +23,8 @@
 - Observed: backend wallet foundation is now live with `GET /api/v1/wallet`, `GET /api/v1/wallet/transactions`, and `POST /api/v1/wallet/transactions`, plus a follow-up migration that normalizes the wallet table to the STEP 2 transaction shape.
 - Observed: wallet reads are now available to all authenticated roles, while wallet transaction creation is limited to `admin` and `treasurer`.
 - Observed: frontend now includes a real `/wallet` page with balance cards and paginated transactions, a `/wallet/new` form for authorized roles, and a dashboard wallet summary card instead of a placeholder.
+- Observed: backend now has STEP 3 wifi billing endpoints for create/list/detail/active/my/submit/verify/reject, a follow-up migration for wifi schema hardening, and reusable audit logging wired into wifi, wallet transaction creation, and role/activation changes on users.
+- Observed: frontend now includes a role-aware `/wifi` page for monthly bill creation, payment proof submission, verification, rejection, status history, and a dashboard wifi summary card.
 - Observed: frontend is now prepared for PM2 runtime with `adapter-node`, `start` script, local `.env.example`, and `ecosystem.config.cjs`.
 - Observed: backend now prefers `PORT` and has its own `.env.example` for GAS/PM2 usage.
 - Observed: Docker has been reduced to local Postgres only.
@@ -43,10 +45,11 @@
 - Member management foundation is now available: users schema is hardened, admin seed is non-duplicating, and backend/frontend now support the initial members list flow.
 - Dashboard now has a meaningful placeholder with auth status, current role, and member count summary when the user role is allowed to read the members API.
 - STEP 2 wallet foundation is now available end-to-end: database migration, backend summary/list/create flows, role-aware authorization, wallet pages, and dashboard balance summary are connected.
+- STEP 3 wifi billing foundation is now available end-to-end: migration, backend billing/proof/review flows, dashboard wifi summary, frontend `/wifi` screen, and reusable audit logging are connected.
 
 ## In Progress
 
-- Domain modules beyond auth, members, and wallet are still placeholder-only or read-only placeholders on the frontend.
+- Domain modules beyond auth, members, wallet, and wifi are still placeholder-only or read-only placeholders on the frontend.
 - The new GitHub Actions deploy workflow has been authored, but it has not been exercised against the live VPS from this workspace yet.
 - Admin create/edit UI for members is still backend-only; frontend currently ships the members list only.
 
@@ -54,6 +57,7 @@
 
 - Migration is manual; schema application is not yet automated.
 - Wallet rollout now depends on applying `backend/db/migrations/003_wallet_step2.sql` after the existing migrations in each environment.
+- Wifi rollout now depends on applying `backend/db/migrations/004_wifi_audit_step3.sql` after the existing migrations in each environment.
 - Production deploy has not been validated with live GAS build or Nginx apply yet.
 - Risk: GitHub Actions deploy depends on repository secrets plus non-interactive `git pull` access already working on the VPS checkout.
 - Residual: `frontend/npm audit` still reports 3 low severity vulnerabilities from SvelteKit's current `cookie@0.6.0` dependency chain; no safe local override has been applied yet.
@@ -93,12 +97,18 @@
 - `docs/handoffs/HANDOFF_TEMPLATE.md`
 - `backend/db/migrations/002_auth_foundation.sql`
 - `backend/db/migrations/003_wallet_step2.sql`
+- `backend/db/migrations/004_wifi_audit_step3.sql`
 - `backend/internal/handlers/user_handler.go`
 - `backend/internal/handlers/wallet_handler.go`
+- `backend/internal/handlers/wifi_handler.go`
 - `backend/internal/response/json.go`
+- `backend/internal/repository/audit_repository.go`
 - `backend/internal/repository/wallet_repository.go`
+- `backend/internal/repository/wifi_repository.go`
 - `backend/internal/services/wallet_service.go`
+- `backend/internal/services/audit_service.go`
 - `backend/internal/services/user_service.go`
+- `backend/internal/services/wifi_service.go`
 - `frontend/src/lib/api/client.ts`
 - `frontend/src/lib/api/server.ts`
 - `frontend/src/lib/api/types.ts`
@@ -109,6 +119,8 @@
 - `frontend/src/routes/wallet/+page.svelte`
 - `frontend/src/routes/wallet/new/+page.server.ts`
 - `frontend/src/routes/wallet/new/+page.svelte`
+- `frontend/src/routes/wifi/+page.server.ts`
+- `frontend/src/routes/wifi/+page.svelte`
 
 ## Assumptions / Unknowns
 
@@ -124,7 +136,8 @@
 
 - Apply `backend/db/migrations/002_auth_foundation.sql` and `backend/db/migrations/003_wallet_step2.sql`, then run the seed admin command if the environment is still new.
 - Validate the wallet flow against a real Postgres database by creating sample income and expense transactions through the new frontend form.
-- Continue to STEP 3 / wifi billing foundation, reusing the verified auth/session and the wallet-style summary/list/create pattern where it still fits.
+- Apply `backend/db/migrations/004_wifi_audit_step3.sql`, then validate create bill, submit proof, and verify/reject flows against the live Postgres runtime.
+- Continue to STEP 4 modules only after confirming the wifi flow and audit log entries on the VPS.
 - Add the required `VPS_HOST`, `VPS_USER`, and `VPS_SSH_KEY` repository secrets in GitHub, then run the workflow with a test push to `main`.
 - Validate the updated runtime on the VPS with the new `PRIVATE_API_BASE_URL` frontend env.
 - Re-check the `cookie` advisory after the next SvelteKit release before applying any auth-related dependency override.

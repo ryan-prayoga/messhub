@@ -3,6 +3,9 @@ import type {
   ApiEnvelope,
   MemberUser,
   SessionUser,
+  WifiBillDetail,
+  WifiBillWithSummary,
+  WifiMyBill,
   WalletSummary,
   WalletTransactionPage,
   WalletTransactionType
@@ -104,6 +107,59 @@ export const walletApi = {
   ) =>
     apiRequest('/wallet/transactions', {
       method: 'POST',
+      token,
+      body: payload
+    })
+};
+
+export const wifiApi = {
+  listBills: (token: string) => apiRequest<WifiBillWithSummary[]>('/wifi/bills', { token }),
+  getBill: (token: string, billID: string) => apiRequest<WifiBillDetail>(`/wifi/bills/${billID}`, { token }),
+  getActive: (token: string) => apiRequest<WifiBillDetail | null>('/wifi/active', { token }),
+  getMyBills: (token: string) => apiRequest<WifiMyBill[]>('/wifi/my', { token }),
+  createBill: (
+    token: string,
+    payload: {
+      month: number;
+      year: number;
+      nominal_per_person?: number;
+      deadline_date?: string;
+      status?: 'draft' | 'active' | 'closed';
+    }
+  ) =>
+    apiRequest<WifiBillDetail>('/wifi/bills', {
+      method: 'POST',
+      token,
+      body: payload
+    }),
+  submitProof: (
+    token: string,
+    billID: string,
+    payload: {
+      proof_url: string;
+      note?: string;
+    }
+  ) =>
+    apiRequest(`/wifi/bills/${billID}/submit`, {
+      method: 'POST',
+      token,
+      body: payload
+    }),
+  verifyPayment: (token: string, billID: string, memberID: string) =>
+    apiRequest(`/wifi/bills/${billID}/verify/${memberID}`, {
+      method: 'PATCH',
+      token
+    }),
+  rejectPayment: (
+    token: string,
+    billID: string,
+    memberID: string,
+    payload: {
+      reason: string;
+    }
+  ) =>
+    apiRequest(`/wifi/bills/${billID}/reject/${memberID}`, {
+      method: 'PATCH',
       token,
       body: payload
     })

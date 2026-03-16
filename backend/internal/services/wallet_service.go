@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"strings"
 
@@ -45,11 +46,15 @@ type WalletPagination struct {
 
 type WalletService struct {
 	walletRepository *repository.WalletRepository
+	db               *sql.DB
+	auditService     *AuditService
 }
 
-func NewWalletService(walletRepository *repository.WalletRepository) *WalletService {
+func NewWalletService(db *sql.DB, walletRepository *repository.WalletRepository, auditService *AuditService) *WalletService {
 	return &WalletService{
 		walletRepository: walletRepository,
+		db:               db,
+		auditService:     auditService,
 	}
 }
 
@@ -108,11 +113,36 @@ func (s *WalletService) CreateTransaction(ctx context.Context, createdBy string,
 		return nil, ErrInvalidWalletInput
 	}
 
-	return s.walletRepository.Create(ctx, repository.CreateWalletTransactionParams{
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	transaction, err := s.walletRepository.CreateTx(ctx, tx, repository.CreateWalletTransactionParams{
 		Type:        transactionType,
 		Category:    category,
 		Amount:      input.Amount,
 		Description: description,
 		CreatedBy:   createdBy,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.auditService.LogTx(ctx, tx, AuditLogInput{
+		UserID:     stringPtr(createdBy),
+		Action:     "wallet_transaction_created",
+		EntityType: "wallet_transaction",
+		EntityID:   stringPtr(transaction.ID),
+		NewValue:   transaction,
+	}); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return transaction, nil
 }

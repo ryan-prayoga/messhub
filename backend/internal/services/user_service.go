@@ -36,11 +36,15 @@ type UpdateUserInput struct {
 
 type UserService struct {
 	userRepository *repository.UserRepository
+	db             *sql.DB
+	auditService   *AuditService
 }
 
-func NewUserService(userRepository *repository.UserRepository) *UserService {
+func NewUserService(db *sql.DB, userRepository *repository.UserRepository, auditService *AuditService) *UserService {
 	return &UserService{
 		userRepository: userRepository,
+		db:             db,
+		auditService:   auditService,
 	}
 }
 
@@ -93,7 +97,7 @@ func (s *UserService) CreateUser(ctx context.Context, input CreateUserInput) (*m
 	return user, nil
 }
 
-func (s *UserService) UpdateUser(ctx context.Context, userID string, input UpdateUserInput) (*models.User, error) {
+func (s *UserService) UpdateUser(ctx context.Context, actorID string, userID string, input UpdateUserInput) (*models.User, error) {
 	user, err := s.userRepository.FindByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -103,6 +107,7 @@ func (s *UserService) UpdateUser(ctx context.Context, userID string, input Updat
 		return nil, err
 	}
 
+	previous := *user
 	updated := false
 
 	if input.Name != nil {
@@ -134,7 +139,13 @@ func (s *UserService) UpdateUser(ctx context.Context, userID string, input Updat
 		return nil, ErrInvalidUserInput
 	}
 
-	updatedUser, err := s.userRepository.Update(ctx, repository.UpdateUserParams{
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	updatedUser, err := s.userRepository.UpdateTx(ctx, tx, repository.UpdateUserParams{
 		ID:       user.ID,
 		Name:     user.Name,
 		Role:     user.Role,
@@ -145,6 +156,51 @@ func (s *UserService) UpdateUser(ctx context.Context, userID string, input Updat
 			return nil, ErrUserNotFound
 		}
 
+		return nil, err
+	}
+
+	if previous.Role != updatedUser.Role {
+		if err := s.auditService.LogTx(ctx, tx, AuditLogInput{
+			UserID:     stringPtr(actorID),
+			Action:     "user_role_updated",
+			EntityType: "user",
+			EntityID:   stringPtr(updatedUser.ID),
+			OldValue: map[string]any{
+				"role": previous.Role,
+			},
+			NewValue: map[string]any{
+				"role": updatedUser.Role,
+			},
+		}); err != nil {
+			return nil, err
+		}
+	}
+
+	if previous.IsActive != updatedUser.IsActive {
+		action := "user_deactivated"
+		if updatedUser.IsActive {
+			action = "user_activated"
+		}
+
+		if err := s.auditService.LogTx(ctx, tx, AuditLogInput{
+			UserID:     stringPtr(actorID),
+			Action:     action,
+			EntityType: "user",
+			EntityID:   stringPtr(updatedUser.ID),
+			OldValue: map[string]any{
+				"is_active": previous.IsActive,
+				"left_at":   previous.LeftAt,
+			},
+			NewValue: map[string]any{
+				"is_active": updatedUser.IsActive,
+				"left_at":   updatedUser.LeftAt,
+			},
+		}); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 
