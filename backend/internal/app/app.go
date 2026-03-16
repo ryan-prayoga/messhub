@@ -40,14 +40,17 @@ func New() (*App, error) {
 	}))
 
 	userRepository := repository.NewUserRepository(db)
+	walletRepository := repository.NewWalletRepository(db)
 	authService := services.NewAuthService(cfg, userRepository)
 	userService := services.NewUserService(userRepository)
+	walletService := services.NewWalletService(walletRepository)
 	authMiddleware := middleware.NewAuthMiddleware(cfg, userRepository)
 	healthHandler := handlers.NewHealthHandler()
 	authHandler := handlers.NewAuthHandler(authService)
 	userHandler := handlers.NewUserHandler(userService)
+	walletHandler := handlers.NewWalletHandler(walletService)
 
-	routes.Register(web, healthHandler, authHandler, userHandler, authMiddleware)
+	routes.Register(web, healthHandler, authHandler, userHandler, walletHandler, authMiddleware)
 
 	return &App{
 		config: cfg,

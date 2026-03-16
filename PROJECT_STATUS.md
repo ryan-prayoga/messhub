@@ -2,11 +2,11 @@
 
 ## Current Objective
 
-- Complete STEP 1 auth, session, and user management foundation on top of the existing VPS-ready runtime.
+- Complete STEP 2 wallet / Kantong Duafa foundation on top of the existing auth, session, and user management runtime.
 
 ## Current Phase
 
-- Phase 1 — Auth + Session + User Management Foundation
+- Phase 2 — Wallet / Kantong Duafa Foundation
 
 ## Summary Status
 
@@ -20,6 +20,9 @@
 - Observed: the PWA baseline now uses a static web manifest plus a native SvelteKit service worker instead of the Workbox plugin chain that emitted deprecated package warnings during `npm install` on Node 24.
 - Observed: backend now resolves authenticated users from the database on each protected request, exposes `GET /api/v1/users`, `POST /api/v1/users`, and `PATCH /api/v1/users/:id`, and keeps `/health` plus `/api/v1/health` available.
 - Observed: backend now has a follow-up migration for users foundation hardening and a seed admin flow that creates the initial admin only when it does not already exist.
+- Observed: backend wallet foundation is now live with `GET /api/v1/wallet`, `GET /api/v1/wallet/transactions`, and `POST /api/v1/wallet/transactions`, plus a follow-up migration that normalizes the wallet table to the STEP 2 transaction shape.
+- Observed: wallet reads are now available to all authenticated roles, while wallet transaction creation is limited to `admin` and `treasurer`.
+- Observed: frontend now includes a real `/wallet` page with balance cards and paginated transactions, a `/wallet/new` form for authorized roles, and a dashboard wallet summary card instead of a placeholder.
 - Observed: frontend is now prepared for PM2 runtime with `adapter-node`, `start` script, local `.env.example`, and `ecosystem.config.cjs`.
 - Observed: backend now prefers `PORT` and has its own `.env.example` for GAS/PM2 usage.
 - Observed: Docker has been reduced to local Postgres only.
@@ -39,16 +42,18 @@
 - STEP 1 auth/session foundation is now connected end-to-end: login stores a single access-token cookie, SvelteKit verifies it through `auth/me`, and protected routes now rely on verified server-side user state.
 - Member management foundation is now available: users schema is hardened, admin seed is non-duplicating, and backend/frontend now support the initial members list flow.
 - Dashboard now has a meaningful placeholder with auth status, current role, and member count summary when the user role is allowed to read the members API.
+- STEP 2 wallet foundation is now available end-to-end: database migration, backend summary/list/create flows, role-aware authorization, wallet pages, and dashboard balance summary are connected.
 
 ## In Progress
 
-- Domain modules beyond auth and members are still placeholder-only on the frontend.
+- Domain modules beyond auth, members, and wallet are still placeholder-only or read-only placeholders on the frontend.
 - The new GitHub Actions deploy workflow has been authored, but it has not been exercised against the live VPS from this workspace yet.
 - Admin create/edit UI for members is still backend-only; frontend currently ships the members list only.
 
 ## Blockers / Risks
 
 - Migration is manual; schema application is not yet automated.
+- Wallet rollout now depends on applying `backend/db/migrations/003_wallet_step2.sql` after the existing migrations in each environment.
 - Production deploy has not been validated with live GAS build or Nginx apply yet.
 - Risk: GitHub Actions deploy depends on repository secrets plus non-interactive `git pull` access already working on the VPS checkout.
 - Residual: `frontend/npm audit` still reports 3 low severity vulnerabilities from SvelteKit's current `cookie@0.6.0` dependency chain; no safe local override has been applied yet.
@@ -87,14 +92,23 @@
 - `docs/decisions.md`
 - `docs/handoffs/HANDOFF_TEMPLATE.md`
 - `backend/db/migrations/002_auth_foundation.sql`
+- `backend/db/migrations/003_wallet_step2.sql`
 - `backend/internal/handlers/user_handler.go`
+- `backend/internal/handlers/wallet_handler.go`
 - `backend/internal/response/json.go`
+- `backend/internal/repository/wallet_repository.go`
+- `backend/internal/services/wallet_service.go`
 - `backend/internal/services/user_service.go`
+- `frontend/src/lib/api/client.ts`
 - `frontend/src/lib/api/server.ts`
 - `frontend/src/lib/api/types.ts`
 - `frontend/src/routes/dashboard/+page.server.ts`
 - `frontend/src/routes/dashboard/+page.svelte`
 - `frontend/src/routes/members/+page.server.ts`
+- `frontend/src/routes/wallet/+page.server.ts`
+- `frontend/src/routes/wallet/+page.svelte`
+- `frontend/src/routes/wallet/new/+page.server.ts`
+- `frontend/src/routes/wallet/new/+page.svelte`
 
 ## Assumptions / Unknowns
 
@@ -108,9 +122,10 @@
 
 ## Next Recommended Steps
 
+- Apply `backend/db/migrations/002_auth_foundation.sql` and `backend/db/migrations/003_wallet_step2.sql`, then run the seed admin command if the environment is still new.
+- Validate the wallet flow against a real Postgres database by creating sample income and expense transactions through the new frontend form.
+- Continue to STEP 3 / wifi billing foundation, reusing the verified auth/session and the wallet-style summary/list/create pattern where it still fits.
 - Add the required `VPS_HOST`, `VPS_USER`, and `VPS_SSH_KEY` repository secrets in GitHub, then run the workflow with a test push to `main`.
-- Apply `backend/db/migrations/002_auth_foundation.sql` after the initial schema migration, then run the seed admin command.
 - Validate the updated runtime on the VPS with the new `PRIVATE_API_BASE_URL` frontend env.
-- Continue to STEP 2 with wallet transaction foundation, reusing the verified auth/session and user role checks.
 - Re-check the `cookie` advisory after the next SvelteKit release before applying any auth-related dependency override.
 - Record any stack or architecture changes in `docs/decisions.md`.

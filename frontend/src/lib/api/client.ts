@@ -1,5 +1,12 @@
 import { API_BASE_URL } from '$lib/config/env';
-import type { ApiEnvelope, MemberUser, SessionUser } from '$lib/api/types';
+import type {
+  ApiEnvelope,
+  MemberUser,
+  SessionUser,
+  WalletSummary,
+  WalletTransactionPage,
+  WalletTransactionType
+} from '$lib/api/types';
 
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -59,4 +66,45 @@ export const authApi = {
 
 export const usersApi = {
   list: (token: string) => apiRequest<MemberUser[]>('/users', { token })
+};
+
+export const walletApi = {
+  summary: (token: string) => apiRequest<WalletSummary>('/wallet', { token }),
+  listTransactions: (
+    token: string,
+    params: {
+      page?: number;
+      pageSize?: number;
+    } = {}
+  ) => {
+    const searchParams = new URLSearchParams();
+
+    if (params.page) {
+      searchParams.set('page', String(params.page));
+    }
+
+    if (params.pageSize) {
+      searchParams.set('page_size', String(params.pageSize));
+    }
+
+    const query = searchParams.toString();
+
+    return apiRequest<WalletTransactionPage>(`/wallet/transactions${query ? `?${query}` : ''}`, {
+      token
+    });
+  },
+  createTransaction: (
+    token: string,
+    payload: {
+      type: WalletTransactionType;
+      category: string;
+      amount: number;
+      description: string;
+    }
+  ) =>
+    apiRequest('/wallet/transactions', {
+      method: 'POST',
+      token,
+      body: payload
+    })
 };

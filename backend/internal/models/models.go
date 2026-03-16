@@ -31,17 +31,21 @@ type User struct {
 }
 
 type WalletTransaction struct {
-	ID              string    `json:"id"`
-	TransactionDate time.Time `json:"transaction_date"`
-	Type            string    `json:"type"`
-	Category        string    `json:"category"`
-	Description     string    `json:"description"`
-	Amount          int64     `json:"amount"`
-	ProofURL        *string   `json:"proof_url"`
-	CreatedBy       string    `json:"created_by"`
-	UpdatedBy       *string   `json:"updated_by"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ID            string    `json:"id"`
+	Type          string    `json:"type"`
+	Category      string    `json:"category"`
+	Amount        int64     `json:"amount"`
+	Description   string    `json:"description"`
+	CreatedBy     string    `json:"created_by"`
+	CreatedByName string    `json:"created_by_name,omitempty"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+type WalletSummary struct {
+	Balance      int64 `json:"balance"`
+	TotalIncome  int64 `json:"total_income"`
+	TotalExpense int64 `json:"total_expense"`
 }
 
 type WifiBill struct {

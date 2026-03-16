@@ -12,6 +12,7 @@ func Register(
 	healthHandler *handlers.HealthHandler,
 	authHandler *handlers.AuthHandler,
 	userHandler *handlers.UserHandler,
+	walletHandler *handlers.WalletHandler,
 	authMiddleware *middleware.AuthMiddleware,
 ) {
 	api := app.Group("/api/v1")
@@ -22,9 +23,12 @@ func Register(
 
 	authenticated := api.Group("", authMiddleware.RequireAuth())
 	authenticated.Get("/auth/me", authHandler.Me)
+	authenticated.Get("/wallet", walletHandler.GetSummary)
+	authenticated.Get("/wallet/transactions", walletHandler.ListTransactions)
 
 	userReaders := authenticated.Group("", middleware.RequireRoles("admin", "treasurer"))
 	userReaders.Get("/users", userHandler.List)
+	userReaders.Post("/wallet/transactions", walletHandler.CreateTransaction)
 
 	adminOnly := authenticated.Group("", middleware.RequireRoles("admin"))
 	adminOnly.Post("/users", userHandler.Create)

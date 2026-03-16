@@ -1,11 +1,19 @@
 import type { PageServerLoad } from './$types';
-import { ApiError, usersServerApi } from '$lib/api/server';
+import { ApiError, usersServerApi, walletServerApi } from '$lib/api/server';
 
 type MemberSummary = {
   total: number | null;
   active: number | null;
   inactive: number | null;
   state: 'ready' | 'restricted' | 'error';
+  message: string | null;
+};
+
+type WalletSummary = {
+  balance: number | null;
+  totalIncome: number | null;
+  totalExpense: number | null;
+  state: 'ready' | 'error';
   message: string | null;
 };
 
@@ -19,6 +27,29 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
     state: 'restricted',
     message: null
   };
+
+  const walletSummary: WalletSummary = {
+    balance: null,
+    totalIncome: null,
+    totalExpense: null,
+    state: 'error',
+    message: 'Wallet summary unavailable'
+  };
+
+  if (locals.token) {
+    try {
+      const response = await walletServerApi.summary(fetch, locals.token);
+
+      walletSummary.balance = response.data.balance;
+      walletSummary.totalIncome = response.data.total_income;
+      walletSummary.totalExpense = response.data.total_expense;
+      walletSummary.state = 'ready';
+      walletSummary.message = null;
+    } catch (error) {
+      walletSummary.state = 'error';
+      walletSummary.message = error instanceof Error ? error.message : 'Failed to load wallet summary';
+    }
+  }
 
   if (locals.token && locals.user && ['admin', 'treasurer'].includes(locals.user.role)) {
     try {
@@ -42,6 +73,7 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
 
   return {
     authStatus: locals.user ? 'authenticated' : 'unauthenticated',
-    memberSummary: summary
+    memberSummary: summary,
+    walletSummary
   };
 };

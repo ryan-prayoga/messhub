@@ -22,12 +22,24 @@
 
     return 'badge-muted';
   }
+
+  function formatCurrency(value: number | null) {
+    if (value === null) {
+      return '-';
+    }
+
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      maximumFractionDigits: 0
+    }).format(value);
+  }
 </script>
 
 <div class="space-y-4">
   <PageCard
     title={`Halo, ${data.user?.name ?? 'Member'}`}
-    description="STEP 1 aktif: auth, session, endpoint me, role guard, dan fondasi user management sudah tersambung."
+    description="Dashboard sekarang menampilkan fondasi auth/members plus ringkasan Wallet untuk STEP 2."
   >
     <div class="grid gap-3 md:grid-cols-3">
       <div class="stat-card">
@@ -77,12 +89,19 @@
         </p>
       </a>
 
-      <a href="/wallet" class="stat-card bg-white transition hover:border-slate-300 hover:bg-slate-50">
-        <p class="helper-label">Placeholder</p>
+      <a href="/wallet" class="stat-card bg-white transition hover:border-sky-300 hover:bg-sky-50/50">
+        <p class="helper-label">Wallet</p>
         <p class="mt-2 text-base font-semibold text-ink">Wallet</p>
-        <p class="mt-2 text-sm leading-6 text-slate-500">
-          Fondasi auth sudah siap untuk modul kas dan transaksi.
-        </p>
+        {#if data.walletSummary.state === 'ready'}
+          <p class="mt-2 text-2xl font-semibold tracking-[-0.04em] text-ink">
+            {formatCurrency(data.walletSummary.balance)}
+          </p>
+          <p class="mt-2 text-sm leading-6 text-slate-500">
+            Income {formatCurrency(data.walletSummary.totalIncome)} / Expense {formatCurrency(data.walletSummary.totalExpense)}
+          </p>
+        {:else}
+          <p class="mt-2 text-sm leading-6 text-slate-500">{data.walletSummary.message}</p>
+        {/if}
       </a>
 
       <a href="/wifi" class="stat-card bg-white transition hover:border-slate-300 hover:bg-slate-50">
@@ -97,20 +116,20 @@
 
   <PageCard
     title="Foundation Scope"
-    description="Hal yang sudah aktif di STEP 1 tanpa membuka scope wallet, wifi, contribution, atau feed lebih jauh."
+    description="Fondasi yang sudah aktif setelah STEP 2 wallet dasar selesai ditambahkan."
   >
     <div class="grid gap-3 md:grid-cols-2">
       <div class="helper-box-brand">
         <p class="helper-label text-sky-700">Backend</p>
         <p class="mt-2 text-sm leading-6 text-slate-700">
-          Login, me, auth middleware, role middleware, users schema, seed admin, dan member API dasar.
+          Login, me, auth middleware, role middleware, member API dasar, dan wallet summary plus transaction API.
         </p>
       </div>
 
       <div class="helper-box">
         <p class="helper-label">Frontend</p>
         <p class="mt-2 text-sm leading-6 text-slate-600">
-          Login end-to-end, auth state sederhana, route protection, dashboard awal, dan members list mobile-first.
+          Login end-to-end, route protection, dashboard summary, wallet list/form, dan members list mobile-first.
         </p>
       </div>
     </div>

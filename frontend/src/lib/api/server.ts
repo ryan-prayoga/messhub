@@ -1,5 +1,12 @@
 import { env } from '$env/dynamic/private';
-import type { ApiEnvelope, MemberUser, SessionUser } from '$lib/api/types';
+import type {
+  ApiEnvelope,
+  MemberUser,
+  SessionUser,
+  WalletSummary,
+  WalletTransactionPage,
+  WalletTransactionType
+} from '$lib/api/types';
 
 const DEFAULT_PRIVATE_API_BASE_URL = 'http://127.0.0.1:4100/api/v1';
 
@@ -76,5 +83,55 @@ export const usersServerApi = {
   list: (fetcher: typeof fetch, token: string) =>
     apiServerRequest<MemberUser[]>(fetcher, '/users', {
       token
+    })
+};
+
+export const walletServerApi = {
+  summary: (fetcher: typeof fetch, token: string) =>
+    apiServerRequest<WalletSummary>(fetcher, '/wallet', {
+      token
+    }),
+  listTransactions: (
+    fetcher: typeof fetch,
+    token: string,
+    params: {
+      page?: number;
+      pageSize?: number;
+    } = {}
+  ) => {
+    const searchParams = new URLSearchParams();
+
+    if (params.page) {
+      searchParams.set('page', String(params.page));
+    }
+
+    if (params.pageSize) {
+      searchParams.set('page_size', String(params.pageSize));
+    }
+
+    const query = searchParams.toString();
+
+    return apiServerRequest<WalletTransactionPage>(
+      fetcher,
+      `/wallet/transactions${query ? `?${query}` : ''}`,
+      {
+        token
+      }
+    );
+  },
+  createTransaction: (
+    fetcher: typeof fetch,
+    token: string,
+    payload: {
+      type: WalletTransactionType;
+      category: string;
+      amount: number;
+      description: string;
+    }
+  ) =>
+    apiServerRequest(fetcher, '/wallet/transactions', {
+      method: 'POST',
+      token,
+      body: payload
     })
 };

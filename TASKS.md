@@ -1,13 +1,6 @@
 # TASKS.md
 
 ## Todo
-- ID: T-004
-  Title: Implement wallet transactions module
-  Priority: P1
-  Owner/Agent: Unassigned
-  Dependencies: T-002
-  Notes: Must keep auditable separation from wifi and non-cash shared expenses.
-
 - ID: T-005
   Title: Implement monthly wifi billing and proof verification
   Priority: P1
@@ -105,6 +98,13 @@
   Owner/Agent: Codex
   Dependencies: T-002
   Notes: Users schema is now hardened with `joined_at` support, admin seed remains non-duplicating, backend users API is live, and the frontend members list is connected with role-aware states.
+
+- ID: T-004
+  Title: Implement wallet transactions module
+  Priority: P1
+  Owner/Agent: Codex
+  Dependencies: T-002
+  Notes: Added wallet summary and paginated transaction APIs, create-transaction role guard for admin/treasurer, a wallet migration follow-up, `/wallet` and `/wallet/new` frontend flows, and dashboard wallet summary integration while preserving the separation from wifi and non-cash shared expenses.
 
 - ID: CTX-001
   Title: Normalize shared project context
