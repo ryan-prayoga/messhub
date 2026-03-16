@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
   import { enhance } from '$app/forms';
   import { navigating } from '$app/stores';
   import type { SubmitFunction } from '@sveltejs/kit';
+  import { toast } from 'svelte-sonner';
   import ActionSheet from '$lib/components/ActionSheet.svelte';
   import AppIcon from '$lib/components/AppIcon.svelte';
   import FeedbackBanner from '$lib/components/FeedbackBanner.svelte';
@@ -27,6 +29,7 @@
   let createSheetOpen = false;
   let editTargetId: string | null = null;
   let passwordTargetId: string | null = null;
+  let lastToastKey = '';
 
   function enhanceWithAction(actionName: string): SubmitFunction {
     return () => {
@@ -156,6 +159,14 @@
     return values?.[field] ?? '';
   }
 
+  function isSheetAction(action: string | undefined) {
+    return action === 'createMember' || action === 'updateMember' || action === 'resetPassword';
+  }
+
+  function formRequestId() {
+    return form && 'requestId' in form && typeof form.requestId === 'string' ? form.requestId : null;
+  }
+
   function openCreateSheet() {
     createSheetOpen = true;
     editTargetId = null;
@@ -183,6 +194,11 @@
   $: filteredMembers = data.members.filter(matchesFilters);
   $: selectedMember = data.members.find((member) => member.id === editTargetId) ?? null;
   $: passwordTarget = data.members.find((member) => member.id === passwordTargetId) ?? null;
+  $: createError = form?.action === 'createMember' ? form.message ?? null : null;
+  $: updateError = form?.action === 'updateMember' ? form.message ?? null : null;
+  $: passwordError = form?.action === 'resetPassword' ? form.message ?? null : null;
+  $: pageError = form?.message && !isSheetAction(form.action) ? form.message : null;
+  $: pageSuccess = form?.success && !isSheetAction(form.action) ? form.success : null;
   $: if (form?.action === 'createMember' && form?.message) {
     createSheetOpen = true;
   }
@@ -196,6 +212,22 @@
   }
   $: if (form?.success) {
     closeSheets();
+  }
+  $: if (browser && form?.message) {
+    const key = `error:${form.action ?? 'unknown'}:${formRequestId() ?? form.message}`;
+
+    if (key !== lastToastKey) {
+      toast.error(form.message);
+      lastToastKey = key;
+    }
+  }
+  $: if (browser && form?.success) {
+    const key = `success:${form.action ?? 'unknown'}:${form.success}`;
+
+    if (key !== lastToastKey) {
+      toast.success(form.success);
+      lastToastKey = key;
+    }
   }
 </script>
 
@@ -230,15 +262,15 @@
     {:else if data.loadError}
       <StatePanel tone="error" title="Gagal memuat anggota" message={data.loadError} />
     {:else}
-      {#if form?.message}
+      {#if pageError}
         <StatePanel
           tone="error"
           title="Perubahan belum tersimpan"
-          message={form.message}
-          requestId={form && 'requestId' in form && typeof form.requestId === 'string' ? form.requestId : null}
+          message={pageError}
+          requestId={formRequestId()}
         />
-      {:else if form?.success}
-        <FeedbackBanner tone="success" title="Berhasil" message={form.success} />
+      {:else if pageSuccess}
+        <FeedbackBanner tone="success" title="Berhasil" message={pageSuccess} />
       {/if}
 
       <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -454,6 +486,15 @@
       on:close={closeSheets}
     >
       <form method="POST" action="?/createMember" class="space-y-4" use:enhance={enhanceWithAction('createMember')}>
+        {#if createError}
+          <div class="space-y-2">
+            <FeedbackBanner tone="error" title="Anggota belum tersimpan" message={createError} />
+            {#if formRequestId()}
+              <p class="text-xs text-dusty">Request ID: {formRequestId()}</p>
+            {/if}
+          </div>
+        {/if}
+
         <div class="grid gap-4 sm:grid-cols-2">
           <label class="sm:col-span-2">
             <span class="field-label">Nama lengkap</span>
@@ -541,6 +582,15 @@
         <form method="POST" action="?/updateMember" class="space-y-4" use:enhance={enhanceWithAction(`update-${selectedMember.id}`)}>
           <input type="hidden" name="member_id" value={selectedMember.id} />
 
+          {#if updateError}
+            <div class="space-y-2">
+              <FeedbackBanner tone="error" title="Perubahan belum tersimpan" message={updateError} />
+              {#if formRequestId()}
+                <p class="text-xs text-dusty">Request ID: {formRequestId()}</p>
+              {/if}
+            </div>
+          {/if}
+
           <div class="grid gap-4 sm:grid-cols-2">
             <label class="sm:col-span-2">
               <span class="field-label">Nama lengkap</span>
@@ -618,6 +668,15 @@
       >
         <form method="POST" action="?/resetPassword" class="space-y-4" use:enhance={enhanceWithAction(`password-${passwordTarget.id}`)}>
           <input type="hidden" name="member_id" value={passwordTarget.id} />
+
+          {#if passwordError}
+            <div class="space-y-2">
+              <FeedbackBanner tone="error" title="Password belum direset" message={passwordError} />
+              {#if formRequestId()}
+                <p class="text-xs text-dusty">Request ID: {formRequestId()}</p>
+              {/if}
+            </div>
+          {/if}
 
           <div class="helper-box-brand">
             <p class="helper-label">Perhatian</p>

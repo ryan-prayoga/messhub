@@ -27,7 +27,7 @@
   Priority: P1
   Owner/Agent: Codex
   Dependencies: OPS-006, T-003, T-012
-  Notes: Fixed the false missing-session error on protected SvelteKit actions by resolving auth server-side, tightened shell/sidebar bounds plus route-active behavior, added richer empty-state/sheet UI, and completed admin member create/edit/role/status/reset-password flows with audit logging and safety guards.
+  Notes: Fixed the false missing-session error on protected SvelteKit actions by resolving auth server-side, tightened shell/sidebar bounds plus route-active behavior, added richer empty-state/sheet UI, completed admin member create/edit/role/status/reset-password flows with audit logging and safety guards, and hardened member-create feedback so duplicate username/email conflicts surface cleanly in centered sheets plus global toasts instead of generic hidden 500 errors.
 
 - ID: OPS-006
   Title: Implement navigation polish, warm-theme UI refresh, and username login

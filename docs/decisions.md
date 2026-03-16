@@ -167,3 +167,11 @@
 - Rationale: This preserves the current information architecture, keeps member CRUD aligned with the existing backend model and audit log system, and improves usability on mobile/desktop without a broader navigation rewrite.
 - Impact: Future member-management work should extend the existing users resource and `/members` admin UX first, and destructive account removal should remain out of scope unless a new decision explicitly introduces hard-delete semantics.
 - Follow-up: Validate the new member sheets and safety guards against real admin workflows after deploy.
+
+## Decision 22
+- Date: 2026-03-16
+- Context: Admin member mutations now happen inside reusable modal sheets, and page-level feedback alone can be hidden behind the active sheet or feel disconnected from the action that just failed.
+- Decision: Use a shared `svelte-sonner` toaster at the app layout level for mutation feedback that must float above modals, while keeping the most relevant validation/API error banner inline inside the active sheet and centering the sheet overlay instead of docking it to the bottom.
+- Rationale: This keeps mutation feedback visible without forcing admins to close the sheet first, gives the app one reusable toast surface for future protected actions, and fixes the current member-create UX without introducing a separate modal system.
+- Impact: Future modal-based admin or settings flows should prefer inline sheet feedback plus the shared toaster for transient success/error notices, rather than relying only on page-level banners hidden behind overlays.
+- Follow-up: Reuse the same toast pattern for other modal-driven mutations if more admin tools are added.

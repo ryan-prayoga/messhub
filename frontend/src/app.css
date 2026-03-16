@@ -545,7 +545,7 @@
   }
 
   .modal-backdrop {
-    @apply fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 p-3 sm:p-6;
+    @apply fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/45 p-3 sm:p-6;
     backdrop-filter: blur(10px);
   }
 
@@ -570,6 +570,10 @@
 
   .modal-sheet-body {
     @apply overflow-y-auto px-4 pb-5 pt-4 sm:px-6 sm:pb-6;
+  }
+
+  :global([data-sonner-toaster]) {
+    z-index: 80;
   }
 
   .stat-card {

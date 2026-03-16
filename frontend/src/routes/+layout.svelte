@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { Toaster } from 'svelte-sonner';
   import '../app.css';
   import { page } from '$app/stores';
   import AppShell from '$lib/components/AppShell.svelte';
@@ -21,6 +22,8 @@
   <title>{buildPageTitle(currentMeta.title)}</title>
   <meta name="description" content={currentMeta.description} />
 </svelte:head>
+
+<Toaster position="top-right" richColors closeButton expand offset="20px" mobileOffset="16px" />
 
 {#if isPublicRoute}
   <slot />

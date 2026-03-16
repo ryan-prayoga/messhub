@@ -736,6 +736,19 @@ func uniqueViolationField(err error) string {
 		return "email"
 	case "idx_users_username_lower":
 		return "username"
+	}
+
+	detail := strings.ToLower(strings.Join([]string{
+		pgErr.ConstraintName,
+		pgErr.Detail,
+		pgErr.Message,
+	}, " "))
+
+	switch {
+	case strings.Contains(detail, "username"):
+		return "username"
+	case strings.Contains(detail, "email"):
+		return "email"
 	default:
 		return ""
 	}
