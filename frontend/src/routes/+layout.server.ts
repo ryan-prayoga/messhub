@@ -4,6 +4,7 @@ import { ApiError, authServerApi, notificationsServerApi } from '$lib/api/server
 import type { NotificationList } from '$lib/api/types';
 import { clearAuthCookies } from '$lib/auth/session';
 import { requireAuth } from '$lib/auth/guard';
+import { toApiFailureState } from '$lib/server/api-errors';
 
 export const load: LayoutServerLoad = async ({ cookies, fetch, locals, url }) => {
   let user = null;
@@ -21,8 +22,9 @@ export const load: LayoutServerLoad = async ({ cookies, fetch, locals, url }) =>
         clearAuthCookies(cookies);
         locals.token = null;
       } else {
+        const failure = toApiFailureState(error, 'Failed to verify session');
         throw svelteError(503, {
-          message: error instanceof Error ? error.message : 'Failed to verify session'
+          message: failure.message
         });
       }
     }
@@ -36,8 +38,12 @@ export const load: LayoutServerLoad = async ({ cookies, fetch, locals, url }) =>
       const response = await notificationsServerApi.list(fetch, locals.token, { limit: 8 });
       notificationSummary = response.data;
     } catch (error) {
-      if (!(error instanceof ApiError && (error.status === 401 || error.status === 403))) {
-        console.error('notification summary failed', error);
+      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+        clearAuthCookies(cookies);
+        locals.token = null;
+      } else {
+        const failure = toApiFailureState(error, 'Failed to load notification summary');
+        console.error('notification summary failed', failure);
       }
     }
   }

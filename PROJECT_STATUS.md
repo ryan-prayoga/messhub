@@ -2,17 +2,22 @@
 
 ## Current Objective
 
-- Complete STEP 6 system settings, profile management, and admin panel improvements on top of the existing auth, member, wallet, wifi, and smart mess runtime.
+- Complete STEP 7 production hardening and reliability improvements on top of the existing auth, member, wallet, wifi, smart mess, profile, settings, and admin runtime.
 
 ## Current Phase
 
-- Phase 6 — System Settings, Profile, and Admin Panel
+- Phase 7 — Production Hardening and Reliability
 
 ## Summary Status
 
+- Observed: backend now applies request-scoped `X-Request-ID`, structured JSON request logging, JSON panic recovery, API security headers, and route-level rate limiting for login plus high-write feed endpoints.
+- Observed: backend error responses are now standardized to `{ error, message, details? }`, while request validation now covers login, users, wallet creation, wifi bill/proof/review payloads, activity/comment/reaction writes, profile updates, password changes, settings updates, and notifications read payloads.
+- Observed: backend role enforcement is now hardened through the shared role middleware on sensitive routes, `/api/v1/system/status` is admin-only, and `/health` now returns readiness-oriented app/database/version/time data with `503` when the database is unreachable.
+- Observed: frontend API helpers now parse the hardened backend error payload, preserve backend request IDs for debugging, distinguish network failures, and redirect to `/login` when authenticated route loads/actions receive `401`.
+- Observed: frontend now has a shared `StatePanel` for loading/error/empty/forbidden UX across dashboard, members, wallet, wifi, feed, profile, settings, and wallet-create flows, plus a global `+error.svelte` boundary instead of blank/default crash output.
 - Observed: backend now has `backend/db/migrations/006_settings_profile_step6.sql`, extending `users` with `phone` and `avatar_url` plus a singleton `mess_settings` table with wifi and bank defaults.
-- Observed: backend now exposes authenticated `GET /api/v1/profile`, `PATCH /api/v1/profile`, `PATCH /api/v1/profile/password`, `GET /api/v1/settings`, and `GET /api/v1/system/status`, plus admin-only `PATCH /api/v1/settings`.
-- Observed: profile, password-change, settings, role-change, and activation flows now record the required audit actions, and API errors now use a shared `{ message, data, error.code }` envelope from the response helper.
+- Observed: backend now exposes authenticated `GET /api/v1/profile`, `PATCH /api/v1/profile`, `PATCH /api/v1/profile/password`, and `GET /api/v1/settings`, plus admin-only `GET /api/v1/system/status` and `PATCH /api/v1/settings`.
+- Observed: profile, password-change, settings, role-change, and activation flows now record the required audit actions, and API errors now use a shared `{ error, message, details? }` contract from the response helper.
 - Observed: frontend `/profile` is now a live account page for editing name, phone, avatar URL, and password, while `/settings` is now an admin-only configuration screen with live system status.
 - Observed: frontend `/members` is no longer read-only for admins; it now supports role updates and activate/deactivate controls, while treasurers remain read-only viewers.
 - Observed: wifi bill creation defaults now read from live mess settings instead of duplicating the initial `Rp20.000` / day-10 defaults only in the wifi page form.
@@ -21,7 +26,7 @@
 - Observed: wifi bill creation and wifi payment verification now generate in-app notifications, while new activities and new comments also fan out notifications to active members.
 - Observed: audit logging now records `food_claim`, `rice_response`, and `notification_read` in addition to the earlier wifi, wallet, and user-audit actions.
 - Observed: frontend now includes an interactive `/feed` page, `/contributions` leaderboard page, `/notifications` inbox, dashboard leaderboard section, and a notification badge in the shared app shell header.
-- Observed: monorepo baseline now exists with `frontend/`, `backend/`, root env/compose/readme, and initial database migration.
+- Observed: monorepo baseline now exists with `frontend/`, `backend/`, shared docs, and the database migration set tracked under `backend/db/migrations/`.
 - Observed: GitHub Actions deployment automation is now defined for pushes to `main`, using SSH into the VPS, `git pull --ff-only origin main`, GAS CLI rebuilds for backend/frontend, and a backend health check.
 - Observed: frontend now verifies the access token server-side through `GET /api/v1/auth/me` instead of trusting copied identity cookies.
 - Observed: frontend includes a protected `/dashboard` route, dashboard summary cards, and a `/members` list screen with empty/error/access-denied states.
@@ -38,14 +43,14 @@
 - Observed: frontend now includes a role-aware `/wifi` page for monthly bill creation, payment proof submission, verification, rejection, status history, and a dashboard wifi summary card.
 - Observed: frontend is now prepared for PM2 runtime with `adapter-node`, `start` script, local `.env.example`, and `ecosystem.config.cjs`.
 - Observed: backend now prefers `PORT` and has its own `.env.example` for GAS/PM2 usage.
-- Observed: Docker has been reduced to local Postgres only.
+- Observed: service-scoped `.env.example` files under `frontend/` and `backend/` are the active checked-in env references for local and VPS runtime.
 
 ## Done
 
 - Masterplan exists in `messhub-masterplan.md`.
 - Shared context baseline created: `AGENTS.md`, `PROJECT_STATUS.md`, `TASKS.md`, `docs/decisions.md`, `docs/handoffs/HANDOFF_TEMPLATE.md`.
 - Agent runtime ignore baseline created in `.gitignore`.
-- Monorepo root created with `.env.example`, `docker-compose.yml`, and `README.md`.
+- Monorepo root created with `README.md`, shared project context files, and service-scoped env examples under `frontend/` and `backend/`.
 - Frontend scaffold created with SvelteKit, Tailwind config, native PWA baseline, auth flow baseline, and placeholder routes.
 - Frontend baseline UI polished with shared global styles, refined login screen, and a cleaner mobile-first AppShell.
 - Frontend install/runtime path is now stable on Node 24, with deprecated Workbox install warnings removed and `.svelte-kit` sync automated for fresh installs.
@@ -59,6 +64,7 @@
 - STEP 3 wifi billing foundation is now available end-to-end: migration, backend billing/proof/review flows, dashboard wifi summary, frontend `/wifi` screen, and reusable audit logging are connected.
 - STEP 5 smart mess features are now available end-to-end: unified activity feed, comments/reactions, contribution leaderboard, food claim, rice response, notifications UI, and notification triggers for activity/comment/wifi events.
 - STEP 6 system settings, profile management, and admin controls are now available end-to-end: backend settings/profile/system status APIs, standardized API errors, frontend `/profile` and `/settings`, and admin member role/activation controls are connected.
+- STEP 7 production hardening and reliability is now available end-to-end: backend request validation, error standardization, request IDs, structured logs, rate limiting, security headers, readiness-aware health checks, admin-only system status, and frontend unauthorized/forbidden/error/loading containment are connected.
 
 ## In Progress
 
@@ -73,6 +79,7 @@
 - Wifi rollout now depends on applying `backend/db/migrations/004_wifi_audit_step3.sql` after the existing migrations in each environment.
 - Smart mess rollout now depends on applying `backend/db/migrations/005_smart_mess_step5.sql` after the earlier migrations in each environment.
 - Step 6 rollout now depends on applying `backend/db/migrations/006_settings_profile_step6.sql` after the earlier migrations in each environment.
+- Production rollout should set `CORS_ORIGIN` to the real frontend origin list and replace the default `JWT_SECRET`, `APP_VERSION`, and optional `CONTENT_SECURITY_POLICY` values before exposing the hardened runtime publicly.
 - Production deploy has not been validated with live GAS build or Nginx apply yet.
 - Risk: GitHub Actions deploy depends on repository secrets plus non-interactive `git pull` access already working on the VPS checkout.
 - Residual: `frontend/npm audit` still reports 3 low severity vulnerabilities from SvelteKit's current `cookie@0.6.0` dependency chain; no safe local override has been applied yet.
@@ -84,7 +91,6 @@
 
 - `.gitignore`
 - `.github/workflows/deploy.yml`
-- `.env.example`
 - `frontend/.env.example`
 - `frontend/ecosystem.config.cjs`
 - `frontend/src/app.css`
@@ -102,7 +108,7 @@
 - `frontend/package-lock.json`
 - `frontend/tailwind.config.ts`
 - `backend/.env.example`
-- `docker-compose.yml`
+- `backend/cmd/api/main.go`
 - `README.md`
 - `AGENTS.md`
 - `PROJECT_STATUS.md`
@@ -116,7 +122,9 @@
 - `backend/db/migrations/004_wifi_audit_step3.sql`
 - `backend/db/migrations/005_smart_mess_step5.sql`
 - `backend/db/migrations/006_settings_profile_step6.sql`
+- `backend/internal/app/app.go`
 - `backend/internal/handlers/profile_handler.go`
+- `backend/internal/handlers/health_handler.go`
 - `backend/internal/handlers/settings_handler.go`
 - `backend/internal/handlers/system_handler.go`
 - `backend/internal/handlers/user_handler.go`
@@ -124,6 +132,13 @@
 - `backend/internal/handlers/wifi_handler.go`
 - `backend/internal/handlers/activity_handler.go`
 - `backend/internal/handlers/notification_handler.go`
+- `backend/internal/handlers/validation_helpers.go`
+- `backend/internal/middleware/rate_limit.go`
+- `backend/internal/middleware/recovery.go`
+- `backend/internal/middleware/request_context.go`
+- `backend/internal/middleware/request_logger.go`
+- `backend/internal/middleware/security.go`
+- `backend/internal/observability/logger.go`
 - `backend/internal/response/json.go`
 - `backend/internal/repository/audit_repository.go`
 - `backend/internal/repository/activity_repository.go`
@@ -139,9 +154,14 @@
 - `backend/internal/services/system_service.go`
 - `backend/internal/services/user_service.go`
 - `backend/internal/services/wifi_service.go`
+- `backend/internal/validation/validation.go`
 - `frontend/src/lib/api/client.ts`
+- `frontend/src/lib/api/http.ts`
 - `frontend/src/lib/api/server.ts`
 - `frontend/src/lib/api/types.ts`
+- `frontend/src/lib/components/StatePanel.svelte`
+- `frontend/src/lib/server/api-errors.ts`
+- `frontend/src/routes/+error.svelte`
 - `frontend/src/routes/dashboard/+page.server.ts`
 - `frontend/src/routes/dashboard/+page.svelte`
 - `frontend/src/routes/feed/+page.server.ts`
@@ -161,6 +181,7 @@
 - `frontend/src/routes/wallet/new/+page.svelte`
 - `frontend/src/routes/wifi/+page.server.ts`
 - `frontend/src/routes/wifi/+page.svelte`
+- `frontend/src/hooks.server.ts`
 
 ## Assumptions / Unknowns
 
@@ -175,9 +196,9 @@
 ## Next Recommended Steps
 
 - Apply migrations through `backend/db/migrations/006_settings_profile_step6.sql` in each environment, then validate the new profile/settings schema before deploy.
-- Validate live Step 6 flows against Postgres: update profile, change password, edit settings, change member role, activate/deactivate member, and confirm `GET /api/v1/system/status`.
+- Validate live Step 7 flows against Postgres and the VPS proxy: login throttling, `GET /health`, admin `GET /api/v1/system/status`, wallet create, wifi create/submit/verify/reject, feed create/comment/reaction, profile/password update, and settings update.
 - Re-check wifi bill creation defaults after settings changes so the configured wifi price and deadline day are reflected in the `/wifi` admin form.
-- Return to the still-pending shared expenses and proposals modules after Step 6 rollout is confirmed.
+- Return to the still-pending shared expenses and proposals modules after Step 7 rollout is confirmed.
 - Add the required `VPS_HOST`, `VPS_USER`, and `VPS_SSH_KEY` repository secrets in GitHub, then run the workflow with a test push to `main`.
 - Validate the updated runtime on the VPS with the new `PRIVATE_API_BASE_URL` frontend env.
 - Re-check the `cookie` advisory after the next SvelteKit release before applying any auth-related dependency override.

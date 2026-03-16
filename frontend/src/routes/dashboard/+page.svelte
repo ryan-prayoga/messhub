@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { navigating } from '$app/stores';
   import PageCard from '$lib/components/PageCard.svelte';
+  import StatePanel from '$lib/components/StatePanel.svelte';
   import type { PageData } from './$types';
   import type { UserRole } from '$lib/api/types';
 
@@ -89,6 +91,14 @@
 </script>
 
 <div class="space-y-4">
+  {#if $navigating?.to?.url.pathname === '/dashboard'}
+    <StatePanel
+      tone="loading"
+      title="Loading"
+      message="Memuat ulang ringkasan dashboard dan health data terbaru..."
+    />
+  {/if}
+
   <PageCard
     title={`Halo, ${data.user?.name ?? 'Member'}`}
     description="Ringkasan mobile-first untuk wallet, wifi, kontribusi, dan smart mess notifications."
@@ -206,12 +216,9 @@
         {/each}
       </div>
     {:else if data.leaderboardSummary.state === 'empty'}
-      <div class="empty-state">{data.leaderboardSummary.message}</div>
+      <StatePanel tone="empty" title="Empty" message={data.leaderboardSummary.message ?? 'Belum ada kontribusi bulan ini'} />
     {:else}
-      <div class="helper-box-brand">
-        <p class="helper-label text-sky-700">Error</p>
-        <p class="mt-2 text-sm leading-6 text-slate-700">{data.leaderboardSummary.message}</p>
-      </div>
+      <StatePanel tone="error" title="Error" message={data.leaderboardSummary.message ?? 'Leaderboard unavailable'} />
     {/if}
   </PageCard>
 

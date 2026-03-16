@@ -2,8 +2,6 @@ package response
 
 import (
 	"errors"
-	"fmt"
-	"strings"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -21,66 +19,77 @@ func Error(c *fiber.Ctx, status int, message string, code string) error {
 
 func ErrorWithDetails(c *fiber.Ctx, status int, message string, code string, details any) error {
 	payload := fiber.Map{
+		"error":   normalizeErrorCode(status, code, details != nil),
 		"message": message,
-		"data":    nil,
-		"error": fiber.Map{
-			"code": code,
-		},
 	}
 
 	if details != nil {
-		payload["error"].(fiber.Map)["details"] = details
+		payload["details"] = details
 	}
 
 	return c.Status(status).JSON(payload)
 }
 
+func InvalidRequest(c *fiber.Ctx, message string) error {
+	return Error(c, fiber.StatusBadRequest, message, "invalid_request")
+}
+
+func ValidationFailed(c *fiber.Ctx, message string, details any) error {
+	return ErrorWithDetails(c, fiber.StatusBadRequest, message, "validation_failed", details)
+}
+
+func Unauthorized(c *fiber.Ctx, message string) error {
+	return Error(c, fiber.StatusUnauthorized, message, "unauthorized")
+}
+
+func Forbidden(c *fiber.Ctx, message string) error {
+	return Error(c, fiber.StatusForbidden, message, "forbidden")
+}
+
+func NotFound(c *fiber.Ctx, message string) error {
+	return Error(c, fiber.StatusNotFound, message, "not_found")
+}
+
+func Conflict(c *fiber.Ctx, message string) error {
+	return Error(c, fiber.StatusConflict, message, "conflict")
+}
+
+func RateLimited(c *fiber.Ctx, message string, details any) error {
+	return ErrorWithDetails(c, fiber.StatusTooManyRequests, message, "rate_limited", details)
+}
+
+func InternalServerError(c *fiber.Ctx, message string) error {
+	return Error(c, fiber.StatusInternalServerError, message, "internal_server_error")
+}
+
 func FiberErrorHandler(c *fiber.Ctx, err error) error {
 	var fiberErr *fiber.Error
 	if errors.As(err, &fiberErr) {
-		return Error(
-			c,
-			fiberErr.Code,
-			fiberErr.Message,
-			statusCodeToErrorCode(fiberErr.Code, fiberErr.Message),
-		)
+		return Error(c, fiberErr.Code, fiberErr.Message, "")
 	}
 
-	return Error(c, fiber.StatusInternalServerError, "internal server error", "internal_server_error")
+	return InternalServerError(c, "internal server error")
 }
 
-func statusCodeToErrorCode(status int, message string) string {
-	if status == fiber.StatusNotFound {
-		return "not_found"
-	}
+func normalizeErrorCode(status int, code string, hasDetails bool) string {
+	switch status {
+	case fiber.StatusBadRequest:
+		if code == "validation_failed" || hasDetails {
+			return "validation_failed"
+		}
 
-	if status == fiber.StatusMethodNotAllowed {
-		return "method_not_allowed"
-	}
-
-	if status == fiber.StatusUnauthorized {
+		return "invalid_request"
+	case fiber.StatusUnauthorized:
 		return "unauthorized"
-	}
-
-	if status == fiber.StatusForbidden {
+	case fiber.StatusForbidden:
 		return "forbidden"
+	case fiber.StatusNotFound:
+		return "not_found"
+	case fiber.StatusConflict:
+		return "conflict"
+	case fiber.StatusTooManyRequests:
+		return "rate_limited"
+	default:
+		return "internal_server_error"
 	}
-
-	if status == fiber.StatusBadRequest {
-		return "bad_request"
-	}
-
-	normalized := strings.ToLower(strings.TrimSpace(message))
-	normalized = strings.ReplaceAll(normalized, "-", " ")
-	normalized = strings.ReplaceAll(normalized, ".", "")
-	code := strings.Join(strings.Fields(normalized), "_")
-	if code == "" {
-		return fmt.Sprintf("http_%d", status)
-	}
-
-	if len(code) > 64 {
-		return fmt.Sprintf("http_%d", status)
-	}
-
-	return code
 }

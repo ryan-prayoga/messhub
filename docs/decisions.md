@@ -119,3 +119,11 @@
 - Rationale: This keeps admin-editable settings in one canonical place, removes drift between settings and wifi bill creation defaults, and gives SvelteKit server actions one consistent error contract across modules.
 - Impact: Future configurable mess-wide values should extend `mess_settings` first, and new backend handlers should reuse the shared response helper instead of returning ad hoc error JSON.
 - Follow-up: If media upload/storage is added later, keep the current avatar string contract stable or add a backward-compatible migration path.
+
+## Decision 16
+- Date: 2026-03-16
+- Context: STEP 7 needs production-oriented reliability without rewriting the current SvelteKit + Fiber architecture or adding heavy observability/security infrastructure.
+- Decision: Standardize backend error payloads to `{ error, message, details? }`, attach `X-Request-ID` to every backend request/response, log API traffic as structured JSON, apply targeted Fiber rate limits on login/feed write routes, keep `/health` readiness-oriented and public, and restrict `/api/v1/system/status` to admin access.
+- Rationale: This keeps debugging and permission checks centered in the existing app runtime, improves misuse resistance, and gives frontend/server actions one stable contract for unauthorized/forbidden/network handling without introducing a larger platform migration.
+- Impact: Future backend handlers should validate request payloads before service calls, reuse the shared error helper, preserve request IDs in logs and client-visible failures, and treat backend route guards as the source of truth for access control.
+- Follow-up: Revisit fuller observability, alerting, and reverse-proxy header policy once live VPS validation confirms the current hardening defaults do not conflict with Nginx.

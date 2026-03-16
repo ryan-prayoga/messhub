@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types';
-import { ApiError, walletServerApi } from '$lib/api/server';
+import { walletServerApi } from '$lib/api/server';
+import { throwIfUnauthorized, toApiFailureState } from '$lib/server/api-errors';
 
 const DEFAULT_PAGE_SIZE = 20;
 
@@ -13,7 +14,7 @@ function parsePage(value: string | null) {
   return Math.floor(page);
 }
 
-export const load: PageServerLoad = async ({ fetch, locals, parent, url }) => {
+export const load: PageServerLoad = async ({ cookies, fetch, locals, parent, url }) => {
   await parent();
 
   const page = parsePage(url.searchParams.get('page'));
@@ -50,6 +51,9 @@ export const load: PageServerLoad = async ({ fetch, locals, parent, url }) => {
       loadError: null
     };
   } catch (error) {
+    throwIfUnauthorized(error, cookies);
+    const failure = toApiFailureState(error, 'Failed to load wallet');
+
     return {
       summary: null,
       transactions: [],
@@ -60,10 +64,7 @@ export const load: PageServerLoad = async ({ fetch, locals, parent, url }) => {
         total_pages: 0
       },
       canCreate: ['admin', 'treasurer'].includes(locals.user?.role ?? ''),
-      loadError:
-        error instanceof ApiError || error instanceof Error
-          ? error.message
-          : 'Failed to load wallet'
+      loadError: failure.message
     };
   }
 };

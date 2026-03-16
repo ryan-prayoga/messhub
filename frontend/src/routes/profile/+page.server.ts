@@ -1,12 +1,13 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { ApiError, profileServerApi } from '$lib/api/server';
+import { profileServerApi } from '$lib/api/server';
+import { throwIfUnauthorized, toApiFailureState } from '$lib/server/api-errors';
 
 function normalizeString(value: FormDataEntryValue | null) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
+export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) => {
   await parent();
 
   if (!locals.token) {
@@ -24,15 +25,18 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
       loadError: null
     };
   } catch (error) {
+    throwIfUnauthorized(error, cookies);
+    const failure = toApiFailureState(error, 'Failed to load profile');
+
     return {
       profile: null,
-      loadError: error instanceof Error ? error.message : 'Failed to load profile'
+      loadError: failure.message
     };
   }
 };
 
 export const actions: Actions = {
-  updateProfile: async ({ fetch, locals, request }) => {
+  updateProfile: async ({ cookies, fetch, locals, request }) => {
     const formData = await request.formData();
     const values = {
       name: normalizeString(formData.get('name')),
@@ -64,14 +68,18 @@ export const actions: Actions = {
         success: 'Profile updated.'
       };
     } catch (error) {
-      return fail(error instanceof ApiError ? error.status : 500, {
+      throwIfUnauthorized(error, cookies);
+      const failure = toApiFailureState(error, 'Failed to update profile');
+
+      return fail(failure.status, {
         action: 'updateProfile',
-        message: error instanceof Error ? error.message : 'Failed to update profile',
+        message: failure.message,
+        requestId: failure.requestId,
         values
       });
     }
   },
-  changePassword: async ({ fetch, locals, request }) => {
+  changePassword: async ({ cookies, fetch, locals, request }) => {
     const formData = await request.formData();
     const values = {
       current_password: normalizeString(formData.get('current_password')),
@@ -115,9 +123,13 @@ export const actions: Actions = {
         success: 'Password changed.'
       };
     } catch (error) {
-      return fail(error instanceof ApiError ? error.status : 500, {
+      throwIfUnauthorized(error, cookies);
+      const failure = toApiFailureState(error, 'Failed to change password');
+
+      return fail(failure.status, {
         action: 'changePassword',
-        message: error instanceof Error ? error.message : 'Failed to change password'
+        message: failure.message,
+        requestId: failure.requestId
       });
     }
   }

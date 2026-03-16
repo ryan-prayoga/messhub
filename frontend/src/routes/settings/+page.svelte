@@ -3,6 +3,7 @@
   import { navigating } from '$app/stores';
   import type { SubmitFunction } from '@sveltejs/kit';
   import PageCard from '$lib/components/PageCard.svelte';
+  import StatePanel from '$lib/components/StatePanel.svelte';
   import type { ActionData, PageData } from './$types';
 
   export let data: PageData;
@@ -54,6 +55,21 @@
       minute: '2-digit'
     }).format(new Date(value));
   }
+
+  function formatUptime(seconds: number) {
+    if (!seconds || seconds < 60) {
+      return `${seconds || 0}s`;
+    }
+
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+
+    if (hours === 0) {
+      return `${minutes}m`;
+    }
+
+    return `${hours}h ${minutes}m`;
+  }
 </script>
 
 <div class="space-y-4">
@@ -62,24 +78,27 @@
     description="Admin panel untuk konfigurasi mess, nominal wifi, deadline, dan info transfer."
   >
     {#if $navigating?.to?.url.pathname === '/settings' || pendingAction}
-      <div class="helper-box mb-4">
-        <p class="helper-label">Loading</p>
-        <p class="mt-2 text-sm text-slate-600">
-          {pendingAction ? 'Menyimpan pengaturan...' : 'Memuat ulang data pengaturan...'}
-        </p>
-      </div>
+      <StatePanel
+        tone="loading"
+        title="Loading"
+        message={pendingAction ? 'Menyimpan pengaturan...' : 'Memuat ulang data pengaturan...'}
+      />
     {/if}
 
     {#if data.accessDenied}
-      <div class="empty-state">
-        Role <strong>{data.user?.role}</strong> tidak memiliki akses ke admin settings.
-      </div>
+      <StatePanel
+        tone="forbidden"
+        title="Forbidden"
+        message={`Role ${data.user?.role} tidak memiliki akses ke admin settings.`}
+      />
     {:else}
       {#if form?.message}
-        <div class="helper-box-brand mb-4">
-          <p class="helper-label text-sky-700">Error</p>
-          <p class="mt-2 text-sm leading-6 text-slate-700">{form.message}</p>
-        </div>
+        <StatePanel
+          tone="error"
+          title="Error"
+          message={form.message}
+          requestId={form && 'requestId' in form && typeof form.requestId === 'string' ? form.requestId : null}
+        />
       {:else if form?.success}
         <div class="helper-box mb-4 border-emerald-200 bg-emerald-50/80">
           <p class="helper-label text-emerald-700">Success</p>
@@ -88,10 +107,7 @@
       {/if}
 
       {#if data.loadError || !data.settings}
-        <div class="helper-box-brand">
-          <p class="helper-label text-sky-700">Error</p>
-          <p class="mt-2 text-sm leading-6 text-slate-700">{data.loadError ?? 'Settings unavailable'}</p>
-        </div>
+        <StatePanel tone="error" title="Error" message={data.loadError ?? 'Settings unavailable'} />
       {:else}
         <div class="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
           <article class="app-panel p-5">
@@ -197,8 +213,15 @@
               {#if data.systemStatus}
                 <div class="mt-4 space-y-3">
                   <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p class="helper-label">App status</p>
+                    <p class="mt-2 text-sm font-semibold text-ink">{data.systemStatus.status}</p>
+                  </div>
+
+                  <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                     <p class="helper-label">Database</p>
-                    <p class="mt-2 text-sm font-semibold text-ink">{data.systemStatus.database_status}</p>
+                    <p class="mt-2 text-sm font-semibold text-ink">
+                      {data.systemStatus.database_status} ({data.systemStatus.database_reachable ? 'reachable' : 'unreachable'})
+                    </p>
                   </div>
 
                   <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -212,11 +235,16 @@
                     <p class="helper-label">App version</p>
                     <p class="mt-2 text-sm font-semibold text-ink">{data.systemStatus.app_version}</p>
                   </div>
+
+                  <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p class="helper-label">Uptime</p>
+                    <p class="mt-2 text-sm font-semibold text-ink">
+                      {formatUptime(data.systemStatus.uptime_seconds)}
+                    </p>
+                  </div>
                 </div>
               {:else}
-                <div class="empty-state mt-4">
-                  System status belum tersedia dari backend.
-                </div>
+                <StatePanel tone="empty" title="Empty" message="System status belum tersedia dari backend." />
               {/if}
             </article>
           </section>

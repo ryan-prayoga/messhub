@@ -3,6 +3,7 @@
   import { navigating } from '$app/stores';
   import type { SubmitFunction } from '@sveltejs/kit';
   import PageCard from '$lib/components/PageCard.svelte';
+  import StatePanel from '$lib/components/StatePanel.svelte';
   import type { WifiBill, WifiBillMember, WifiBillStatus } from '$lib/api/types';
   import type { ActionData, PageData } from './$types';
 
@@ -163,19 +164,20 @@
     description="Tagihan wifi bulanan, submit bukti transfer, dan verifikasi pembayaran untuk STEP 3."
   >
     {#if $navigating?.to?.url.pathname === '/wifi' || pendingAction}
-      <div class="helper-box mb-4">
-        <p class="helper-label">Loading</p>
-        <p class="mt-2 text-sm text-slate-600">
-          {pendingAction ? 'Memproses aksi wifi...' : 'Memuat ulang data wifi...'}
-        </p>
-      </div>
+      <StatePanel
+        tone="loading"
+        title="Loading"
+        message={pendingAction ? 'Memproses aksi wifi...' : 'Memuat ulang data wifi...'}
+      />
     {/if}
 
     {#if form?.message}
-      <div class="helper-box-brand mb-4">
-        <p class="helper-label text-sky-700">Error</p>
-        <p class="mt-2 text-sm leading-6 text-slate-700">{form.message}</p>
-      </div>
+      <StatePanel
+        tone="error"
+        title="Error"
+        message={form.message}
+        requestId={form && 'requestId' in form && typeof form.requestId === 'string' ? form.requestId : null}
+      />
     {:else if form?.success}
       <div class="helper-box mb-4 border-emerald-200 bg-emerald-50/80">
         <p class="helper-label text-emerald-700">Success</p>
@@ -184,10 +186,7 @@
     {/if}
 
     {#if data.loadError}
-      <div class="helper-box-brand">
-        <p class="helper-label text-sky-700">Error</p>
-        <p class="mt-2 text-sm leading-6 text-slate-700">{data.loadError}</p>
-      </div>
+      <StatePanel tone="error" title="Error" message={data.loadError} />
     {:else}
       {#if data.activeBill}
         <section class="space-y-4">
@@ -254,9 +253,11 @@
           </div>
         </section>
       {:else}
-        <div class="empty-state">
-          Belum ada wifi bill aktif. Admin atau treasurer bisa membuat bill bulanan dari halaman ini.
-        </div>
+        <StatePanel
+          tone="empty"
+          title="Empty"
+          message="Belum ada wifi bill aktif. Admin atau treasurer bisa membuat bill bulanan dari halaman ini."
+        />
       {/if}
 
       {#if data.canManage}
@@ -357,9 +358,7 @@
               <p class="section-subtitle mt-2">Satu bill per bulan-tahun, diurutkan dari yang terbaru.</p>
 
               {#if data.bills.length === 0}
-                <div class="empty-state mt-4">
-                  Belum ada bill wifi yang tercatat.
-                </div>
+                <StatePanel tone="empty" title="Empty" message="Belum ada bill wifi yang tercatat." />
               {:else}
                 <div class="mt-4 space-y-3">
                   {#each data.bills as bill}
@@ -422,13 +421,9 @@
             </p>
 
             {#if !data.activeBill}
-              <div class="empty-state mt-4">
-                Bill aktif belum ada, jadi daftar pembayaran belum tersedia.
-              </div>
+              <StatePanel tone="empty" title="Empty" message="Bill aktif belum ada, jadi daftar pembayaran belum tersedia." />
             {:else if data.activeBill.members.length === 0}
-              <div class="empty-state mt-4">
-                Belum ada member record pada bill aktif ini.
-              </div>
+              <StatePanel tone="empty" title="Empty" message="Belum ada member record pada bill aktif ini." />
             {:else}
               <div class="mt-4 space-y-3">
                 {#each data.activeBill.members as member}
@@ -536,9 +531,7 @@
               </p>
 
               {#if !data.activeBill || !ownActiveBill}
-                <div class="empty-state mt-4">
-                  Tidak ada bill aktif yang perlu Anda submit saat ini.
-                </div>
+                <StatePanel tone="empty" title="Empty" message="Tidak ada bill aktif yang perlu Anda submit saat ini." />
               {:else}
                 <div class="mt-4 grid gap-3 sm:grid-cols-2">
                   <div class="stat-card bg-slate-950 text-white">
@@ -638,9 +631,7 @@
             <p class="section-subtitle mt-2">Status terbaru submit Anda per bulan.</p>
 
             {#if data.myBills.length === 0}
-              <div class="empty-state mt-4">
-                Riwayat pembayaran wifi belum ada.
-              </div>
+              <StatePanel tone="empty" title="Empty" message="Riwayat pembayaran wifi belum ada." />
             {:else}
               <div class="mt-4 space-y-3">
                 {#each data.myBills as bill}

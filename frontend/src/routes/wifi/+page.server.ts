@@ -2,6 +2,7 @@ import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { ApiError, settingsServerApi, wifiServerApi } from '$lib/api/server';
 import type { WifiBillStatus } from '$lib/api/types';
+import { throwIfUnauthorized, toApiFailureState } from '$lib/server/api-errors';
 
 function canManage(role: string | undefined) {
   return role === 'admin' || role === 'treasurer';
@@ -28,7 +29,7 @@ function buildDefaultBillValues(wifiPrice = 20000, wifiDeadlineDay = 10) {
   };
 }
 
-export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
+export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) => {
   await parent();
 
   let defaults = buildDefaultBillValues();
@@ -41,7 +42,8 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
         settingsResponse.data?.wifi_deadline_day ?? 10
       );
     } catch (error) {
-      console.error('wifi defaults failed', error);
+      throwIfUnauthorized(error, cookies);
+      console.error('wifi defaults failed', toApiFailureState(error, 'Failed to load wifi defaults'));
     }
   }
 
@@ -72,22 +74,22 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
       defaults
     };
   } catch (error) {
+    throwIfUnauthorized(error, cookies);
+    const failure = toApiFailureState(error, 'Failed to load wifi data');
+
     return {
       activeBill: null,
       bills: [],
       myBills: [],
       canManage: canManage(locals.user?.role),
-      loadError:
-        error instanceof ApiError || error instanceof Error
-          ? error.message
-          : 'Failed to load wifi data',
+      loadError: failure.message,
       defaults
     };
   }
 };
 
 export const actions: Actions = {
-  createBill: async ({ fetch, locals, request }) => {
+  createBill: async ({ cookies, fetch, locals, request }) => {
     const formData = await request.formData();
     const values = {
       month: normalizeString(formData.get('month')),
@@ -145,14 +147,18 @@ export const actions: Actions = {
         success: 'Wifi bill created and active members were generated automatically.'
       };
     } catch (error) {
-      return fail(error instanceof ApiError ? error.status : 500, {
+      throwIfUnauthorized(error, cookies);
+      const failure = toApiFailureState(error, 'Failed to create wifi bill');
+
+      return fail(failure.status, {
         action: 'createBill',
-        message: error instanceof Error ? error.message : 'Failed to create wifi bill',
+        message: failure.message,
+        requestId: failure.requestId,
         values
       });
     }
   },
-  submitProof: async ({ fetch, locals, request }) => {
+  submitProof: async ({ cookies, fetch, locals, request }) => {
     const formData = await request.formData();
     const values = {
       bill_id: normalizeString(formData.get('bill_id')),
@@ -187,14 +193,18 @@ export const actions: Actions = {
         success: 'Payment proof submitted for verification.'
       };
     } catch (error) {
-      return fail(error instanceof ApiError ? error.status : 500, {
+      throwIfUnauthorized(error, cookies);
+      const failure = toApiFailureState(error, 'Failed to submit wifi payment proof');
+
+      return fail(failure.status, {
         action: 'submitProof',
-        message: error instanceof Error ? error.message : 'Failed to submit wifi payment proof',
+        message: failure.message,
+        requestId: failure.requestId,
         values
       });
     }
   },
-  verify: async ({ fetch, locals, request }) => {
+  verify: async ({ cookies, fetch, locals, request }) => {
     const formData = await request.formData();
     const values = {
       bill_id: normalizeString(formData.get('bill_id')),
@@ -233,14 +243,18 @@ export const actions: Actions = {
         success: 'Wifi payment verified.'
       };
     } catch (error) {
-      return fail(error instanceof ApiError ? error.status : 500, {
+      throwIfUnauthorized(error, cookies);
+      const failure = toApiFailureState(error, 'Failed to verify wifi payment');
+
+      return fail(failure.status, {
         action: 'verify',
-        message: error instanceof Error ? error.message : 'Failed to verify wifi payment',
+        message: failure.message,
+        requestId: failure.requestId,
         values
       });
     }
   },
-  reject: async ({ fetch, locals, request }) => {
+  reject: async ({ cookies, fetch, locals, request }) => {
     const formData = await request.formData();
     const values = {
       bill_id: normalizeString(formData.get('bill_id')),
@@ -282,9 +296,13 @@ export const actions: Actions = {
         success: 'Wifi payment rejected and can be resubmitted by the member.'
       };
     } catch (error) {
-      return fail(error instanceof ApiError ? error.status : 500, {
+      throwIfUnauthorized(error, cookies);
+      const failure = toApiFailureState(error, 'Failed to reject wifi payment');
+
+      return fail(failure.status, {
         action: 'reject',
-        message: error instanceof Error ? error.message : 'Failed to reject wifi payment',
+        message: failure.message,
+        requestId: failure.requestId,
         values
       });
     }

@@ -5,9 +5,11 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/ryanprayoga/messhub/backend/internal/models"
 	"github.com/ryanprayoga/messhub/backend/internal/response"
 	"github.com/ryanprayoga/messhub/backend/internal/services"
 	"github.com/ryanprayoga/messhub/backend/internal/types"
+	"github.com/ryanprayoga/messhub/backend/internal/validation"
 )
 
 type ActivityHandler struct {
@@ -21,7 +23,7 @@ func NewActivityHandler(activityService *services.ActivityService) *ActivityHand
 func (h *ActivityHandler) ListActivities(c *fiber.Ctx) error {
 	user, ok := c.Locals("user").(types.AuthUser)
 	if !ok {
-		return response.Error(c, fiber.StatusUnauthorized, "missing authenticated user", "missing_authenticated_user")
+		return response.Unauthorized(c, "authentication required")
 	}
 
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
@@ -29,7 +31,7 @@ func (h *ActivityHandler) ListActivities(c *fiber.Ctx) error {
 		Limit: limit,
 	})
 	if err != nil {
-		return response.Error(c, fiber.StatusInternalServerError, "failed to load activities", "activities_failed")
+		return response.InternalServerError(c, "failed to load activities")
 	}
 
 	return response.Success(c, fiber.StatusOK, "activities loaded", items)
@@ -38,21 +40,38 @@ func (h *ActivityHandler) ListActivities(c *fiber.Ctx) error {
 func (h *ActivityHandler) CreateActivity(c *fiber.Ctx) error {
 	request := new(services.CreateActivityInput)
 	if err := c.BodyParser(request); err != nil {
-		return response.Error(c, fiber.StatusBadRequest, "invalid activity payload", "invalid_payload")
+		return invalidPayload(c, "activity")
 	}
 
 	user, ok := c.Locals("user").(types.AuthUser)
 	if !ok {
-		return response.Error(c, fiber.StatusUnauthorized, "missing authenticated user", "missing_authenticated_user")
+		return response.Unauthorized(c, "authentication required")
+	}
+
+	details := validation.NewErrors()
+	details.Enum("type", request.Type, []string{
+		models.ActivityTypeContribution,
+		models.ActivityTypeFood,
+		models.ActivityTypeRice,
+		models.ActivityTypeAnnouncement,
+		models.ActivityTypeOther,
+	}, "type must be contribution, food, rice, announcement, or other")
+	details.RequiredMaxLength("title", request.Title, maxActivityTitleLength, "title is required", "title is too long")
+	details.RequiredMaxLength("content", request.Content, maxActivityBodyLength, "content is required", "content is too long")
+	if request.Points != nil && *request.Points <= 0 {
+		details.Add("points", "points must be positive")
+	}
+	if details.HasAny() {
+		return validationFailed(c, details)
 	}
 
 	item, err := h.activityService.CreateActivity(c.UserContext(), user.ID, user.Name, *request)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvalidActivityInput), errors.Is(err, services.ErrInvalidActivityType):
-			return response.Error(c, fiber.StatusBadRequest, err.Error(), "invalid_activity_input")
+			return response.InvalidRequest(c, err.Error())
 		default:
-			return response.Error(c, fiber.StatusInternalServerError, "failed to create activity", "activity_create_failed")
+			return response.InternalServerError(c, "failed to create activity")
 		}
 	}
 
@@ -64,9 +83,9 @@ func (h *ActivityHandler) GetContributionLeaderboard(c *fiber.Ctx) error {
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvalidLeaderboardPeriod):
-			return response.Error(c, fiber.StatusBadRequest, err.Error(), "invalid_leaderboard_period")
+			return response.InvalidRequest(c, err.Error())
 		default:
-			return response.Error(c, fiber.StatusInternalServerError, "failed to load leaderboard", "leaderboard_failed")
+			return response.InternalServerError(c, "failed to load leaderboard")
 		}
 	}
 
@@ -78,9 +97,9 @@ func (h *ActivityHandler) ListComments(c *fiber.Ctx) error {
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrActivityNotFound):
-			return response.Error(c, fiber.StatusNotFound, err.Error(), "activity_not_found")
+			return response.NotFound(c, err.Error())
 		default:
-			return response.Error(c, fiber.StatusInternalServerError, "failed to load comments", "activity_comments_failed")
+			return response.InternalServerError(c, "failed to load comments")
 		}
 	}
 
@@ -90,23 +109,29 @@ func (h *ActivityHandler) ListComments(c *fiber.Ctx) error {
 func (h *ActivityHandler) AddComment(c *fiber.Ctx) error {
 	request := new(services.CreateActivityCommentInput)
 	if err := c.BodyParser(request); err != nil {
-		return response.Error(c, fiber.StatusBadRequest, "invalid comment payload", "invalid_payload")
+		return invalidPayload(c, "comment")
 	}
 
 	user, ok := c.Locals("user").(types.AuthUser)
 	if !ok {
-		return response.Error(c, fiber.StatusUnauthorized, "missing authenticated user", "missing_authenticated_user")
+		return response.Unauthorized(c, "authentication required")
+	}
+
+	details := validation.NewErrors()
+	details.RequiredMaxLength("comment", request.Comment, maxCommentLength, "comment is required", "comment is too long")
+	if details.HasAny() {
+		return validationFailed(c, details)
 	}
 
 	item, err := h.activityService.AddComment(c.UserContext(), c.Params("id"), user.ID, user.Name, *request)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvalidCommentInput):
-			return response.Error(c, fiber.StatusBadRequest, err.Error(), "invalid_comment_input")
+			return response.InvalidRequest(c, err.Error())
 		case errors.Is(err, services.ErrActivityNotFound):
-			return response.Error(c, fiber.StatusNotFound, err.Error(), "activity_not_found")
+			return response.NotFound(c, err.Error())
 		default:
-			return response.Error(c, fiber.StatusInternalServerError, "failed to add comment", "activity_comment_failed")
+			return response.InternalServerError(c, "failed to add comment")
 		}
 	}
 
@@ -116,23 +141,29 @@ func (h *ActivityHandler) AddComment(c *fiber.Ctx) error {
 func (h *ActivityHandler) ToggleReaction(c *fiber.Ctx) error {
 	request := new(services.ToggleActivityReactionInput)
 	if err := c.BodyParser(request); err != nil {
-		return response.Error(c, fiber.StatusBadRequest, "invalid reaction payload", "invalid_payload")
+		return invalidPayload(c, "reaction")
 	}
 
 	user, ok := c.Locals("user").(types.AuthUser)
 	if !ok {
-		return response.Error(c, fiber.StatusUnauthorized, "missing authenticated user", "missing_authenticated_user")
+		return response.Unauthorized(c, "authentication required")
+	}
+
+	details := validation.NewErrors()
+	details.Enum("reaction_type", request.ReactionType, []string{"like"}, "reaction_type must be like")
+	if details.HasAny() {
+		return validationFailed(c, details)
 	}
 
 	item, err := h.activityService.ToggleReaction(c.UserContext(), c.Params("id"), user.ID, *request)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvalidReactionInput):
-			return response.Error(c, fiber.StatusBadRequest, err.Error(), "invalid_reaction_input")
+			return response.InvalidRequest(c, err.Error())
 		case errors.Is(err, services.ErrActivityNotFound):
-			return response.Error(c, fiber.StatusNotFound, err.Error(), "activity_not_found")
+			return response.NotFound(c, err.Error())
 		default:
-			return response.Error(c, fiber.StatusInternalServerError, "failed to update reaction", "activity_reaction_failed")
+			return response.InternalServerError(c, "failed to update reaction")
 		}
 	}
 
@@ -142,20 +173,20 @@ func (h *ActivityHandler) ToggleReaction(c *fiber.Ctx) error {
 func (h *ActivityHandler) ClaimFood(c *fiber.Ctx) error {
 	user, ok := c.Locals("user").(types.AuthUser)
 	if !ok {
-		return response.Error(c, fiber.StatusUnauthorized, "missing authenticated user", "missing_authenticated_user")
+		return response.Unauthorized(c, "authentication required")
 	}
 
 	item, err := h.activityService.ClaimFood(c.UserContext(), c.Params("id"), user.ID)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrActivityNotFound):
-			return response.Error(c, fiber.StatusNotFound, err.Error(), "activity_not_found")
+			return response.NotFound(c, err.Error())
 		case errors.Is(err, services.ErrFoodClaimNotAllowed):
-			return response.Error(c, fiber.StatusBadRequest, err.Error(), "food_claim_not_allowed")
+			return response.InvalidRequest(c, err.Error())
 		case errors.Is(err, services.ErrFoodClaimAlreadyExists):
-			return response.Error(c, fiber.StatusConflict, err.Error(), "food_claim_exists")
+			return response.Conflict(c, err.Error())
 		default:
-			return response.Error(c, fiber.StatusInternalServerError, "failed to claim food", "food_claim_failed")
+			return response.InternalServerError(c, "failed to claim food")
 		}
 	}
 
@@ -167,11 +198,11 @@ func (h *ActivityHandler) ListFoodClaims(c *fiber.Ctx) error {
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrActivityNotFound):
-			return response.Error(c, fiber.StatusNotFound, err.Error(), "activity_not_found")
+			return response.NotFound(c, err.Error())
 		case errors.Is(err, services.ErrFoodClaimNotAllowed):
-			return response.Error(c, fiber.StatusBadRequest, err.Error(), "food_claim_not_allowed")
+			return response.InvalidRequest(c, err.Error())
 		default:
-			return response.Error(c, fiber.StatusInternalServerError, "failed to load food claims", "food_claims_failed")
+			return response.InternalServerError(c, "failed to load food claims")
 		}
 	}
 
@@ -181,20 +212,20 @@ func (h *ActivityHandler) ListFoodClaims(c *fiber.Ctx) error {
 func (h *ActivityHandler) RespondRice(c *fiber.Ctx) error {
 	user, ok := c.Locals("user").(types.AuthUser)
 	if !ok {
-		return response.Error(c, fiber.StatusUnauthorized, "missing authenticated user", "missing_authenticated_user")
+		return response.Unauthorized(c, "authentication required")
 	}
 
 	item, err := h.activityService.RespondRice(c.UserContext(), c.Params("id"), user.ID)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrActivityNotFound):
-			return response.Error(c, fiber.StatusNotFound, err.Error(), "activity_not_found")
+			return response.NotFound(c, err.Error())
 		case errors.Is(err, services.ErrRiceResponseNotAllowed):
-			return response.Error(c, fiber.StatusBadRequest, err.Error(), "rice_response_not_allowed")
+			return response.InvalidRequest(c, err.Error())
 		case errors.Is(err, services.ErrRiceResponseAlreadyExists):
-			return response.Error(c, fiber.StatusConflict, err.Error(), "rice_response_exists")
+			return response.Conflict(c, err.Error())
 		default:
-			return response.Error(c, fiber.StatusInternalServerError, "failed to save rice response", "rice_response_failed")
+			return response.InternalServerError(c, "failed to save rice response")
 		}
 	}
 
@@ -206,11 +237,11 @@ func (h *ActivityHandler) ListRiceResponses(c *fiber.Ctx) error {
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrActivityNotFound):
-			return response.Error(c, fiber.StatusNotFound, err.Error(), "activity_not_found")
+			return response.NotFound(c, err.Error())
 		case errors.Is(err, services.ErrRiceResponseNotAllowed):
-			return response.Error(c, fiber.StatusBadRequest, err.Error(), "rice_response_not_allowed")
+			return response.InvalidRequest(c, err.Error())
 		default:
-			return response.Error(c, fiber.StatusInternalServerError, "failed to load rice responses", "rice_responses_failed")
+			return response.InternalServerError(c, "failed to load rice responses")
 		}
 	}
 

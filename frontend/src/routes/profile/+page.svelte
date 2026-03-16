@@ -3,6 +3,7 @@
   import { navigating } from '$app/stores';
   import type { SubmitFunction } from '@sveltejs/kit';
   import PageCard from '$lib/components/PageCard.svelte';
+  import StatePanel from '$lib/components/StatePanel.svelte';
   import type { ActionData, PageData } from './$types';
 
   export let data: PageData;
@@ -66,19 +67,20 @@
     description="Kelola identitas akun pribadi, kontak, avatar, dan password."
   >
     {#if $navigating?.to?.url.pathname === '/profile' || pendingAction}
-      <div class="helper-box mb-4">
-        <p class="helper-label">Loading</p>
-        <p class="mt-2 text-sm text-slate-600">
-          {pendingAction ? 'Memproses perubahan profil...' : 'Memuat ulang data profil...'}
-        </p>
-      </div>
+      <StatePanel
+        tone="loading"
+        title="Loading"
+        message={pendingAction ? 'Memproses perubahan profil...' : 'Memuat ulang data profil...'}
+      />
     {/if}
 
     {#if form?.message}
-      <div class="helper-box-brand mb-4">
-        <p class="helper-label text-sky-700">Error</p>
-        <p class="mt-2 text-sm leading-6 text-slate-700">{form.message}</p>
-      </div>
+      <StatePanel
+        tone="error"
+        title="Error"
+        message={form.message}
+        requestId={form && 'requestId' in form && typeof form.requestId === 'string' ? form.requestId : null}
+      />
     {:else if form?.success}
       <div class="helper-box mb-4 border-emerald-200 bg-emerald-50/80">
         <p class="helper-label text-emerald-700">Success</p>
@@ -87,10 +89,7 @@
     {/if}
 
     {#if data.loadError || !data.profile}
-      <div class="helper-box-brand">
-        <p class="helper-label text-sky-700">Error</p>
-        <p class="mt-2 text-sm leading-6 text-slate-700">{data.loadError ?? 'Profile unavailable'}</p>
-      </div>
+      <StatePanel tone="error" title="Error" message={data.loadError ?? 'Profile unavailable'} />
     {:else}
       <div class="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
         <section class="space-y-4">

@@ -1,4 +1,11 @@
 import { API_BASE_URL } from '$lib/config/env';
+import {
+  ApiError,
+  buildRequestInit,
+  parseApiResponse,
+  type RequestOptions,
+  wrapNetworkError
+} from '$lib/api/http';
 import type {
   ActivityComment,
   ActivityFeedItem,
@@ -19,51 +26,22 @@ import type {
   WalletTransactionType
 } from '$lib/api/types';
 
-type RequestOptions = {
-  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
-  token?: string;
-  body?: Record<string, unknown>;
-};
-
-export class ApiError extends Error {
-  status: number;
-  code?: string;
-
-  constructor(status: number, message: string, code?: string) {
-    super(message);
-    this.name = 'ApiError';
-    this.status = status;
-    this.code = code;
-  }
-}
+export { ApiError } from '$lib/api/http';
 
 export async function apiRequest<T>(
   path: string,
   options: RequestOptions = {}
 ): Promise<ApiEnvelope<T>> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: options.method || 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.token ? { Authorization: `Bearer ${options.token}` } : {})
-    },
-    body: options.body ? JSON.stringify(options.body) : undefined
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, buildRequestInit(options));
+    return await parseApiResponse<T>(response);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
 
-  const fallback = { message: 'Request failed' };
-  const payload = (await response.json().catch(() => fallback)) as
-    | (ApiEnvelope<T> & { message?: string })
-    | { message?: string };
-
-  if (!response.ok) {
-    throw new ApiError(
-      response.status,
-      payload.message || fallback.message,
-      'error' in payload ? payload.error?.code : undefined
-    );
+    throw wrapNetworkError(error);
   }
-
-  return payload as ApiEnvelope<T>;
 }
 
 export const authApi = {

@@ -1,7 +1,8 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { ApiError, authServerApi } from '$lib/api/server';
+import { authServerApi } from '$lib/api/server';
 import { AUTH_COOKIE_KEYS, buildAuthCookieOptions } from '$lib/auth/session';
+import { toApiFailureState } from '$lib/server/api-errors';
 
 export const load: PageServerLoad = async ({ locals }) => {
   if (locals.user) {
@@ -28,15 +29,10 @@ export const actions: Actions = {
 
       cookies.set(AUTH_COOKIE_KEYS.token, token, buildAuthCookieOptions(url));
     } catch (error) {
-      if (error instanceof ApiError) {
-        return fail(error.status, {
-          message: error.message,
-          values
-        });
-      }
-
-      return fail(503, {
-        message: 'Backend auth belum terjangkau. Cek service API di VPS atau env frontend.',
+      const failure = toApiFailureState(error, 'Failed to sign in');
+      return fail(failure.status, {
+        message: failure.message,
+        requestId: failure.requestId,
         values
       });
     }

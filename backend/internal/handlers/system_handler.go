@@ -17,8 +17,15 @@ func NewSystemHandler(systemService *services.SystemService) *SystemHandler {
 func (h *SystemHandler) GetStatus(c *fiber.Ctx) error {
 	status, err := h.systemService.GetStatus(c.UserContext())
 	if err != nil {
-		return response.Error(c, fiber.StatusInternalServerError, "failed to load system status", "system_status_failed")
+		return response.InternalServerError(c, "failed to load system status")
 	}
 
-	return response.Success(c, fiber.StatusOK, "system status loaded", status)
+	statusCode := fiber.StatusOK
+	message := "system status loaded"
+	if !status.DatabaseReachable {
+		statusCode = fiber.StatusServiceUnavailable
+		message = "system status degraded"
+	}
+
+	return response.Success(c, statusCode, message, status)
 }

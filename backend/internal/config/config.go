@@ -8,19 +8,21 @@ import (
 )
 
 type Config struct {
-	AppName           string
-	AppVersion        string
-	AppEnv            string
-	BackendHost       string
-	BackendPort       string
-	DatabaseURL       string
-	JWTSecret         string
-	JWTExpiresInHours int
-	CORSOrigin        string
-	SeedAdminName     string
-	SeedAdminEmail    string
-	SeedAdminPassword string
-	SeedAdminRole     string
+	AppName               string
+	AppVersion            string
+	AppEnv                string
+	LogLevel              string
+	BackendHost           string
+	BackendPort           string
+	DatabaseURL           string
+	JWTSecret             string
+	JWTExpiresInHours     int
+	CORSOrigin            string
+	ContentSecurityPolicy string
+	SeedAdminName         string
+	SeedAdminEmail        string
+	SeedAdminPassword     string
+	SeedAdminRole         string
 }
 
 func Load() Config {
@@ -30,12 +32,17 @@ func Load() Config {
 		AppName:           getEnv("APP_NAME", "MessHub"),
 		AppVersion:        getEnv("APP_VERSION", "dev"),
 		AppEnv:            getEnv("APP_ENV", "development"),
+		LogLevel:          getEnv("LOG_LEVEL", "info"),
 		BackendHost:       getEnv("BACKEND_HOST", "0.0.0.0"),
 		BackendPort:       getEnv("PORT", getEnv("BACKEND_PORT", "4100")),
 		DatabaseURL:       getEnv("DATABASE_URL", "postgres://messhub:messhub@127.0.0.1:5432/messhub?sslmode=disable"),
 		JWTSecret:         getEnv("JWT_SECRET", "change-this-secret"),
 		JWTExpiresInHours: getEnvInt("JWT_EXPIRES_IN_HOURS", 72),
 		CORSOrigin:        getEnv("CORS_ORIGIN", "http://127.0.0.1:4101,http://localhost:4101"),
+		ContentSecurityPolicy: getEnv(
+			"CONTENT_SECURITY_POLICY",
+			"default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'",
+		),
 		SeedAdminName:     getEnv("SEED_ADMIN_NAME", "MessHub Admin"),
 		SeedAdminEmail:    getEnv("SEED_ADMIN_EMAIL", "admin@messhub.local"),
 		SeedAdminPassword: getEnv("SEED_ADMIN_PASSWORD", "ChangeMe123!"),

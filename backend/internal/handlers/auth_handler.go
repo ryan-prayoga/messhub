@@ -5,6 +5,7 @@ import (
 	"github.com/ryanprayoga/messhub/backend/internal/response"
 	"github.com/ryanprayoga/messhub/backend/internal/services"
 	"github.com/ryanprayoga/messhub/backend/internal/types"
+	"github.com/ryanprayoga/messhub/backend/internal/validation"
 )
 
 type AuthHandler struct {
@@ -19,26 +20,39 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	request := new(services.LoginInput)
 
 	if err := c.BodyParser(request); err != nil {
-		return response.Error(c, fiber.StatusBadRequest, "invalid login payload", "invalid_payload")
+		return invalidPayload(c, "login")
+	}
+
+	details := validation.NewErrors()
+	details.RequiredString("email", request.Email, "email is required")
+	details.Email("email", request.Email, "email must be valid")
+	details.RequiredString("password", request.Password, "password is required")
+	if details.HasAny() {
+		return validationFailed(c, details)
 	}
 
 	loginResponse, err := h.authService.Login(c.UserContext(), *request)
 	if err != nil {
 		status := fiber.StatusInternalServerError
-		code := "login_failed"
 		switch err {
 		case services.ErrInvalidLoginInput:
 			status = fiber.StatusBadRequest
-			code = "invalid_login_input"
 		case services.ErrInvalidCredentials:
 			status = fiber.StatusUnauthorized
-			code = "invalid_credentials"
 		case services.ErrInactiveUser:
 			status = fiber.StatusForbidden
-			code = "user_inactive"
 		}
 
-		return response.Error(c, status, err.Error(), code)
+		switch status {
+		case fiber.StatusBadRequest:
+			return response.InvalidRequest(c, err.Error())
+		case fiber.StatusUnauthorized:
+			return response.Unauthorized(c, "authentication required")
+		case fiber.StatusForbidden:
+			return response.Forbidden(c, "insufficient permissions")
+		default:
+			return response.InternalServerError(c, "failed to sign in")
+		}
 	}
 
 	return response.Success(c, fiber.StatusOK, "login success", loginResponse)
@@ -47,7 +61,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 func (h *AuthHandler) Me(c *fiber.Ctx) error {
 	user, ok := c.Locals("user").(types.AuthUser)
 	if !ok {
-		return response.Error(c, fiber.StatusUnauthorized, "missing authenticated user", "missing_authenticated_user")
+		return response.Unauthorized(c, "authentication required")
 	}
 
 	return response.Success(c, fiber.StatusOK, "current user", user)

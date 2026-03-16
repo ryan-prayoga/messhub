@@ -22,6 +22,13 @@
 - None observed.
 
 ## Done
+- ID: OPS-003
+  Title: Implement STEP 7 production hardening and reliability
+  Priority: P1
+  Owner/Agent: Codex
+  Dependencies: T-012
+  Notes: Standardized backend API error payloads, added request validation, stricter role middleware usage, request IDs, structured request logging, rate limits for login/feed writes, JSON panic recovery, health/readiness status improvements, security headers, frontend API error helpers, route-level unauthorized redirects, forbidden/error/empty/loading states, and updated env examples.
+
 - ID: OPS-002
   Title: Automate VPS deploys from GitHub Actions
   Priority: P1

@@ -2,6 +2,7 @@ import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { ApiError, usersServerApi } from '$lib/api/server';
 import type { UserRole } from '$lib/api/types';
+import { throwIfUnauthorized, toApiFailureState } from '$lib/server/api-errors';
 
 function canManage(role: string | undefined) {
   return role === 'admin';
@@ -11,7 +12,7 @@ function normalizeString(value: FormDataEntryValue | null) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
+export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) => {
   await parent();
 
   if (!locals.token) {
@@ -45,6 +46,8 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
       loadError: null
     };
   } catch (error) {
+    throwIfUnauthorized(error, cookies);
+
     if (error instanceof ApiError && error.status === 403) {
       return {
         members: [],
@@ -59,6 +62,8 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
       };
     }
 
+    const failure = toApiFailureState(error, 'Failed to load members');
+
     return {
       members: [],
       summary: {
@@ -68,13 +73,13 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
       },
       canManage: canManage(locals.user?.role),
       accessDenied: false,
-      loadError: error instanceof Error ? error.message : 'Failed to load members'
+      loadError: failure.message
     };
   }
 };
 
 export const actions: Actions = {
-  updateRole: async ({ fetch, locals, request }) => {
+  updateRole: async ({ cookies, fetch, locals, request }) => {
     const formData = await request.formData();
     const values = {
       member_id: normalizeString(formData.get('member_id')),
@@ -118,14 +123,18 @@ export const actions: Actions = {
         success: 'Member role updated.'
       };
     } catch (error) {
-      return fail(error instanceof ApiError ? error.status : 500, {
+      throwIfUnauthorized(error, cookies);
+      const failure = toApiFailureState(error, 'Failed to update member role');
+
+      return fail(failure.status, {
         action: 'updateRole',
-        message: error instanceof Error ? error.message : 'Failed to update member role',
+        message: failure.message,
+        requestId: failure.requestId,
         values
       });
     }
   },
-  toggleActive: async ({ fetch, locals, request }) => {
+  toggleActive: async ({ cookies, fetch, locals, request }) => {
     const formData = await request.formData();
     const values = {
       member_id: normalizeString(formData.get('member_id')),
@@ -167,9 +176,13 @@ export const actions: Actions = {
         success: isActive ? 'Member activated.' : 'Member deactivated.'
       };
     } catch (error) {
-      return fail(error instanceof ApiError ? error.status : 500, {
+      throwIfUnauthorized(error, cookies);
+      const failure = toApiFailureState(error, 'Failed to update member activation');
+
+      return fail(failure.status, {
         action: 'toggleActive',
-        message: error instanceof Error ? error.message : 'Failed to update member activation',
+        message: failure.message,
+        requestId: failure.requestId,
         values
       });
     }

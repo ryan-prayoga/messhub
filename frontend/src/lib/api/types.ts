@@ -39,9 +39,12 @@ export type MessSettings = {
 };
 
 export type SystemStatus = {
+  status: string;
   database_status: string;
+  database_reachable: boolean;
   server_time: string;
   app_version: string;
+  uptime_seconds: number;
 };
 
 export type WalletSummary = {
@@ -226,10 +229,11 @@ export type NotificationList = {
 export type ApiEnvelope<T> = {
   message: string;
   data: T;
-  error?: {
+  error?: string | {
     code?: string;
     details?: unknown;
   };
+  details?: unknown;
 };
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';

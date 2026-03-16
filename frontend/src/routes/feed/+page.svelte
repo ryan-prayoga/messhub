@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { navigating } from '$app/stores';
   import PageCard from '$lib/components/PageCard.svelte';
+  import StatePanel from '$lib/components/StatePanel.svelte';
   import type { ActivityFeedItem, ActivityType } from '$lib/api/types';
   import type { ActionData, PageData } from './$types';
 
@@ -95,11 +97,17 @@
     title="Feed"
     description="Aktivitas mess, klaim makanan, rencana nasi, komentar, dan reaction untuk Step 5."
   >
+    {#if $navigating?.to?.url.pathname === '/feed'}
+      <StatePanel tone="loading" title="Loading" message="Memuat ulang feed, komentar, dan reaction terbaru..." />
+    {/if}
+
     {#if form?.message}
-      <div class="helper-box-brand mb-4">
-        <p class="helper-label text-sky-700">Error</p>
-        <p class="mt-2 text-sm leading-6 text-slate-700">{form.message}</p>
-      </div>
+      <StatePanel
+        tone="error"
+        title="Error"
+        message={form.message}
+        requestId={form && 'requestId' in form && typeof form.requestId === 'string' ? form.requestId : null}
+      />
     {:else if form?.success}
       <div class="helper-box mb-4 border-emerald-200 bg-emerald-50/80">
         <p class="helper-label text-emerald-700">Success</p>
@@ -108,10 +116,7 @@
     {/if}
 
     {#if data.loadError}
-      <div class="helper-box-brand">
-        <p class="helper-label text-sky-700">Error</p>
-        <p class="mt-2 text-sm leading-6 text-slate-700">{data.loadError}</p>
-      </div>
+      <StatePanel tone="error" title="Error" message={data.loadError} />
     {:else}
       <article class="app-panel p-5">
         <p class="eyebrow">Post Activity</p>
@@ -176,7 +181,7 @@
       </article>
 
       {#if data.activities.length === 0}
-        <div class="empty-state mt-4">Belum ada aktivitas. Posting item pertama dari form di atas.</div>
+        <StatePanel tone="empty" title="Empty" message="Belum ada aktivitas. Posting item pertama dari form di atas." />
       {:else}
         <div class="mt-4 space-y-4">
           {#each data.activities as item}
@@ -267,7 +272,7 @@
                 </div>
 
                 {#if item.comments.length === 0}
-                  <div class="empty-state">Belum ada komentar.</div>
+                  <StatePanel tone="empty" title="Empty" message="Belum ada komentar." />
                 {:else}
                   <div class="space-y-2">
                     {#each item.comments as comment}

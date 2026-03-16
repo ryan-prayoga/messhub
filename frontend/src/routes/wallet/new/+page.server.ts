@@ -1,7 +1,8 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { ApiError, walletServerApi } from '$lib/api/server';
+import { walletServerApi } from '$lib/api/server';
 import type { WalletTransactionType } from '$lib/api/types';
+import { throwIfUnauthorized, toApiFailureState } from '$lib/server/api-errors';
 
 function canCreate(role: string | undefined) {
   return role === 'admin' || role === 'treasurer';
@@ -20,7 +21,7 @@ export const load: PageServerLoad = async ({ parent, locals }) => {
 };
 
 export const actions: Actions = {
-  default: async ({ fetch, locals, request }) => {
+  default: async ({ cookies, fetch, locals, request }) => {
     const formData = await request.formData();
     const values = {
       type: normalizeString(formData.get('type')) || 'income',
@@ -65,8 +66,12 @@ export const actions: Actions = {
         description: values.description
       });
     } catch (error) {
-      return fail(error instanceof ApiError ? error.status : 500, {
-        message: error instanceof Error ? error.message : 'Failed to create wallet transaction',
+      throwIfUnauthorized(error, cookies);
+      const failure = toApiFailureState(error, 'Failed to create wallet transaction');
+
+      return fail(failure.status, {
+        message: failure.message,
+        requestId: failure.requestId,
         values
       });
     }

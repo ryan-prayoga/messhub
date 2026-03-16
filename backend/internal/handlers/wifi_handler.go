@@ -2,11 +2,14 @@ package handlers
 
 import (
 	"errors"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/ryanprayoga/messhub/backend/internal/models"
 	"github.com/ryanprayoga/messhub/backend/internal/response"
 	"github.com/ryanprayoga/messhub/backend/internal/services"
 	"github.com/ryanprayoga/messhub/backend/internal/types"
+	"github.com/ryanprayoga/messhub/backend/internal/validation"
 )
 
 type WifiHandler struct {
@@ -20,23 +23,46 @@ func NewWifiHandler(wifiService *services.WifiService) *WifiHandler {
 func (h *WifiHandler) CreateBill(c *fiber.Ctx) error {
 	request := new(services.CreateWifiBillInput)
 	if err := c.BodyParser(request); err != nil {
-		return response.Error(c, fiber.StatusBadRequest, "invalid wifi bill payload", "invalid_payload")
+		return invalidPayload(c, "wifi bill")
 	}
 
 	user, ok := c.Locals("user").(types.AuthUser)
 	if !ok {
-		return response.Error(c, fiber.StatusUnauthorized, "missing authenticated user", "missing_authenticated_user")
+		return response.Unauthorized(c, "authentication required")
+	}
+
+	details := validation.NewErrors()
+	currentYear := time.Now().Year()
+	details.IntRange("month", request.Month, 1, 12, "month must be between 1 and 12")
+	details.IntRange("year", request.Year, 2024, currentYear+5, "year is out of range")
+	if request.NominalPerPerson != nil {
+		details.PositiveInt64("nominal_per_person", *request.NominalPerPerson, "nominal_per_person must be positive")
+	}
+	if request.Status != "" {
+		details.Enum("status", request.Status, []string{
+			models.WifiBillStatusDraft,
+			models.WifiBillStatusActive,
+			models.WifiBillStatusClosed,
+		}, "status must be draft, active, or closed")
+	}
+	if request.DeadlineDate != nil {
+		if _, err := time.Parse("2006-01-02", *request.DeadlineDate); err != nil {
+			details.Add("deadline_date", "deadline_date must use YYYY-MM-DD format")
+		}
+	}
+	if details.HasAny() {
+		return validationFailed(c, details)
 	}
 
 	bill, err := h.wifiService.CreateBill(c.UserContext(), user.ID, *request)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvalidWifiBillInput), errors.Is(err, services.ErrInvalidWifiStatus), errors.Is(err, services.ErrWifiNoActiveMembers):
-			return response.Error(c, fiber.StatusBadRequest, err.Error(), "invalid_wifi_bill_input")
+			return response.InvalidRequest(c, err.Error())
 		case errors.Is(err, services.ErrDuplicateWifiBill):
-			return response.Error(c, fiber.StatusConflict, err.Error(), "wifi_bill_already_exists")
+			return response.Conflict(c, err.Error())
 		default:
-			return response.Error(c, fiber.StatusInternalServerError, "failed to create wifi bill", "wifi_bill_create_failed")
+			return response.InternalServerError(c, "failed to create wifi bill")
 		}
 	}
 
@@ -46,7 +72,7 @@ func (h *WifiHandler) CreateBill(c *fiber.Ctx) error {
 func (h *WifiHandler) ListBills(c *fiber.Ctx) error {
 	bills, err := h.wifiService.ListBills(c.UserContext())
 	if err != nil {
-		return response.Error(c, fiber.StatusInternalServerError, "failed to load wifi bills", "wifi_bills_failed")
+		return response.InternalServerError(c, "failed to load wifi bills")
 	}
 
 	return response.Success(c, fiber.StatusOK, "wifi bills loaded", bills)
@@ -55,16 +81,16 @@ func (h *WifiHandler) ListBills(c *fiber.Ctx) error {
 func (h *WifiHandler) GetBillDetail(c *fiber.Ctx) error {
 	user, ok := c.Locals("user").(types.AuthUser)
 	if !ok {
-		return response.Error(c, fiber.StatusUnauthorized, "missing authenticated user", "missing_authenticated_user")
+		return response.Unauthorized(c, "authentication required")
 	}
 
 	detail, err := h.wifiService.GetBillDetailForViewer(c.UserContext(), c.Params("id"), user.ID, user.Role)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrWifiBillNotFound):
-			return response.Error(c, fiber.StatusNotFound, err.Error(), "wifi_bill_not_found")
+			return response.NotFound(c, err.Error())
 		default:
-			return response.Error(c, fiber.StatusInternalServerError, "failed to load wifi bill", "wifi_bill_failed")
+			return response.InternalServerError(c, "failed to load wifi bill")
 		}
 	}
 
@@ -74,12 +100,12 @@ func (h *WifiHandler) GetBillDetail(c *fiber.Ctx) error {
 func (h *WifiHandler) GetActiveBill(c *fiber.Ctx) error {
 	user, ok := c.Locals("user").(types.AuthUser)
 	if !ok {
-		return response.Error(c, fiber.StatusUnauthorized, "missing authenticated user", "missing_authenticated_user")
+		return response.Unauthorized(c, "authentication required")
 	}
 
 	detail, err := h.wifiService.GetActiveBill(c.UserContext(), user.ID, user.Role)
 	if err != nil {
-		return response.Error(c, fiber.StatusInternalServerError, "failed to load active wifi bill", "wifi_active_failed")
+		return response.InternalServerError(c, "failed to load active wifi bill")
 	}
 
 	return response.Success(c, fiber.StatusOK, "active wifi bill loaded", detail)
@@ -88,12 +114,12 @@ func (h *WifiHandler) GetActiveBill(c *fiber.Ctx) error {
 func (h *WifiHandler) GetMyBills(c *fiber.Ctx) error {
 	user, ok := c.Locals("user").(types.AuthUser)
 	if !ok {
-		return response.Error(c, fiber.StatusUnauthorized, "missing authenticated user", "missing_authenticated_user")
+		return response.Unauthorized(c, "authentication required")
 	}
 
 	items, err := h.wifiService.ListMyBills(c.UserContext(), user.ID)
 	if err != nil {
-		return response.Error(c, fiber.StatusInternalServerError, "failed to load wifi payments", "wifi_my_failed")
+		return response.InternalServerError(c, "failed to load wifi payments")
 	}
 
 	return response.Success(c, fiber.StatusOK, "wifi payments loaded", items)
@@ -102,27 +128,34 @@ func (h *WifiHandler) GetMyBills(c *fiber.Ctx) error {
 func (h *WifiHandler) SubmitPaymentProof(c *fiber.Ctx) error {
 	request := new(services.SubmitWifiPaymentInput)
 	if err := c.BodyParser(request); err != nil {
-		return response.Error(c, fiber.StatusBadRequest, "invalid wifi payment payload", "invalid_payload")
+		return invalidPayload(c, "wifi payment")
 	}
 
 	user, ok := c.Locals("user").(types.AuthUser)
 	if !ok {
-		return response.Error(c, fiber.StatusUnauthorized, "missing authenticated user", "missing_authenticated_user")
+		return response.Unauthorized(c, "authentication required")
+	}
+
+	details := validation.NewErrors()
+	details.RequiredMaxLength("proof_url", request.ProofURL, maxWifiProofLength, "proof_url is required", "proof_url is too long")
+	details.OptionalMaxLength("note", request.Note, maxWifiNoteLength, "note is too long")
+	if details.HasAny() {
+		return validationFailed(c, details)
 	}
 
 	member, err := h.wifiService.SubmitPaymentProof(c.UserContext(), c.Params("id"), user.ID, *request)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrWifiProofRequired), errors.Is(err, services.ErrWifiSubmissionNotAllowed):
-			return response.Error(c, fiber.StatusBadRequest, err.Error(), "invalid_wifi_submission")
+			return response.InvalidRequest(c, err.Error())
 		case errors.Is(err, services.ErrWifiBillInactive):
-			return response.Error(c, fiber.StatusBadRequest, err.Error(), "wifi_bill_inactive")
+			return response.InvalidRequest(c, err.Error())
 		case errors.Is(err, services.ErrWifiBillNotFound):
-			return response.Error(c, fiber.StatusNotFound, err.Error(), "wifi_bill_not_found")
+			return response.NotFound(c, err.Error())
 		case errors.Is(err, services.ErrWifiMemberNotFound):
-			return response.Error(c, fiber.StatusForbidden, err.Error(), "wifi_member_not_found")
+			return response.Forbidden(c, err.Error())
 		default:
-			return response.Error(c, fiber.StatusInternalServerError, "failed to submit wifi payment proof", "wifi_submit_failed")
+			return response.InternalServerError(c, "failed to submit wifi payment proof")
 		}
 	}
 
@@ -132,20 +165,20 @@ func (h *WifiHandler) SubmitPaymentProof(c *fiber.Ctx) error {
 func (h *WifiHandler) VerifyPayment(c *fiber.Ctx) error {
 	user, ok := c.Locals("user").(types.AuthUser)
 	if !ok {
-		return response.Error(c, fiber.StatusUnauthorized, "missing authenticated user", "missing_authenticated_user")
+		return response.Unauthorized(c, "authentication required")
 	}
 
 	member, err := h.wifiService.VerifyPayment(c.UserContext(), c.Params("id"), c.Params("memberId"), user.ID)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrWifiBillNotFound):
-			return response.Error(c, fiber.StatusNotFound, err.Error(), "wifi_bill_not_found")
+			return response.NotFound(c, err.Error())
 		case errors.Is(err, services.ErrWifiMemberNotFound):
-			return response.Error(c, fiber.StatusNotFound, err.Error(), "wifi_member_not_found")
+			return response.NotFound(c, err.Error())
 		case errors.Is(err, services.ErrWifiReviewNotAllowed):
-			return response.Error(c, fiber.StatusBadRequest, err.Error(), "wifi_review_not_allowed")
+			return response.InvalidRequest(c, err.Error())
 		default:
-			return response.Error(c, fiber.StatusInternalServerError, "failed to verify wifi payment", "wifi_verify_failed")
+			return response.InternalServerError(c, "failed to verify wifi payment")
 		}
 	}
 
@@ -155,23 +188,29 @@ func (h *WifiHandler) VerifyPayment(c *fiber.Ctx) error {
 func (h *WifiHandler) RejectPayment(c *fiber.Ctx) error {
 	request := new(services.RejectWifiPaymentInput)
 	if err := c.BodyParser(request); err != nil {
-		return response.Error(c, fiber.StatusBadRequest, "invalid wifi rejection payload", "invalid_payload")
+		return invalidPayload(c, "wifi rejection")
 	}
 
 	user, ok := c.Locals("user").(types.AuthUser)
 	if !ok {
-		return response.Error(c, fiber.StatusUnauthorized, "missing authenticated user", "missing_authenticated_user")
+		return response.Unauthorized(c, "authentication required")
+	}
+
+	details := validation.NewErrors()
+	details.RequiredMaxLength("reason", request.Reason, maxRejectReasonLength, "reason is required", "reason is too long")
+	if details.HasAny() {
+		return validationFailed(c, details)
 	}
 
 	member, err := h.wifiService.RejectPayment(c.UserContext(), c.Params("id"), c.Params("memberId"), user.ID, *request)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrWifiRejectReasonRequired), errors.Is(err, services.ErrWifiReviewNotAllowed):
-			return response.Error(c, fiber.StatusBadRequest, err.Error(), "invalid_wifi_rejection")
+			return response.InvalidRequest(c, err.Error())
 		case errors.Is(err, services.ErrWifiMemberNotFound):
-			return response.Error(c, fiber.StatusNotFound, err.Error(), "wifi_member_not_found")
+			return response.NotFound(c, err.Error())
 		default:
-			return response.Error(c, fiber.StatusInternalServerError, "failed to reject wifi payment", "wifi_reject_failed")
+			return response.InternalServerError(c, "failed to reject wifi payment")
 		}
 	}
 

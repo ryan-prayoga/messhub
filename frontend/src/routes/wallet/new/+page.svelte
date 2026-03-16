@@ -1,5 +1,6 @@
 <script lang="ts">
   import PageCard from '$lib/components/PageCard.svelte';
+  import StatePanel from '$lib/components/StatePanel.svelte';
   import type { ActionData, PageData } from './$types';
 
   export let data: PageData;
@@ -12,16 +13,20 @@
     description="Form pencatatan Kantong Duafa. Pembayaran tetap dilakukan di luar aplikasi, halaman ini hanya mencatat transaksi."
   >
     {#if data.accessDenied}
-      <div class="empty-state">
-        Role <strong>{data.user?.role}</strong> hanya punya akses baca. Pencatatan transaksi wallet tersedia untuk admin dan treasurer.
-      </div>
+      <StatePanel
+        tone="forbidden"
+        title="Forbidden"
+        message={`Role ${data.user?.role} hanya punya akses baca. Pencatatan transaksi wallet tersedia untuk admin dan treasurer.`}
+      />
     {:else}
       <form method="POST" class="space-y-4">
         {#if form?.message}
-          <div class="helper-box-brand">
-            <p class="helper-label text-sky-700">Error</p>
-            <p class="mt-2 text-sm leading-6 text-slate-700">{form.message}</p>
-          </div>
+          <StatePanel
+            tone="error"
+            title="Error"
+            message={form.message}
+            requestId={form && 'requestId' in form && typeof form.requestId === 'string' ? form.requestId : null}
+          />
         {/if}
 
         <div class="grid gap-4 sm:grid-cols-2">

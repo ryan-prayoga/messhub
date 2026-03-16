@@ -1,6 +1,7 @@
 <script lang="ts">
   import { navigating } from '$app/stores';
   import PageCard from '$lib/components/PageCard.svelte';
+  import StatePanel from '$lib/components/StatePanel.svelte';
   import type { ActionData, PageData } from './$types';
   import type { UserRole } from '$lib/api/types';
 
@@ -65,28 +66,25 @@
     description="Daftar anggota mess dengan admin controls untuk role dan status aktif."
   >
     {#if $navigating?.to?.url.pathname === '/members'}
-      <div class="helper-box mb-4">
-        <p class="helper-label">Loading</p>
-        <p class="mt-2 text-sm text-slate-600">Memuat ulang data anggota mess...</p>
-      </div>
+      <StatePanel tone="loading" title="Loading" message="Memuat ulang data anggota mess..." />
     {/if}
 
     {#if data.accessDenied}
-      <div class="empty-state">
-        Role <strong>{data.user?.role}</strong> belum diizinkan melihat daftar anggota. Akses page ini
-        tersedia untuk admin dan treasurer.
-      </div>
+      <StatePanel
+        tone="forbidden"
+        title="Forbidden"
+        message={`Role ${data.user?.role} belum diizinkan melihat daftar anggota. Akses tersedia untuk admin dan treasurer.`}
+      />
     {:else if data.loadError}
-      <div class="helper-box-brand">
-        <p class="helper-label text-sky-700">Error</p>
-        <p class="mt-2 text-sm leading-6 text-slate-700">{data.loadError}</p>
-      </div>
+      <StatePanel tone="error" title="Error" message={data.loadError} />
     {:else}
       {#if form?.message}
-        <div class="helper-box-brand mb-4">
-          <p class="helper-label text-sky-700">Error</p>
-          <p class="mt-2 text-sm leading-6 text-slate-700">{form.message}</p>
-        </div>
+        <StatePanel
+          tone="error"
+          title="Error"
+          message={form.message}
+          requestId={form && 'requestId' in form && typeof form.requestId === 'string' ? form.requestId : null}
+        />
       {:else if form?.success}
         <div class="helper-box mb-4 border-emerald-200 bg-emerald-50/80">
           <p class="helper-label text-emerald-700">Success</p>
@@ -112,10 +110,11 @@
       </div>
 
       {#if data.members.length === 0}
-        <div class="mt-4 empty-state">
-          Belum ada anggota yang tampil dari backend. Setelah admin menambahkan user baru, daftar ini akan
-          langsung terisi.
-        </div>
+        <StatePanel
+          tone="empty"
+          title="Empty"
+          message="Belum ada anggota yang tampil dari backend. Setelah admin menambahkan user baru, daftar ini akan langsung terisi."
+        />
       {:else}
         <div class="mt-4 space-y-3">
           {#each data.members as member}

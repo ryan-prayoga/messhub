@@ -2,6 +2,7 @@ import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { activitiesServerApi, ApiError } from '$lib/api/server';
 import type { ActivityType } from '$lib/api/types';
+import { throwIfUnauthorized, toApiFailureState } from '$lib/server/api-errors';
 
 function normalizeString(value: FormDataEntryValue | null) {
   return typeof value === 'string' ? value.trim() : '';
@@ -14,7 +15,7 @@ const defaults = {
   points: '1'
 } as const;
 
-export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
+export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) => {
   await parent();
 
   if (!locals.token || !locals.user) {
@@ -34,16 +35,19 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
       defaults
     };
   } catch (error) {
+    throwIfUnauthorized(error, cookies);
+    const failure = toApiFailureState(error, 'Failed to load activities');
+
     return {
       activities: [],
-      loadError: error instanceof Error ? error.message : 'Failed to load activities',
+      loadError: failure.message,
       defaults
     };
   }
 };
 
 export const actions: Actions = {
-  createActivity: async ({ fetch, locals, request }) => {
+  createActivity: async ({ cookies, fetch, locals, request }) => {
     const formData = await request.formData();
     const values = {
       type: normalizeString(formData.get('type')) || defaults.type,
@@ -92,14 +96,18 @@ export const actions: Actions = {
         success: 'Activity berhasil diposting.'
       };
     } catch (error) {
-      return fail(error instanceof ApiError ? error.status : 500, {
+      throwIfUnauthorized(error, cookies);
+      const failure = toApiFailureState(error, 'Failed to create activity');
+
+      return fail(failure.status, {
         action: 'createActivity',
-        message: error instanceof Error ? error.message : 'Failed to create activity',
+        message: failure.message,
+        requestId: failure.requestId,
         values
       });
     }
   },
-  react: async ({ fetch, locals, request }) => {
+  react: async ({ cookies, fetch, locals, request }) => {
     const formData = await request.formData();
     const values = {
       activity_id: normalizeString(formData.get('activity_id'))
@@ -131,14 +139,18 @@ export const actions: Actions = {
         success: 'Reaction diperbarui.'
       };
     } catch (error) {
-      return fail(error instanceof ApiError ? error.status : 500, {
+      throwIfUnauthorized(error, cookies);
+      const failure = toApiFailureState(error, 'Failed to update reaction');
+
+      return fail(failure.status, {
         action: 'react',
-        message: error instanceof Error ? error.message : 'Failed to update reaction',
+        message: failure.message,
+        requestId: failure.requestId,
         values
       });
     }
   },
-  comment: async ({ fetch, locals, request }) => {
+  comment: async ({ cookies, fetch, locals, request }) => {
     const formData = await request.formData();
     const values = {
       activity_id: normalizeString(formData.get('activity_id')),
@@ -171,14 +183,18 @@ export const actions: Actions = {
         success: 'Komentar ditambahkan.'
       };
     } catch (error) {
-      return fail(error instanceof ApiError ? error.status : 500, {
+      throwIfUnauthorized(error, cookies);
+      const failure = toApiFailureState(error, 'Failed to add comment');
+
+      return fail(failure.status, {
         action: 'comment',
-        message: error instanceof Error ? error.message : 'Failed to add comment',
+        message: failure.message,
+        requestId: failure.requestId,
         values
       });
     }
   },
-  claim: async ({ fetch, locals, request }) => {
+  claim: async ({ cookies, fetch, locals, request }) => {
     const formData = await request.formData();
     const values = {
       activity_id: normalizeString(formData.get('activity_id'))
@@ -208,14 +224,18 @@ export const actions: Actions = {
         success: 'Food claim tercatat.'
       };
     } catch (error) {
-      return fail(error instanceof ApiError ? error.status : 500, {
+      throwIfUnauthorized(error, cookies);
+      const failure = toApiFailureState(error, 'Failed to claim food');
+
+      return fail(failure.status, {
         action: 'claim',
-        message: error instanceof Error ? error.message : 'Failed to claim food',
+        message: failure.message,
+        requestId: failure.requestId,
         values
       });
     }
   },
-  riceResponse: async ({ fetch, locals, request }) => {
+  riceResponse: async ({ cookies, fetch, locals, request }) => {
     const formData = await request.formData();
     const values = {
       activity_id: normalizeString(formData.get('activity_id'))
@@ -245,9 +265,13 @@ export const actions: Actions = {
         success: 'Respons nasi tersimpan.'
       };
     } catch (error) {
-      return fail(error instanceof ApiError ? error.status : 500, {
+      throwIfUnauthorized(error, cookies);
+      const failure = toApiFailureState(error, 'Failed to save rice response');
+
+      return fail(failure.status, {
         action: 'riceResponse',
-        message: error instanceof Error ? error.message : 'Failed to save rice response',
+        message: failure.message,
+        requestId: failure.requestId,
         values
       });
     }

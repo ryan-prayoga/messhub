@@ -12,7 +12,7 @@ Deploy utama ditujukan untuk VPS Linux dengan:
 - Nginx
 - frontend dan backend berjalan terpisah
 
-Docker bukan jalur utama deploy. `docker-compose.yml` dipertahankan hanya untuk Postgres lokal.
+Docker bukan jalur utama deploy. Saat ini repo hanya menyimpan runtime frontend/backend dan service-scoped `.env.example`; provisioning Postgres lokal perlu disiapkan terpisah.
 
 ## Production Workflow
 
@@ -51,8 +51,6 @@ Port ini dipilih karena `3000`, `4000`, `4001`, `5000`, dan `5001` sudah terpaka
 │   ├── go.mod
 │   └── internal/
 ├── docs/
-├── docker-compose.yml
-├── .env.example
 └── README.md
 ```
 
@@ -66,7 +64,6 @@ Port ini dipilih karena `3000`, `4000`, `4001`, `5000`, dan `5001` sudah terpaka
 - `backend/.env.example`: env backend untuk VPS/local run
 - `backend/internal/config/config.go`: backend sekarang membaca `PORT` lebih dulu
 - `backend/db/migrations/001_init.sql`: schema awal database
-- `docker-compose.yml`: Postgres lokal saja
 
 ## Frontend
 
@@ -105,12 +102,9 @@ gas build --no-ui --type go --pm2-name messhub-backend --port 4100 --yes
 
 ## Setup Local
 
-### 1. Jalankan Postgres Lokal
+### 1. Siapkan Postgres Lokal
 
-```bash
-cp .env.example .env
-docker compose up -d
-```
+Pastikan ada instance PostgreSQL yang bisa diakses backend, misalnya lewat service lokal/VPS dev, lalu sesuaikan `DATABASE_URL` di `backend/.env`.
 
 ### 2. Setup Backend
 
@@ -251,7 +245,7 @@ Already up to date.
 + gas build --no-ui --type svelte --pm2-name messhub-frontend --port 4101 --yes
 [PM2] Applying action restartProcessId on app [messhub-frontend]
 + curl --fail --silent --show-error http://127.0.0.1:4100/health
-{"status":"ok"}
+{"message":"service ready","data":{"status":"ok","database_reachable":true}}
 ```
 
 Cara test CI/CD:
@@ -299,17 +293,12 @@ go run ./cmd/seed-admin
 
 ## Docker
 
-`docker-compose.yml` dipertahankan hanya untuk:
-
-- Postgres lokal
-- bootstrap development cepat
-
-Docker tidak dipakai untuk menjalankan frontend atau backend di VPS production.
+Docker tidak dipakai untuk menjalankan frontend atau backend di VPS production, dan file compose lokal tidak termasuk dalam state repo saat ini.
 
 ## Next Steps
 
-1. Tambahkan create/edit members UI untuk admin bila STEP 1 perlu diperdalam di frontend.
-2. Implement `wallet_transactions`.
-3. Implement `wifi_bills` dan `wifi_bill_members`.
-4. Tambahkan flow upload bukti pembayaran.
-5. Tambahkan hardening env production per domain VPS, termasuk final `PRIVATE_API_BASE_URL`.
+1. Validasi rollout STEP 7 di VPS production, terutama `CORS_ORIGIN`, `JWT_SECRET`, health/readiness response, dan request logging di PM2/Nginx.
+2. Kembali ke modul yang masih placeholder: shared expenses dan proposals.
+3. Tambahkan create-member flow di frontend admin agar manajemen anggota tidak berhenti di role/activation update.
+4. Putuskan kebutuhan upload/storage nyata untuk bukti transfer dan avatar bila string reference sudah tidak cukup.
+5. Lanjutkan STEP 8 bila PWA upgrade, push notifications, dan offline support sudah diprioritaskan.

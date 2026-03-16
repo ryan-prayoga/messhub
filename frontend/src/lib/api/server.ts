@@ -1,4 +1,11 @@
 import { env } from '$env/dynamic/private';
+import {
+  ApiError,
+  buildRequestInit,
+  parseApiResponse,
+  type RequestOptions,
+  wrapNetworkError
+} from '$lib/api/http';
 import type {
   ActivityComment,
   ActivityFeedItem,
@@ -21,23 +28,7 @@ import type {
 
 const DEFAULT_PRIVATE_API_BASE_URL = 'http://127.0.0.1:4100/api/v1';
 
-type RequestOptions = {
-  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
-  token?: string;
-  body?: Record<string, unknown>;
-};
-
-export class ApiError extends Error {
-  status: number;
-  code?: string;
-
-  constructor(status: number, message: string, code?: string) {
-    super(message);
-    this.name = 'ApiError';
-    this.status = status;
-    this.code = code;
-  }
-}
+export { ApiError } from '$lib/api/http';
 
 function resolveApiUrl(path: string) {
   const baseUrl = env.PRIVATE_API_BASE_URL || DEFAULT_PRIVATE_API_BASE_URL;
@@ -51,31 +42,16 @@ export async function apiServerRequest<T>(
   path: string,
   options: RequestOptions = {}
 ): Promise<ApiEnvelope<T>> {
-  const response = await fetcher(resolveApiUrl(path), {
-    method: options.method || 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.token ? { Authorization: `Bearer ${options.token}` } : {})
-    },
-    body: options.body ? JSON.stringify(options.body) : undefined
-  });
+  try {
+    const response = await fetcher(resolveApiUrl(path), buildRequestInit(options));
+    return await parseApiResponse<T>(response);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
 
-  const fallbackMessage = 'Request failed';
-  const payload = (await response.json().catch(() => null)) as ApiEnvelope<T> | null;
-
-  if (!response.ok) {
-    throw new ApiError(
-      response.status,
-      payload?.message || fallbackMessage,
-      payload?.error?.code
-    );
+    throw wrapNetworkError(error, 'Backend request failed');
   }
-
-  if (!payload) {
-    throw new ApiError(502, 'Invalid API response', 'invalid_api_response');
-  }
-
-  return payload;
 }
 
 export const authServerApi = {

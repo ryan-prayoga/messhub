@@ -1,7 +1,8 @@
 package main
 
 import (
-	"log"
+	"log/slog"
+	"os"
 
 	"github.com/ryanprayoga/messhub/backend/internal/app"
 )
@@ -9,12 +10,14 @@ import (
 func main() {
 	application, err := app.New()
 	if err != nil {
-		log.Fatalf("bootstrap app: %v", err)
+		slog.Error("bootstrap app failed", slog.String("error", err.Error()))
+		os.Exit(1)
 	}
 
 	defer application.Close()
 
 	if err := application.Listen(); err != nil {
-		log.Fatalf("listen: %v", err)
+		slog.Error("listen failed", slog.String("error", err.Error()))
+		os.Exit(1)
 	}
 }

@@ -25,7 +25,7 @@ func Register(
 
 	app.Get("/health", healthHandler.Health)
 	api.Get("/health", healthHandler.Health)
-	api.Post("/auth/login", authHandler.Login)
+	api.Post("/auth/login", middleware.LoginRateLimit(), authHandler.Login)
 
 	authenticated := api.Group("", authMiddleware.RequireAuth())
 	authenticated.Get("/auth/me", authHandler.Me)
@@ -33,12 +33,11 @@ func Register(
 	authenticated.Patch("/profile", profileHandler.Update)
 	authenticated.Patch("/profile/password", profileHandler.ChangePassword)
 	authenticated.Get("/settings", settingsHandler.Get)
-	authenticated.Get("/system/status", systemHandler.GetStatus)
 	authenticated.Get("/activities", activityHandler.ListActivities)
-	authenticated.Post("/activities", activityHandler.CreateActivity)
+	authenticated.Post("/activities", middleware.PostRateLimit("activities"), activityHandler.CreateActivity)
 	authenticated.Get("/activities/:id/comments", activityHandler.ListComments)
-	authenticated.Post("/activities/:id/comments", activityHandler.AddComment)
-	authenticated.Post("/activities/:id/reactions", activityHandler.ToggleReaction)
+	authenticated.Post("/activities/:id/comments", middleware.PostRateLimit("comments"), activityHandler.AddComment)
+	authenticated.Post("/activities/:id/reactions", middleware.PostRateLimit("reactions"), activityHandler.ToggleReaction)
 	authenticated.Post("/activities/:id/claim", activityHandler.ClaimFood)
 	authenticated.Get("/activities/:id/claims", activityHandler.ListFoodClaims)
 	authenticated.Post("/activities/:id/rice-response", activityHandler.RespondRice)
@@ -52,7 +51,7 @@ func Register(
 	authenticated.Get("/wifi/my", wifiHandler.GetMyBills)
 	authenticated.Post("/wifi/bills/:id/submit", wifiHandler.SubmitPaymentProof)
 
-	userReaders := authenticated.Group("", middleware.RequireRoles("admin", "treasurer"))
+	userReaders := authenticated.Group("", middleware.RequireRole("admin", "treasurer"))
 	userReaders.Get("/users", userHandler.List)
 	userReaders.Post("/wallet/transactions", walletHandler.CreateTransaction)
 	userReaders.Post("/wifi/bills", wifiHandler.CreateBill)
@@ -61,13 +60,14 @@ func Register(
 	userReaders.Patch("/wifi/bills/:id/verify/:memberId", wifiHandler.VerifyPayment)
 	userReaders.Patch("/wifi/bills/:id/reject/:memberId", wifiHandler.RejectPayment)
 
-	adminOnly := authenticated.Group("", middleware.RequireRoles("admin"))
+	adminOnly := authenticated.Group("", middleware.RequireRole("admin"))
 	adminOnly.Post("/users", userHandler.Create)
 	adminOnly.Patch("/users/:id", userHandler.Update)
 	adminOnly.Patch("/settings", settingsHandler.Update)
+	adminOnly.Get("/system/status", systemHandler.GetStatus)
 
-	userReaders.Get("/admin/ping", func(c *fiber.Ctx) error {
-		return response.Success(c, fiber.StatusOK, "admin or treasurer access granted", fiber.Map{
+	adminOnly.Get("/admin/ping", func(c *fiber.Ctx) error {
+		return response.Success(c, fiber.StatusOK, "admin access granted", fiber.Map{
 			"status": "ok",
 		})
 	})

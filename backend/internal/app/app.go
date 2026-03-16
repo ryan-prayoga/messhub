@@ -3,6 +3,8 @@ package app
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -10,6 +12,7 @@ import (
 	"github.com/ryanprayoga/messhub/backend/internal/database"
 	"github.com/ryanprayoga/messhub/backend/internal/handlers"
 	"github.com/ryanprayoga/messhub/backend/internal/middleware"
+	"github.com/ryanprayoga/messhub/backend/internal/observability"
 	"github.com/ryanprayoga/messhub/backend/internal/repository"
 	"github.com/ryanprayoga/messhub/backend/internal/response"
 	"github.com/ryanprayoga/messhub/backend/internal/routes"
@@ -24,6 +27,8 @@ type App struct {
 
 func New() (*App, error) {
 	cfg := config.Load()
+	logger := observability.NewLogger(cfg.LogLevel)
+	slog.SetDefault(logger)
 
 	db, err := database.NewPostgres(cfg)
 	if err != nil {
@@ -35,10 +40,18 @@ func New() (*App, error) {
 		ErrorHandler: response.FiberErrorHandler,
 	})
 
+	allowedOrigins := parseAllowedOrigins(cfg.CORSOrigin)
+
+	web.Use(middleware.RequestContext())
+	web.Use(middleware.Recover(logger))
+	web.Use(middleware.SecurityHeaders(cfg.ContentSecurityPolicy))
+	web.Use(middleware.RequestLogger(logger))
 	web.Use(cors.New(cors.Config{
-		AllowOrigins: cfg.CORSOrigin,
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
-		AllowMethods: "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+		AllowOrigins:  strings.Join(allowedOrigins, ","),
+		AllowHeaders:  "Origin, Content-Type, Accept, Authorization, X-Request-ID",
+		AllowMethods:  "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+		ExposeHeaders: middleware.RequestIDHeader,
+		MaxAge:        300,
 	}))
 
 	userRepository := repository.NewUserRepository(db)
@@ -58,7 +71,7 @@ func New() (*App, error) {
 	wifiService := services.NewWifiService(db, wifiRepository, settingsService, auditService, notificationService)
 	activityService := services.NewActivityService(db, activityRepository, notificationService, auditService)
 	authMiddleware := middleware.NewAuthMiddleware(cfg, userRepository)
-	healthHandler := handlers.NewHealthHandler()
+	healthHandler := handlers.NewHealthHandler(systemService)
 	authHandler := handlers.NewAuthHandler(authService)
 	userHandler := handlers.NewUserHandler(userService)
 	profileHandler := handlers.NewProfileHandler(userService)
@@ -89,6 +102,25 @@ func New() (*App, error) {
 		db:     db,
 		fiber:  web,
 	}, nil
+}
+
+func parseAllowedOrigins(raw string) []string {
+	parts := strings.Split(raw, ",")
+	origins := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed == "" {
+			continue
+		}
+
+		origins = append(origins, trimmed)
+	}
+
+	if len(origins) == 0 {
+		return []string{"http://127.0.0.1:4101", "http://localhost:4101"}
+	}
+
+	return origins
 }
 
 func (a *App) Listen() error {

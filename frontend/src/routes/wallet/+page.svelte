@@ -1,6 +1,7 @@
 <script lang="ts">
   import { navigating } from '$app/stores';
   import PageCard from '$lib/components/PageCard.svelte';
+  import StatePanel from '$lib/components/StatePanel.svelte';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -30,17 +31,11 @@
     description="Ringkasan Kantong Duafa dan daftar transaksi terbaru. Semua role bisa melihat, admin dan treasurer bisa mencatat transaksi baru."
   >
     {#if $navigating?.to?.url.pathname === '/wallet'}
-      <div class="helper-box mb-4">
-        <p class="helper-label">Loading</p>
-        <p class="mt-2 text-sm text-slate-600">Memuat ulang saldo dan transaksi wallet...</p>
-      </div>
+      <StatePanel tone="loading" title="Loading" message="Memuat ulang saldo dan transaksi wallet..." />
     {/if}
 
     {#if data.loadError}
-      <div class="helper-box-brand">
-        <p class="helper-label text-sky-700">Error</p>
-        <p class="mt-2 text-sm leading-6 text-slate-700">{data.loadError}</p>
-      </div>
+      <StatePanel tone="error" title="Error" message={data.loadError} />
     {:else if data.summary}
       <div class="grid gap-3 sm:grid-cols-3">
         <div class="stat-card bg-slate-950 text-white">
@@ -82,9 +77,11 @@
       </div>
 
       {#if data.transactions.length === 0}
-        <div class="mt-4 empty-state">
-          Belum ada transaksi wallet. Setelah admin atau treasurer mencatat transaksi pertama, daftar ini akan terisi.
-        </div>
+        <StatePanel
+          tone="empty"
+          title="Empty"
+          message="Belum ada transaksi wallet. Setelah admin atau treasurer mencatat transaksi pertama, daftar ini akan terisi."
+        />
       {:else}
         <div class="mt-4 space-y-3">
           {#each data.transactions as transaction}

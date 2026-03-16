@@ -157,9 +157,12 @@ type MessSettings struct {
 }
 
 type SystemStatus struct {
-	DatabaseStatus string    `json:"database_status"`
-	ServerTime     time.Time `json:"server_time"`
-	AppVersion     string    `json:"app_version"`
+	Status            string    `json:"status"`
+	DatabaseStatus    string    `json:"database_status"`
+	DatabaseReachable bool      `json:"database_reachable"`
+	ServerTime        time.Time `json:"server_time"`
+	AppVersion        string    `json:"app_version"`
+	UptimeSeconds     int64     `json:"uptime_seconds"`
 }
 
 type SharedExpense struct {

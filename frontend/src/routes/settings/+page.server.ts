@@ -1,6 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { ApiError, settingsServerApi, systemServerApi } from '$lib/api/server';
+import { settingsServerApi, systemServerApi } from '$lib/api/server';
+import { throwIfUnauthorized, toApiFailureState } from '$lib/server/api-errors';
 
 function normalizeString(value: FormDataEntryValue | null) {
   return typeof value === 'string' ? value.trim() : '';
@@ -10,7 +11,7 @@ function isAdmin(role: string | undefined) {
   return role === 'admin';
 }
 
-export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
+export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) => {
   await parent();
 
   if (!locals.token) {
@@ -36,21 +37,29 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
     systemServerApi.status(fetch, locals.token)
   ]);
 
+  if (settingsResult.status === 'rejected') {
+    throwIfUnauthorized(settingsResult.reason, cookies);
+  }
+
+  if (systemResult.status === 'rejected') {
+    throwIfUnauthorized(systemResult.reason, cookies);
+  }
+
+  const settingsFailure =
+    settingsResult.status === 'rejected'
+      ? toApiFailureState(settingsResult.reason, 'Failed to load settings')
+      : null;
+
   return {
     accessDenied: false,
     settings: settingsResult.status === 'fulfilled' ? settingsResult.value.data : null,
     systemStatus: systemResult.status === 'fulfilled' ? systemResult.value.data : null,
-    loadError:
-      settingsResult.status === 'rejected'
-        ? settingsResult.reason instanceof Error
-          ? settingsResult.reason.message
-          : 'Failed to load settings'
-        : null
+    loadError: settingsFailure?.message ?? null
   };
 };
 
 export const actions: Actions = {
-  updateSettings: async ({ fetch, locals, request }) => {
+  updateSettings: async ({ cookies, fetch, locals, request }) => {
     const formData = await request.formData();
     const values = {
       mess_name: normalizeString(formData.get('mess_name')),
@@ -110,9 +119,13 @@ export const actions: Actions = {
         success: 'Settings updated.'
       };
     } catch (error) {
-      return fail(error instanceof ApiError ? error.status : 500, {
+      throwIfUnauthorized(error, cookies);
+      const failure = toApiFailureState(error, 'Failed to update settings');
+
+      return fail(failure.status, {
         action: 'updateSettings',
-        message: error instanceof Error ? error.message : 'Failed to update settings',
+        message: failure.message,
+        requestId: failure.requestId,
         values
       });
     }
