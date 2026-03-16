@@ -40,6 +40,8 @@ func (r *AuditLogRepository) create(ctx context.Context, runner auditQueryRunner
 	`
 
 	log := &models.AuditLog{}
+	var oldValue []byte
+	var newValue []byte
 	if err := runner.QueryRowContext(
 		ctx,
 		query,
@@ -55,11 +57,19 @@ func (r *AuditLogRepository) create(ctx context.Context, runner auditQueryRunner
 		&log.Action,
 		&log.EntityType,
 		&log.EntityID,
-		&log.OldValue,
-		&log.NewValue,
+		&oldValue,
+		&newValue,
 		&log.CreatedAt,
 	); err != nil {
 		return nil, err
+	}
+
+	if oldValue != nil {
+		log.OldValue = oldValue
+	}
+
+	if newValue != nil {
+		log.NewValue = newValue
 	}
 
 	return log, nil
