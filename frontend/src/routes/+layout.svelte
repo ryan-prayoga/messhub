@@ -1,4 +1,5 @@
 <script lang="ts">
+  import '../app.css';
   import { page } from '$app/stores';
   import AppShell from '$lib/components/AppShell.svelte';
   import { authUser } from '$lib/stores/auth';

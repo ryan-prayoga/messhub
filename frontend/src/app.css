@@ -5,29 +5,150 @@
 :root {
   color-scheme: light;
   background:
-    radial-gradient(circle at top left, rgba(249, 115, 22, 0.12), transparent 28%),
-    linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+    radial-gradient(circle at top left, rgba(14, 165, 233, 0.14), transparent 24%),
+    radial-gradient(circle at top right, rgba(15, 23, 42, 0.08), transparent 18%),
+    linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
   color: #0f172a;
 }
 
-html,
-body {
-  min-height: 100%;
+@layer base {
+  html {
+    min-height: 100%;
+    background: #eef4fb;
+  }
+
+  body {
+    min-height: 100vh;
+    margin: 0;
+    font-family: "Avenir Next", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+    background: transparent;
+    color: #0f172a;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  p {
+    margin: 0;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  ::selection {
+    background: rgba(14, 165, 233, 0.18);
+    color: #0f172a;
+  }
 }
 
-body {
-  margin: 0;
-  font-family: "Avenir Next", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
-}
+@layer components {
+  .app-shell {
+    @apply min-h-screen text-slate-900;
+    background:
+      radial-gradient(circle at top left, rgba(14, 165, 233, 0.1), transparent 22rem),
+      radial-gradient(circle at bottom right, rgba(15, 23, 42, 0.08), transparent 18rem),
+      linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
+  }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
+  .page-container {
+    @apply mx-auto w-full max-w-4xl px-4 pb-28 pt-4 sm:px-6 sm:pt-6;
+  }
 
-button,
-input,
-textarea,
-select {
-  font: inherit;
+  .app-panel {
+    @apply rounded-[28px] border border-slate-200/80 bg-white shadow-[0_24px_60px_-28px_rgba(15,23,42,0.28)];
+  }
+
+  .section-title {
+    @apply text-lg font-semibold tracking-[-0.02em] text-slate-950 sm:text-xl;
+  }
+
+  .section-subtitle {
+    @apply text-sm leading-6 text-slate-500;
+  }
+
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-700;
+  }
+
+  .field-label {
+    @apply mb-2 block text-sm font-medium text-slate-700;
+  }
+
+  .input-field {
+    @apply w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-[15px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-300 focus:bg-white focus:ring-4 focus:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800 focus-visible:ring-4 focus-visible:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-300;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 focus-visible:ring-4 focus-visible:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em];
+  }
+
+  .badge-muted {
+    @apply badge bg-slate-100 text-slate-600;
+  }
+
+  .badge-brand {
+    @apply badge bg-sky-100 text-sky-700;
+  }
+
+  .helper-box {
+    @apply rounded-2xl border border-slate-200 bg-slate-50/80 p-4;
+  }
+
+  .helper-box-brand {
+    @apply helper-box border-sky-200 bg-sky-50/90;
+  }
+
+  .helper-label {
+    @apply text-xs font-semibold uppercase tracking-[0.2em] text-slate-500;
+  }
+
+  .empty-state {
+    @apply rounded-[24px] border border-dashed border-slate-300 bg-white/70 p-5 text-sm leading-6 text-slate-500;
+  }
+
+  .stat-card {
+    @apply rounded-3xl border border-slate-200/80 bg-slate-50 p-4;
+  }
+
+  .nav-chip {
+    @apply inline-flex min-w-max items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900;
+  }
+
+  .nav-chip-active {
+    @apply border-sky-200 bg-sky-50 text-sky-700;
+  }
+
+  .bottom-nav-link {
+    @apply flex items-center justify-center rounded-2xl px-3 py-2.5 text-[11px] font-medium text-slate-500 transition;
+  }
+
+  .bottom-nav-link-active {
+    @apply bg-slate-950 text-white shadow-[0_12px_28px_-18px_rgba(15,23,42,0.6)];
+  }
 }

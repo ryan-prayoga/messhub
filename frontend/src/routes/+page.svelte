@@ -9,17 +9,27 @@
     title="Dashboard"
     description="Ringkasan awal untuk wallet, wifi, shared expenses, contributions, dan feed aktif."
   >
-    <div class="grid gap-3 sm:grid-cols-2">
-      <div class="rounded-2xl bg-slate-100 p-4">
-        <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Signed in</p>
-        <p class="mt-2 text-lg font-bold">{data.user?.name}</p>
-        <p class="text-sm text-slate-500">{data.user?.email}</p>
+    <div class="grid gap-3 md:grid-cols-2">
+      <div class="stat-card">
+        <p class="helper-label">Signed in</p>
+        <p class="mt-2 text-lg font-semibold text-ink">{data.user?.name}</p>
+        <p class="mt-1 text-sm text-slate-500">{data.user?.email}</p>
+        <div class="mt-3">
+          <span class="badge-brand">{data.user?.role}</span>
+        </div>
       </div>
-      <div class="rounded-2xl bg-orange-50 p-4">
-        <p class="text-xs uppercase tracking-[0.2em] text-orange-600">Phase</p>
-        <p class="mt-2 text-lg font-bold text-orange-900">Foundation</p>
-        <p class="text-sm text-orange-700">Core modules are scaffolded and ready for feature work.</p>
+
+      <div class="stat-card bg-accentSoft/70">
+        <p class="helper-label text-accentStrong">Phase</p>
+        <p class="mt-2 text-lg font-semibold text-ink">Foundation</p>
+        <p class="mt-1 text-sm text-slate-600">
+          Shell, login, and global UI baseline are ready for dashboard modules.
+        </p>
       </div>
+    </div>
+
+    <div class="mt-4 empty-state">
+      Dashboard masih placeholder. Langkah berikutnya adalah mengisi summary cards, daftar aktivitas terbaru, dan empty/loading states per modul tanpa perlu mengulang styling dasar lagi.
     </div>
   </PageCard>
 </div>

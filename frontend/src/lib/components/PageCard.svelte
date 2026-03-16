@@ -3,10 +3,10 @@
   export let description: string;
 </script>
 
-<section class="rounded-[28px] border border-line bg-panel p-5 shadow-sm">
-  <div class="mb-4">
-    <h2 class="text-xl font-bold text-ink">{title}</h2>
-    <p class="mt-1 text-sm leading-6 text-slate-600">{description}</p>
+<section class="app-panel p-5 sm:p-6">
+  <div class="mb-4 space-y-1.5">
+    <h2 class="section-title">{title}</h2>
+    <p class="section-subtitle">{description}</p>
   </div>
   <slot />
 </section>

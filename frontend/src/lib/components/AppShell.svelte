@@ -24,62 +24,77 @@
     { href: '/profile', label: 'Profile' },
     { href: '/settings', label: 'Settings' }
   ];
+
+  $: currentItem = [...navItems, ...utilityItems].find((item) => item.href === currentPath);
 </script>
 
-<div class="mx-auto flex min-h-screen max-w-md flex-col bg-canvas text-ink shadow-shell">
-  <header class="sticky top-0 z-10 border-b border-line/80 bg-panel/95 px-5 pb-4 pt-5 backdrop-blur">
-    <div class="flex items-start justify-between gap-4">
-      <div>
-        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Mess PWA</p>
-        <h1 class="mt-1 text-2xl font-bold">{APP_NAME}</h1>
-      </div>
-      {#if user}
-        <div class="rounded-2xl border border-line bg-slate-50 px-3 py-2 text-right text-xs">
-          <p class="font-semibold">{user.name}</p>
-          <p class="text-slate-500">{user.role}</p>
+<div class="app-shell">
+  <div class="mx-auto flex min-h-screen w-full max-w-4xl flex-col">
+    <header class="sticky top-0 z-20 border-b border-line/80 bg-white/90 backdrop-blur">
+      <div class="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 pb-4 pt-4 sm:px-6">
+        <div class="flex items-start justify-between gap-4">
+          <div class="min-w-0">
+            <p class="eyebrow">Internal Mess App</p>
+            <h1 class="mt-1 text-2xl font-semibold tracking-[-0.03em] text-ink">{APP_NAME}</h1>
+            <p class="mt-1 text-sm text-slate-500">
+              {currentItem?.label || 'Workspace'} untuk operasional harian mess.
+            </p>
+          </div>
+
+          <div class="flex shrink-0 items-start gap-2">
+            {#if user}
+              <div class="hidden rounded-2xl border border-line bg-slate-50 px-3 py-2 text-right text-xs sm:block">
+                <p class="font-semibold text-ink">{user.name}</p>
+                <p class="text-slate-500">{user.role}</p>
+              </div>
+            {/if}
+
+            <form method="POST" action="/logout">
+              <button type="submit" class="btn-secondary px-3 py-2 text-xs">Sign out</button>
+            </form>
+          </div>
         </div>
-      {/if}
-    </div>
-  </header>
 
-  <main class="flex-1 px-4 pb-28 pt-5">
-    <slot />
-  </main>
+        {#if user}
+          <div class="sm:hidden">
+            <div class="inline-flex rounded-full border border-line bg-slate-50 px-3 py-1.5 text-xs text-slate-600">
+              <span class="font-semibold text-ink">{user.name}</span>
+              <span class="mx-2 text-slate-300">/</span>
+              <span>{user.role}</span>
+            </div>
+          </div>
+        {/if}
 
-  <aside class="border-t border-line bg-white px-4 py-4">
-    <div class="mb-4 grid grid-cols-5 gap-2">
-      {#each navItems as item}
-        <a
-          href={item.href}
-          class={`rounded-2xl px-3 py-2 text-center text-xs font-semibold ${
-            currentPath === item.href ? 'bg-ink text-white' : 'bg-slate-100 text-slate-600'
-          }`}
-        >
-          {item.label}
-        </a>
-      {/each}
-    </div>
+        <div class="flex gap-2 overflow-x-auto pb-1">
+          {#each utilityItems as item}
+            <a
+              href={item.href}
+              class={`nav-chip ${currentPath === item.href ? 'nav-chip-active' : ''}`}
+            >
+              {item.label}
+            </a>
+          {/each}
+        </div>
+      </div>
+    </header>
 
-    <div class="grid grid-cols-5 gap-2">
-      {#each utilityItems as item}
-        <a
-          href={item.href}
-          class={`rounded-2xl px-3 py-2 text-center text-xs font-semibold ${
-            currentPath === item.href ? 'bg-accent text-white' : 'bg-orange-50 text-orange-700'
-          }`}
-        >
-          {item.label}
-        </a>
-      {/each}
-    </div>
+    <main class="page-container flex-1">
+      <slot />
+    </main>
 
-    <form method="POST" action="/logout" class="mt-4">
-      <button
-        type="submit"
-        class="w-full rounded-2xl border border-line bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700"
-      >
-        Sign out
-      </button>
-    </form>
-  </aside>
+    <nav class="sticky bottom-0 z-20 border-t border-line/80 bg-white/95 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+      <div class="mx-auto grid w-full max-w-4xl grid-cols-5 gap-2">
+        {#each navItems as item}
+          <a
+            href={item.href}
+            class={`bottom-nav-link ${
+              currentPath === item.href ? 'bottom-nav-link-active' : 'bg-white hover:bg-slate-50'
+            }`}
+          >
+            {item.label}
+          </a>
+        {/each}
+      </div>
+    </nav>
+  </div>
 </div>

@@ -64,6 +64,13 @@
 - None observed.
 
 ## Done
+- ID: UX-001
+  Title: Polish frontend baseline UI for login and app shell
+  Priority: P1
+  Owner/Agent: Codex
+  Dependencies: T-002
+  Notes: Fixed root Tailwind stylesheet import, added shared global UI classes, refined login states, and refreshed the mobile-first AppShell/navigation baseline.
+
 - ID: OPS-001
   Title: Adapt deploy/runtime workflow to GAS CLI, PM2, and Nginx
   Priority: P1

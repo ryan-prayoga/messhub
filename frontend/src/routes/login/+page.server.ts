@@ -16,18 +16,28 @@ export const actions: Actions = {
     const formData = await request.formData();
     const email = String(formData.get('email') || '').trim();
     const password = String(formData.get('password') || '');
+    const values = { email };
 
     if (!email || !password) {
-      return fail(400, { message: 'Email dan password wajib diisi.' });
+      return fail(400, { message: 'Email dan password wajib diisi.', values });
     }
 
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ email, password })
-    });
+    let response: Response;
+
+    try {
+      response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+      });
+    } catch {
+      return fail(503, {
+        message: 'Backend auth belum terjangkau. Cek service API di VPS atau env frontend.',
+        values
+      });
+    }
 
     const payload = (await response.json().catch(() => null)) as
       | {
@@ -41,7 +51,8 @@ export const actions: Actions = {
 
     if (!response.ok || !payload?.data) {
       return fail(response.status, {
-        message: payload?.message || 'Login gagal. Cek backend atau kredensial.'
+        message: payload?.message || 'Login gagal. Cek backend atau kredensial.',
+        values
       });
     }
 

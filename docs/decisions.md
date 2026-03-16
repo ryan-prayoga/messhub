@@ -63,3 +63,11 @@
 - Rationale: This matches the established server workflow, avoids port collisions on the VPS, and removes ambiguity between local dev tooling and production deploy.
 - Impact: Frontend now uses `adapter-node` plus `ecosystem.config.cjs`; backend now prefers `PORT`; deployment docs and env handling are centered on service directories instead of root Docker runtime.
 - Follow-up: Validate the new workflow end-to-end with `gas build` and `gas deploy` on the target VPS.
+
+## Decision 9
+- Date: 2026-03-16
+- Context: The frontend needs a usable baseline before dashboard and domain modules are implemented, but the codebase should avoid a large design-system rewrite.
+- Decision: Use a light mobile-first visual baseline with shared global component classes in `frontend/src/app.css`, then layer route-specific UI improvements on the existing SvelteKit structure.
+- Rationale: This fixes the immediate default-browser look, keeps Tailwind usage consistent, and provides reusable styling for later dashboard/member/wallet/wifi/feed work without introducing heavy abstraction.
+- Impact: App shell, cards, buttons, inputs, helper boxes, badges, and empty states should reuse the shared classes first before adding one-off patterns.
+- Follow-up: Apply the same baseline to dashboard summary cards and module list/detail screens as feature work continues.

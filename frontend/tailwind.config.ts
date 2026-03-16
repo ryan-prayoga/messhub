@@ -5,15 +5,17 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        canvas: '#f8fafc',
+        canvas: '#eef4fb',
         ink: '#0f172a',
-        accent: '#f97316',
-        accentSoft: '#fed7aa',
+        muted: '#64748b',
+        accent: '#0ea5e9',
+        accentSoft: '#e0f2fe',
+        accentStrong: '#0369a1',
         panel: '#ffffff',
-        line: '#e2e8f0'
+        line: '#d9e2ec'
       },
       boxShadow: {
-        shell: '0 18px 60px -30px rgba(15, 23, 42, 0.35)'
+        shell: '0 24px 60px -28px rgba(15, 23, 42, 0.28)'
       },
       fontFamily: {
         sans: ['"Avenir Next"', '"Segoe UI"', 'ui-sans-serif', 'system-ui', 'sans-serif']
