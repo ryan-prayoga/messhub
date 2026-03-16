@@ -15,6 +15,9 @@ import (
 const (
 	DefaultWifiNominalPerPerson int64 = 20000
 	defaultWifiBillStatus             = models.WifiBillStatusActive
+	defaultWifiDeadlineDay            = 10
+	defaultBankAccountName            = "Ryan Prayoga"
+	defaultBankAccountNumber          = "104987106615"
 )
 
 var (
@@ -49,21 +52,43 @@ type RejectWifiPaymentInput struct {
 }
 
 type WifiService struct {
-	db             *sql.DB
-	wifiRepository *repository.WifiRepository
-	auditService   *AuditService
+	db                  *sql.DB
+	wifiRepository      *repository.WifiRepository
+	settingsService     *SettingsService
+	auditService        *AuditService
+	notificationService *NotificationService
 }
 
-func NewWifiService(db *sql.DB, wifiRepository *repository.WifiRepository, auditService *AuditService) *WifiService {
+func NewWifiService(
+	db *sql.DB,
+	wifiRepository *repository.WifiRepository,
+	settingsService *SettingsService,
+	auditService *AuditService,
+	notificationService *NotificationService,
+) *WifiService {
 	return &WifiService{
-		db:             db,
-		wifiRepository: wifiRepository,
-		auditService:   auditService,
+		db:                  db,
+		wifiRepository:      wifiRepository,
+		settingsService:     settingsService,
+		auditService:        auditService,
+		notificationService: notificationService,
 	}
 }
 
 func (s *WifiService) CreateBill(ctx context.Context, createdBy string, input CreateWifiBillInput) (*models.WifiBillDetail, error) {
 	nominal := DefaultWifiNominalPerPerson
+	deadlineDay := defaultWifiDeadlineDay
+
+	if input.NominalPerPerson == nil || input.DeadlineDate == nil || strings.TrimSpace(*input.DeadlineDate) == "" {
+		settings, err := s.settingsService.GetSettings(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		nominal = settings.WifiPrice
+		deadlineDay = settings.WifiDeadlineDay
+	}
+
 	if input.NominalPerPerson != nil {
 		nominal = *input.NominalPerPerson
 	}
@@ -81,7 +106,7 @@ func (s *WifiService) CreateBill(ctx context.Context, createdBy string, input Cr
 		return nil, ErrInvalidWifiBillInput
 	}
 
-	deadlineDate, err := resolveWifiDeadline(input.Year, input.Month, input.DeadlineDate)
+	deadlineDate, err := resolveWifiDeadline(input.Year, input.Month, input.DeadlineDate, deadlineDay)
 	if err != nil {
 		return nil, ErrInvalidWifiBillInput
 	}
@@ -138,6 +163,18 @@ func (s *WifiService) CreateBill(ctx context.Context, createdBy string, input Cr
 			"generated_members":  createdMembers,
 		},
 	}); err != nil {
+		return nil, err
+	}
+
+	if err := s.notificationService.NotifyAllActiveExceptTx(
+		ctx,
+		tx,
+		createdBy,
+		"Tagihan wifi baru",
+		fmt.Sprintf("Tagihan wifi %s %d telah dibuat.", monthNameID(bill.Month), bill.Year),
+		"wifi_bill_created",
+		stringPtr(bill.ID),
+	); err != nil {
 		return nil, err
 	}
 
@@ -282,6 +319,15 @@ func (s *WifiService) SubmitPaymentProof(ctx context.Context, billID string, use
 }
 
 func (s *WifiService) VerifyPayment(ctx context.Context, billID string, memberID string, reviewerID string) (*models.WifiBillMember, error) {
+	bill, err := s.wifiRepository.FindByID(ctx, billID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrWifiBillNotFound
+		}
+
+		return nil, err
+	}
+
 	member, err := s.wifiRepository.FindBillMemberByID(ctx, billID, memberID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -323,6 +369,18 @@ func (s *WifiService) VerifyPayment(ctx context.Context, billID string, memberID
 		OldValue:   member,
 		NewValue:   updated,
 	}); err != nil {
+		return nil, err
+	}
+
+	if err := s.notificationService.NotifyUserTx(
+		ctx,
+		tx,
+		updated.UserID,
+		"Pembayaran wifi terverifikasi",
+		fmt.Sprintf("Pembayaran wifi %s %d kamu sudah diverifikasi.", monthNameID(bill.Month), bill.Year),
+		"wifi_payment_verified",
+		stringPtr(updated.ID),
+	); err != nil {
 		return nil, err
 	}
 
@@ -434,9 +492,9 @@ func isValidWifiBillDate(month int, year int) bool {
 	return month >= 1 && month <= 12 && year >= 2024 && year <= currentYear+5
 }
 
-func resolveWifiDeadline(year int, month int, value *string) (time.Time, error) {
+func resolveWifiDeadline(year int, month int, value *string, defaultDay int) (time.Time, error) {
 	if value == nil || strings.TrimSpace(*value) == "" {
-		return time.Date(year, time.Month(month), 10, 0, 0, 0, 0, time.UTC), nil
+		return defaultDeadlineDate(year, month, defaultDay), nil
 	}
 
 	deadline, err := time.Parse("2006-01-02", strings.TrimSpace(*value))
@@ -451,10 +509,54 @@ func resolveWifiDeadline(year int, month int, value *string) (time.Time, error) 
 	return deadline, nil
 }
 
+func defaultDeadlineDate(year int, month int, day int) time.Time {
+	if day < 1 {
+		day = defaultWifiDeadlineDay
+	}
+
+	lastDay := time.Date(year, time.Month(month)+1, 0, 0, 0, 0, 0, time.UTC).Day()
+	if day > lastDay {
+		day = lastDay
+	}
+
+	return time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
+}
+
 func stringPtr(value string) *string {
 	if strings.TrimSpace(value) == "" {
 		return nil
 	}
 
 	return &value
+}
+
+func monthNameID(month int) string {
+	switch month {
+	case 1:
+		return "Januari"
+	case 2:
+		return "Februari"
+	case 3:
+		return "Maret"
+	case 4:
+		return "April"
+	case 5:
+		return "Mei"
+	case 6:
+		return "Juni"
+	case 7:
+		return "Juli"
+	case 8:
+		return "Agustus"
+	case 9:
+		return "September"
+	case 10:
+		return "Oktober"
+	case 11:
+		return "November"
+	case 12:
+		return "Desember"
+	default:
+		return "Bulan"
+	}
 }

@@ -1,8 +1,16 @@
 import { env } from '$env/dynamic/private';
 import type {
+  ActivityComment,
+  ActivityFeedItem,
+  ActivityType,
   ApiEnvelope,
+  ContributionLeaderboardEntry,
+  MessSettings,
   MemberUser,
+  NotificationList,
+  Profile,
   SessionUser,
+  SystemStatus,
   WifiBillDetail,
   WifiBillWithSummary,
   WifiMyBill,
@@ -86,6 +94,216 @@ export const usersServerApi = {
   list: (fetcher: typeof fetch, token: string) =>
     apiServerRequest<MemberUser[]>(fetcher, '/users', {
       token
+    }),
+  update: (
+    fetcher: typeof fetch,
+    token: string,
+    userID: string,
+    payload: {
+      role?: MemberUser['role'];
+      is_active?: boolean;
+      name?: string;
+    }
+  ) =>
+    apiServerRequest<MemberUser>(fetcher, `/users/${userID}`, {
+      method: 'PATCH',
+      token,
+      body: payload
+    })
+};
+
+export const profileServerApi = {
+  get: (fetcher: typeof fetch, token: string) =>
+    apiServerRequest<Profile>(fetcher, '/profile', {
+      token
+    }),
+  update: (
+    fetcher: typeof fetch,
+    token: string,
+    payload: {
+      name?: string;
+      phone?: string;
+      avatar_url?: string;
+    }
+  ) =>
+    apiServerRequest<Profile>(fetcher, '/profile', {
+      method: 'PATCH',
+      token,
+      body: payload
+    }),
+  changePassword: (
+    fetcher: typeof fetch,
+    token: string,
+    payload: {
+      current_password: string;
+      new_password: string;
+    }
+  ) =>
+    apiServerRequest<{ changed: boolean }>(fetcher, '/profile/password', {
+      method: 'PATCH',
+      token,
+      body: payload
+    })
+};
+
+export const settingsServerApi = {
+  get: (fetcher: typeof fetch, token: string) =>
+    apiServerRequest<MessSettings>(fetcher, '/settings', {
+      token
+    }),
+  update: (
+    fetcher: typeof fetch,
+    token: string,
+    payload: {
+      mess_name?: string;
+      wifi_price?: number;
+      wifi_deadline_day?: number;
+      bank_account_name?: string;
+      bank_account_number?: string;
+    }
+  ) =>
+    apiServerRequest<MessSettings>(fetcher, '/settings', {
+      method: 'PATCH',
+      token,
+      body: payload
+    })
+};
+
+export const systemServerApi = {
+  status: (fetcher: typeof fetch, token: string) =>
+    apiServerRequest<SystemStatus>(fetcher, '/system/status', {
+      token
+    })
+};
+
+export const activitiesServerApi = {
+  list: (
+    fetcher: typeof fetch,
+    token: string,
+    params: {
+      limit?: number;
+    } = {}
+  ) => {
+    const searchParams = new URLSearchParams();
+
+    if (params.limit) {
+      searchParams.set('limit', String(params.limit));
+    }
+
+    const query = searchParams.toString();
+
+    return apiServerRequest<ActivityFeedItem[]>(
+      fetcher,
+      `/activities${query ? `?${query}` : ''}`,
+      {
+        token
+      }
+    );
+  },
+  create: (
+    fetcher: typeof fetch,
+    token: string,
+    payload: {
+      type: ActivityType;
+      title: string;
+      content: string;
+      points?: number;
+    }
+  ) =>
+    apiServerRequest<ActivityFeedItem>(fetcher, '/activities', {
+      method: 'POST',
+      token,
+      body: payload
+    }),
+  listComments: (fetcher: typeof fetch, token: string, activityID: string) =>
+    apiServerRequest<ActivityComment[]>(fetcher, `/activities/${activityID}/comments`, {
+      token
+    }),
+  addComment: (
+    fetcher: typeof fetch,
+    token: string,
+    activityID: string,
+    payload: {
+      comment: string;
+    }
+  ) =>
+    apiServerRequest<ActivityFeedItem>(fetcher, `/activities/${activityID}/comments`, {
+      method: 'POST',
+      token,
+      body: payload
+    }),
+  toggleReaction: (
+    fetcher: typeof fetch,
+    token: string,
+    activityID: string,
+    payload: {
+      reaction_type: string;
+    }
+  ) =>
+    apiServerRequest<ActivityFeedItem>(fetcher, `/activities/${activityID}/reactions`, {
+      method: 'POST',
+      token,
+      body: payload
+    }),
+  claimFood: (fetcher: typeof fetch, token: string, activityID: string) =>
+    apiServerRequest(fetcher, `/activities/${activityID}/claim`, {
+      method: 'POST',
+      token
+    }),
+  respondRice: (fetcher: typeof fetch, token: string, activityID: string) =>
+    apiServerRequest(fetcher, `/activities/${activityID}/rice-response`, {
+      method: 'POST',
+      token
+    })
+};
+
+export const contributionsServerApi = {
+  leaderboard: (fetcher: typeof fetch, token: string, period: 'month' | 'all' = 'month') =>
+    apiServerRequest<ContributionLeaderboardEntry[]>(
+      fetcher,
+      `/contributions/leaderboard?period=${period}`,
+      {
+        token
+      }
+    )
+};
+
+export const notificationsServerApi = {
+  list: (
+    fetcher: typeof fetch,
+    token: string,
+    params: {
+      limit?: number;
+    } = {}
+  ) => {
+    const searchParams = new URLSearchParams();
+
+    if (params.limit) {
+      searchParams.set('limit', String(params.limit));
+    }
+
+    const query = searchParams.toString();
+
+    return apiServerRequest<NotificationList>(
+      fetcher,
+      `/notifications${query ? `?${query}` : ''}`,
+      {
+        token
+      }
+    );
+  },
+  markRead: (
+    fetcher: typeof fetch,
+    token: string,
+    payload: {
+      ids?: string[];
+      all?: boolean;
+    }
+  ) =>
+    apiServerRequest<{ updated_count: number }>(fetcher, '/notifications/read', {
+      method: 'POST',
+      token,
+      body: payload
     })
 };
 

@@ -13,7 +13,11 @@
 {#if isPublicRoute}
   <slot />
 {:else}
-  <AppShell user={data.user} currentPath={$page.url.pathname}>
+  <AppShell
+    user={data.user}
+    currentPath={$page.url.pathname}
+    notificationSummary={data.notificationSummary ?? { unread_count: 0 }}
+  >
     <slot />
   </AppShell>
 {/if}

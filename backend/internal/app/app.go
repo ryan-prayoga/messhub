@@ -11,6 +11,7 @@ import (
 	"github.com/ryanprayoga/messhub/backend/internal/handlers"
 	"github.com/ryanprayoga/messhub/backend/internal/middleware"
 	"github.com/ryanprayoga/messhub/backend/internal/repository"
+	"github.com/ryanprayoga/messhub/backend/internal/response"
 	"github.com/ryanprayoga/messhub/backend/internal/routes"
 	"github.com/ryanprayoga/messhub/backend/internal/services"
 )
@@ -30,7 +31,8 @@ func New() (*App, error) {
 	}
 
 	web := fiber.New(fiber.Config{
-		AppName: cfg.AppName,
+		AppName:      cfg.AppName,
+		ErrorHandler: response.FiberErrorHandler,
 	})
 
 	web.Use(cors.New(cors.Config{
@@ -40,22 +42,47 @@ func New() (*App, error) {
 	}))
 
 	userRepository := repository.NewUserRepository(db)
+	settingsRepository := repository.NewSettingsRepository(db)
 	walletRepository := repository.NewWalletRepository(db)
 	wifiRepository := repository.NewWifiRepository(db)
+	activityRepository := repository.NewActivityRepository(db)
 	auditRepository := repository.NewAuditLogRepository(db)
+	notificationRepository := repository.NewNotificationRepository(db)
 	authService := services.NewAuthService(cfg, userRepository)
 	auditService := services.NewAuditService(auditRepository)
+	settingsService := services.NewSettingsService(cfg, db, settingsRepository, auditService)
+	systemService := services.NewSystemService(cfg, db)
 	userService := services.NewUserService(db, userRepository, auditService)
 	walletService := services.NewWalletService(db, walletRepository, auditService)
-	wifiService := services.NewWifiService(db, wifiRepository, auditService)
+	notificationService := services.NewNotificationService(db, notificationRepository, userRepository, auditService)
+	wifiService := services.NewWifiService(db, wifiRepository, settingsService, auditService, notificationService)
+	activityService := services.NewActivityService(db, activityRepository, notificationService, auditService)
 	authMiddleware := middleware.NewAuthMiddleware(cfg, userRepository)
 	healthHandler := handlers.NewHealthHandler()
 	authHandler := handlers.NewAuthHandler(authService)
 	userHandler := handlers.NewUserHandler(userService)
+	profileHandler := handlers.NewProfileHandler(userService)
+	settingsHandler := handlers.NewSettingsHandler(settingsService)
+	systemHandler := handlers.NewSystemHandler(systemService)
 	walletHandler := handlers.NewWalletHandler(walletService)
 	wifiHandler := handlers.NewWifiHandler(wifiService)
+	activityHandler := handlers.NewActivityHandler(activityService)
+	notificationHandler := handlers.NewNotificationHandler(notificationService)
 
-	routes.Register(web, healthHandler, authHandler, userHandler, walletHandler, wifiHandler, authMiddleware)
+	routes.Register(
+		web,
+		healthHandler,
+		authHandler,
+		userHandler,
+		profileHandler,
+		settingsHandler,
+		systemHandler,
+		walletHandler,
+		wifiHandler,
+		activityHandler,
+		notificationHandler,
+		authMiddleware,
+	)
 
 	return &App{
 		config: cfg,

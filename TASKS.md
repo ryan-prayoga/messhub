@@ -1,33 +1,12 @@
 # TASKS.md
 
 ## Todo
-- ID: T-006
-  Title: Implement dashboard summary
-  Priority: P2
-  Owner/Agent: Unassigned
-  Dependencies: T-004, T-005
-  Notes: Mobile-first summary of wallet, wifi, shared expenses, contributions, feed, proposals.
-
 - ID: T-007
   Title: Implement shared expenses module
   Priority: P2
   Owner/Agent: Unassigned
   Dependencies: T-003
   Notes: Track payer, fronting, reimbursement status, and proof without affecting wallet balance.
-
-- ID: T-008
-  Title: Implement contributions and simple leaderboard base
-  Priority: P2
-  Owner/Agent: Unassigned
-  Dependencies: T-003
-  Notes: Keep scoring simple in v1.
-
-- ID: T-009
-  Title: Implement temporary feed/info module
-  Priority: P2
-  Owner/Agent: Unassigned
-  Dependencies: T-003
-  Notes: Support expiring posts and basic interactions.
 
 - ID: T-010
   Title: Implement proposals and simple voting
@@ -90,7 +69,7 @@
   Priority: P1
   Owner/Agent: Codex
   Dependencies: T-002
-  Notes: Users schema is now hardened with `joined_at` support, admin seed remains non-duplicating, backend users API is live, and the frontend members list is connected with role-aware states.
+  Notes: Users schema is now hardened with `joined_at`, `phone`, and `avatar_url`; admin seed remains non-duplicating; backend users/profile APIs are live; and the frontend members list now supports admin role and activation controls.
 
 - ID: T-004
   Title: Implement wallet transactions module
@@ -105,6 +84,41 @@
   Owner/Agent: Codex
   Dependencies: T-003
   Notes: Added `backend/db/migrations/004_wifi_audit_step3.sql`, wifi billing APIs for create/list/detail/active/my/submit/verify/reject, auto-generated monthly member obligations from active users, frontend `/wifi` page with proof submission and review UI, dashboard wifi summary, and reusable audit logging for wifi, wallet transaction creation, and user role/activation updates.
+
+- ID: T-006
+  Title: Implement dashboard summary
+  Priority: P2
+  Owner/Agent: Codex
+  Dependencies: T-004, T-005
+  Notes: Mobile-first dashboard summary cards are now live for members, wallet, wifi, and contribution leaderboard data.
+
+- ID: T-008
+  Title: Implement contributions and simple leaderboard base
+  Priority: P2
+  Owner/Agent: Codex
+  Dependencies: T-003
+  Notes: Added unified `activities` runtime for contribution posts, `GET /api/v1/contributions/leaderboard` with `period=month|all`, dashboard and `/contributions` leaderboard UI, and simple point scoring from contribution activities.
+
+- ID: T-009
+  Title: Implement temporary feed/info module
+  Priority: P2
+  Owner/Agent: Codex
+  Dependencies: T-003
+  Notes: Added `/api/v1/activities` feed runtime with create/comment/reaction support, food claim and rice response flows, and a mobile-first `/feed` UI for smart mess interactions.
+
+- ID: T-011
+  Title: Implement in-app notification system
+  Priority: P2
+  Owner/Agent: Codex
+  Dependencies: T-005, T-009
+  Notes: Added notification list/read APIs, activity/comment/wifi notification triggers, header badge, and `/notifications` UI with unread management.
+
+- ID: T-012
+  Title: Implement system settings, profile, and admin panel
+  Priority: P1
+  Owner/Agent: Codex
+  Dependencies: T-003, T-005, T-011
+  Notes: Added `backend/db/migrations/006_settings_profile_step6.sql`, live profile/password/settings/system-status APIs, standardized API errors, frontend `/profile` and admin `/settings`, wifi defaults sourced from settings, and admin member role/activation controls on `/members`.
 
 - ID: CTX-001
   Title: Normalize shared project context

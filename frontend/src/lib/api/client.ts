@@ -1,8 +1,16 @@
 import { API_BASE_URL } from '$lib/config/env';
 import type {
+  ActivityComment,
+  ActivityFeedItem,
+  ActivityType,
   ApiEnvelope,
+  ContributionLeaderboardEntry,
+  MessSettings,
   MemberUser,
+  NotificationList,
+  Profile,
   SessionUser,
+  SystemStatus,
   WifiBillDetail,
   WifiBillWithSummary,
   WifiMyBill,
@@ -68,7 +76,184 @@ export const authApi = {
 };
 
 export const usersApi = {
-  list: (token: string) => apiRequest<MemberUser[]>('/users', { token })
+  list: (token: string) => apiRequest<MemberUser[]>('/users', { token }),
+  update: (
+    token: string,
+    userID: string,
+    payload: {
+      role?: MemberUser['role'];
+      is_active?: boolean;
+      name?: string;
+    }
+  ) =>
+    apiRequest<MemberUser>(`/users/${userID}`, {
+      method: 'PATCH',
+      token,
+      body: payload
+    })
+};
+
+export const profileApi = {
+  get: (token: string) => apiRequest<Profile>('/profile', { token }),
+  update: (
+    token: string,
+    payload: {
+      name?: string;
+      phone?: string;
+      avatar_url?: string;
+    }
+  ) =>
+    apiRequest<Profile>('/profile', {
+      method: 'PATCH',
+      token,
+      body: payload
+    }),
+  changePassword: (
+    token: string,
+    payload: {
+      current_password: string;
+      new_password: string;
+    }
+  ) =>
+    apiRequest<{ changed: boolean }>('/profile/password', {
+      method: 'PATCH',
+      token,
+      body: payload
+    })
+};
+
+export const settingsApi = {
+  get: (token: string) => apiRequest<MessSettings>('/settings', { token }),
+  update: (
+    token: string,
+    payload: {
+      mess_name?: string;
+      wifi_price?: number;
+      wifi_deadline_day?: number;
+      bank_account_name?: string;
+      bank_account_number?: string;
+    }
+  ) =>
+    apiRequest<MessSettings>('/settings', {
+      method: 'PATCH',
+      token,
+      body: payload
+    })
+};
+
+export const systemApi = {
+  status: (token: string) => apiRequest<SystemStatus>('/system/status', { token })
+};
+
+export const activitiesApi = {
+  list: (
+    token: string,
+    params: {
+      limit?: number;
+    } = {}
+  ) => {
+    const searchParams = new URLSearchParams();
+
+    if (params.limit) {
+      searchParams.set('limit', String(params.limit));
+    }
+
+    const query = searchParams.toString();
+
+    return apiRequest<ActivityFeedItem[]>(`/activities${query ? `?${query}` : ''}`, {
+      token
+    });
+  },
+  create: (
+    token: string,
+    payload: {
+      type: ActivityType;
+      title: string;
+      content: string;
+      points?: number;
+    }
+  ) =>
+    apiRequest<ActivityFeedItem>('/activities', {
+      method: 'POST',
+      token,
+      body: payload
+    }),
+  listComments: (token: string, activityID: string) =>
+    apiRequest<ActivityComment[]>(`/activities/${activityID}/comments`, { token }),
+  addComment: (
+    token: string,
+    activityID: string,
+    payload: {
+      comment: string;
+    }
+  ) =>
+    apiRequest<ActivityFeedItem>(`/activities/${activityID}/comments`, {
+      method: 'POST',
+      token,
+      body: payload
+    }),
+  toggleReaction: (
+    token: string,
+    activityID: string,
+    payload: {
+      reaction_type: string;
+    }
+  ) =>
+    apiRequest<ActivityFeedItem>(`/activities/${activityID}/reactions`, {
+      method: 'POST',
+      token,
+      body: payload
+    }),
+  claimFood: (token: string, activityID: string) =>
+    apiRequest(`/activities/${activityID}/claim`, {
+      method: 'POST',
+      token
+    }),
+  respondRice: (token: string, activityID: string) =>
+    apiRequest(`/activities/${activityID}/rice-response`, {
+      method: 'POST',
+      token
+    })
+};
+
+export const contributionsApi = {
+  leaderboard: (token: string, period: 'month' | 'all' = 'month') =>
+    apiRequest<ContributionLeaderboardEntry[]>(`/contributions/leaderboard?period=${period}`, {
+      token
+    })
+};
+
+export const notificationsApi = {
+  list: (
+    token: string,
+    params: {
+      limit?: number;
+    } = {}
+  ) => {
+    const searchParams = new URLSearchParams();
+
+    if (params.limit) {
+      searchParams.set('limit', String(params.limit));
+    }
+
+    const query = searchParams.toString();
+
+    return apiRequest<NotificationList>(`/notifications${query ? `?${query}` : ''}`, {
+      token
+    });
+  },
+  markRead: (
+    token: string,
+    payload: {
+      ids?: string[];
+      all?: boolean;
+    }
+  ) =>
+    apiRequest<{ updated_count: number }>('/notifications/read', {
+      method: 'POST',
+      token,
+      body: payload
+    })
 };
 
 export const walletApi = {

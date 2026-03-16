@@ -138,6 +138,8 @@ func (h *WifiHandler) VerifyPayment(c *fiber.Ctx) error {
 	member, err := h.wifiService.VerifyPayment(c.UserContext(), c.Params("id"), c.Params("memberId"), user.ID)
 	if err != nil {
 		switch {
+		case errors.Is(err, services.ErrWifiBillNotFound):
+			return response.Error(c, fiber.StatusNotFound, err.Error(), "wifi_bill_not_found")
 		case errors.Is(err, services.ErrWifiMemberNotFound):
 			return response.Error(c, fiber.StatusNotFound, err.Error(), "wifi_member_not_found")
 		case errors.Is(err, services.ErrWifiReviewNotAllowed):

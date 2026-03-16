@@ -103,3 +103,19 @@
 - Rationale: This matches the product rule that wifi is a monthly obligation, avoids mixing wallet and wifi ledgers, works even before a dedicated upload service exists, and keeps audit writes consistent with the main state changes.
 - Impact: Future wifi work should build on the existing monthly bill/member snapshot model, and new auditable financial/member mutations should reuse the same audit helper pattern instead of bespoke logging.
 - Follow-up: If file upload storage is added later, keep the `proof_url` contract stable so current submit/review flows do not need a breaking API change.
+
+## Decision 14
+- Date: 2026-03-16
+- Context: STEP 5 needs contribution scoring, temporary food/rice posts, comments, reactions, and notification triggers, but the legacy `contributions` and `posts` tables from the initial schema were not connected to any live runtime.
+- Decision: Implement smart mess interactions on top of a unified `activities` runtime with dedicated `activity_comments`, `activity_reactions`, `food_claims`, and `rice_responses` tables, and generate in-app notifications through a shared notification service inside domain transactions.
+- Rationale: This matches the requested `/api/v1/activities/...` API shape, keeps leaderboard and feed logic on one canonical model, and avoids splitting social interactions across multiple half-used legacy tables.
+- Impact: Future feed/contribution extensions should build on `activities` first, and notification-triggering domain events should reuse the shared notification service rather than inserting notification rows ad hoc.
+- Follow-up: Decide later whether the unused legacy `contributions` and `posts` tables should be migrated into `activities` or removed once production data strategy is defined.
+
+## Decision 15
+- Date: 2026-03-16
+- Context: STEP 6 introduces runtime-configurable mess defaults, user self-service profile flows, and more frontend/server action handling, so duplicated wifi defaults and inconsistent API errors would become harder to maintain.
+- Decision: Store global operational configuration in a singleton `mess_settings` row, drive wifi default price/deadline from that row, and standardize backend API errors through the shared `{ message, data, error.code }` response envelope.
+- Rationale: This keeps admin-editable settings in one canonical place, removes drift between settings and wifi bill creation defaults, and gives SvelteKit server actions one consistent error contract across modules.
+- Impact: Future configurable mess-wide values should extend `mess_settings` first, and new backend handlers should reuse the shared response helper instead of returning ad hoc error JSON.
+- Follow-up: If media upload/storage is added later, keep the current avatar string contract stable or add a backward-compatible migration path.

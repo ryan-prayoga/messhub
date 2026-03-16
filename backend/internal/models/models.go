@@ -10,6 +10,12 @@ const (
 	RoleTreasurer = "treasurer"
 	RoleMember    = "member"
 
+	ActivityTypeContribution = "contribution"
+	ActivityTypeFood         = "food"
+	ActivityTypeRice         = "rice"
+	ActivityTypeAnnouncement = "announcement"
+	ActivityTypeOther        = "other"
+
 	WifiBillStatusDraft  = "draft"
 	WifiBillStatusActive = "active"
 	WifiBillStatusClosed = "closed"
@@ -34,6 +40,8 @@ type User struct {
 	Name         string     `json:"name"`
 	Email        string     `json:"email"`
 	PasswordHash string     `json:"-"`
+	Phone        *string    `json:"phone"`
+	AvatarURL    *string    `json:"avatar_url"`
 	Role         string     `json:"role"`
 	IsActive     bool       `json:"is_active"`
 	JoinedAt     *time.Time `json:"joined_at"`
@@ -137,6 +145,23 @@ type WifiMyBill struct {
 	UpdatedAt        time.Time  `json:"updated_at"`
 }
 
+type MessSettings struct {
+	ID                string    `json:"id"`
+	MessName          string    `json:"mess_name"`
+	WifiPrice         int64     `json:"wifi_price"`
+	WifiDeadlineDay   int       `json:"wifi_deadline_day"`
+	BankAccountName   string    `json:"bank_account_name"`
+	BankAccountNumber string    `json:"bank_account_number"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+type SystemStatus struct {
+	DatabaseStatus string    `json:"database_status"`
+	ServerTime     time.Time `json:"server_time"`
+	AppVersion     string    `json:"app_version"`
+}
+
 type SharedExpense struct {
 	ID           string    `json:"id"`
 	ExpenseDate  time.Time `json:"expense_date"`
@@ -160,6 +185,69 @@ type Contribution struct {
 	ContributedAt time.Time `json:"contributed_at"`
 	CreatedBy     string    `json:"created_by"`
 	CreatedAt     time.Time `json:"created_at"`
+}
+
+type Activity struct {
+	ID            string     `json:"id"`
+	Type          string     `json:"type"`
+	Title         string     `json:"title"`
+	Content       string     `json:"content"`
+	Points        int        `json:"points"`
+	UserID        string     `json:"user_id"`
+	UserName      string     `json:"user_name"`
+	CreatedBy     string     `json:"created_by"`
+	CreatedByName string     `json:"created_by_name"`
+	ExpiresAt     *time.Time `json:"expires_at"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+}
+
+type ActivityComment struct {
+	ID         string    `json:"id"`
+	ActivityID string    `json:"activity_id"`
+	UserID     string    `json:"user_id"`
+	UserName   string    `json:"user_name"`
+	Comment    string    `json:"comment"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+type ActivityReactionSummary struct {
+	ReactionType string `json:"reaction_type"`
+	Count        int    `json:"count"`
+	Reacted      bool   `json:"reacted"`
+}
+
+type FoodClaim struct {
+	ID         string    `json:"id"`
+	ActivityID string    `json:"activity_id"`
+	UserID     string    `json:"user_id"`
+	UserName   string    `json:"user_name"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+type RiceResponse struct {
+	ID         string    `json:"id"`
+	ActivityID string    `json:"activity_id"`
+	UserID     string    `json:"user_id"`
+	UserName   string    `json:"user_name"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+type ActivityFeedItem struct {
+	Activity      Activity                  `json:"activity"`
+	Comments      []ActivityComment         `json:"comments"`
+	Reactions     []ActivityReactionSummary `json:"reactions"`
+	Claims        []FoodClaim               `json:"claims"`
+	RiceResponses []RiceResponse            `json:"rice_responses"`
+}
+
+type ContributionLeaderboardEntry struct {
+	Rank            int    `json:"rank"`
+	UserID          string `json:"user_id"`
+	UserName        string `json:"user_name"`
+	TotalPoints     int    `json:"total_points"`
+	TotalActivities int    `json:"total_activities"`
 }
 
 type Proposal struct {
@@ -215,15 +303,14 @@ type PostReaction struct {
 }
 
 type Notification struct {
-	ID            string    `json:"id"`
-	UserID        string    `json:"user_id"`
-	Title         string    `json:"title"`
-	Body          string    `json:"body"`
-	Type          string    `json:"type"`
-	ReferenceType *string   `json:"reference_type"`
-	ReferenceID   *string   `json:"reference_id"`
-	IsRead        bool      `json:"is_read"`
-	CreatedAt     time.Time `json:"created_at"`
+	ID        string    `json:"id"`
+	UserID    string    `json:"user_id"`
+	Title     string    `json:"title"`
+	Message   string    `json:"message"`
+	Type      string    `json:"type"`
+	EntityID  *string   `json:"entity_id"`
+	IsRead    bool      `json:"is_read"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type AuditLog struct {

@@ -1,4 +1,5 @@
 export type UserRole = 'admin' | 'treasurer' | 'member';
+export type ActivityType = 'contribution' | 'food' | 'rice' | 'announcement' | 'other';
 export type WalletTransactionType = 'income' | 'expense';
 export type WifiBillStatus = 'draft' | 'active' | 'closed';
 export type WifiPaymentStatus =
@@ -15,11 +16,32 @@ export type SessionUser = {
 };
 
 export type MemberUser = SessionUser & {
+  phone: string | null;
+  avatar_url: string | null;
   is_active: boolean;
-  joined_at: string;
+  joined_at: string | null;
   left_at: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type Profile = MemberUser;
+
+export type MessSettings = {
+  id: string;
+  mess_name: string;
+  wifi_price: number;
+  wifi_deadline_day: number;
+  bank_account_name: string;
+  bank_account_number: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SystemStatus = {
+  database_status: string;
+  server_time: string;
+  app_version: string;
 };
 
 export type WalletSummary = {
@@ -122,11 +144,91 @@ export type WifiMyBill = {
   updated_at: string;
 };
 
+export type Activity = {
+  id: string;
+  type: ActivityType;
+  title: string;
+  content: string;
+  points: number;
+  user_id: string;
+  user_name: string;
+  created_by: string;
+  created_by_name: string;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ActivityComment = {
+  id: string;
+  activity_id: string;
+  user_id: string;
+  user_name: string;
+  comment: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ActivityReactionSummary = {
+  reaction_type: string;
+  count: number;
+  reacted: boolean;
+};
+
+export type FoodClaim = {
+  id: string;
+  activity_id: string;
+  user_id: string;
+  user_name: string;
+  created_at: string;
+};
+
+export type RiceResponse = {
+  id: string;
+  activity_id: string;
+  user_id: string;
+  user_name: string;
+  created_at: string;
+};
+
+export type ActivityFeedItem = {
+  activity: Activity;
+  comments: ActivityComment[];
+  reactions: ActivityReactionSummary[];
+  claims: FoodClaim[];
+  rice_responses: RiceResponse[];
+};
+
+export type ContributionLeaderboardEntry = {
+  rank: number;
+  user_id: string;
+  user_name: string;
+  total_points: number;
+  total_activities: number;
+};
+
+export type Notification = {
+  id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  type: string;
+  entity_id: string | null;
+  is_read: boolean;
+  created_at: string;
+};
+
+export type NotificationList = {
+  items: Notification[];
+  unread_count: number;
+};
+
 export type ApiEnvelope<T> = {
   message: string;
   data: T;
   error?: {
     code?: string;
+    details?: unknown;
   };
 };
 

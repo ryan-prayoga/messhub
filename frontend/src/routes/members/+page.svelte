@@ -1,10 +1,11 @@
 <script lang="ts">
   import { navigating } from '$app/stores';
   import PageCard from '$lib/components/PageCard.svelte';
-  import type { PageData } from './$types';
+  import type { ActionData, PageData } from './$types';
   import type { UserRole } from '$lib/api/types';
 
   export let data: PageData;
+  export let form: ActionData;
 
   const roleLabels: Record<UserRole, string> = {
     admin: 'Admin',
@@ -39,12 +40,29 @@
       year: 'numeric'
     }).format(new Date(value));
   }
+
+  function roleValue(memberID: string, fallback: UserRole) {
+    if (form?.action !== 'updateRole') {
+      return fallback;
+    }
+
+    const values = form.values as Record<string, string> | undefined;
+    if (values?.member_id !== memberID) {
+      return fallback;
+    }
+
+    if (values.role === 'admin' || values.role === 'treasurer' || values.role === 'member') {
+      return values.role;
+    }
+
+    return fallback;
+  }
 </script>
 
 <div class="space-y-4">
   <PageCard
     title="Members"
-    description="Daftar anggota mess untuk STEP 1. Endpoint backend yang dipakai: `GET /api/v1/users`."
+    description="Daftar anggota mess dengan admin controls untuk role dan status aktif."
   >
     {#if $navigating?.to?.url.pathname === '/members'}
       <div class="helper-box mb-4">
@@ -64,6 +82,18 @@
         <p class="mt-2 text-sm leading-6 text-slate-700">{data.loadError}</p>
       </div>
     {:else}
+      {#if form?.message}
+        <div class="helper-box-brand mb-4">
+          <p class="helper-label text-sky-700">Error</p>
+          <p class="mt-2 text-sm leading-6 text-slate-700">{form.message}</p>
+        </div>
+      {:else if form?.success}
+        <div class="helper-box mb-4 border-emerald-200 bg-emerald-50/80">
+          <p class="helper-label text-emerald-700">Success</p>
+          <p class="mt-2 text-sm leading-6 text-emerald-800">{form.success}</p>
+        </div>
+      {/if}
+
       <div class="grid gap-3 sm:grid-cols-3">
         <div class="stat-card">
           <p class="helper-label">Total</p>
@@ -115,6 +145,39 @@
                   <p class="mt-2 text-sm font-medium text-ink">{formatDate(member.left_at)}</p>
                 </div>
               </div>
+
+              <div class="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p class="helper-label">Phone</p>
+                <p class="mt-2 text-sm font-medium text-ink">{member.phone ?? '-'}</p>
+              </div>
+
+              {#if data.canManage}
+                <div class="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                  <form method="POST" action="?/updateRole" class="space-y-3">
+                    <input type="hidden" name="member_id" value={member.id} />
+                    <label>
+                      <span class="field-label">Role</span>
+                      <select name="role" class="input-field">
+                        <option value="admin" selected={roleValue(member.id, member.role) === 'admin'}>Admin</option>
+                        <option value="treasurer" selected={roleValue(member.id, member.role) === 'treasurer'}>Treasurer</option>
+                        <option value="member" selected={roleValue(member.id, member.role) === 'member'}>Member</option>
+                      </select>
+                    </label>
+                    <button type="submit" class="btn-secondary w-full px-4 py-3">Save role</button>
+                  </form>
+
+                  <form method="POST" action="?/toggleActive" class="flex items-end">
+                    <input type="hidden" name="member_id" value={member.id} />
+                    <input type="hidden" name="is_active" value={member.is_active ? 'false' : 'true'} />
+                    <button
+                      type="submit"
+                      class={member.is_active ? 'btn-secondary w-full px-4 py-3' : 'btn-primary w-full px-4 py-3'}
+                    >
+                      {member.is_active ? 'Deactivate' : 'Activate'}
+                    </button>
+                  </form>
+                </div>
+              {/if}
             </article>
           {/each}
         </div>

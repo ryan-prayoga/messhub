@@ -12,8 +12,13 @@ func Register(
 	healthHandler *handlers.HealthHandler,
 	authHandler *handlers.AuthHandler,
 	userHandler *handlers.UserHandler,
+	profileHandler *handlers.ProfileHandler,
+	settingsHandler *handlers.SettingsHandler,
+	systemHandler *handlers.SystemHandler,
 	walletHandler *handlers.WalletHandler,
 	wifiHandler *handlers.WifiHandler,
+	activityHandler *handlers.ActivityHandler,
+	notificationHandler *handlers.NotificationHandler,
 	authMiddleware *middleware.AuthMiddleware,
 ) {
 	api := app.Group("/api/v1")
@@ -24,6 +29,23 @@ func Register(
 
 	authenticated := api.Group("", authMiddleware.RequireAuth())
 	authenticated.Get("/auth/me", authHandler.Me)
+	authenticated.Get("/profile", profileHandler.Get)
+	authenticated.Patch("/profile", profileHandler.Update)
+	authenticated.Patch("/profile/password", profileHandler.ChangePassword)
+	authenticated.Get("/settings", settingsHandler.Get)
+	authenticated.Get("/system/status", systemHandler.GetStatus)
+	authenticated.Get("/activities", activityHandler.ListActivities)
+	authenticated.Post("/activities", activityHandler.CreateActivity)
+	authenticated.Get("/activities/:id/comments", activityHandler.ListComments)
+	authenticated.Post("/activities/:id/comments", activityHandler.AddComment)
+	authenticated.Post("/activities/:id/reactions", activityHandler.ToggleReaction)
+	authenticated.Post("/activities/:id/claim", activityHandler.ClaimFood)
+	authenticated.Get("/activities/:id/claims", activityHandler.ListFoodClaims)
+	authenticated.Post("/activities/:id/rice-response", activityHandler.RespondRice)
+	authenticated.Get("/activities/:id/rice-responses", activityHandler.ListRiceResponses)
+	authenticated.Get("/contributions/leaderboard", activityHandler.GetContributionLeaderboard)
+	authenticated.Get("/notifications", notificationHandler.List)
+	authenticated.Post("/notifications/read", notificationHandler.MarkRead)
 	authenticated.Get("/wallet", walletHandler.GetSummary)
 	authenticated.Get("/wallet/transactions", walletHandler.ListTransactions)
 	authenticated.Get("/wifi/active", wifiHandler.GetActiveBill)
@@ -42,6 +64,7 @@ func Register(
 	adminOnly := authenticated.Group("", middleware.RequireRoles("admin"))
 	adminOnly.Post("/users", userHandler.Create)
 	adminOnly.Patch("/users/:id", userHandler.Update)
+	adminOnly.Patch("/settings", settingsHandler.Update)
 
 	userReaders.Get("/admin/ping", func(c *fiber.Ctx) error {
 		return response.Success(c, fiber.StatusOK, "admin or treasurer access granted", fiber.Map{

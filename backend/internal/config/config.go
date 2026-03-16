@@ -9,6 +9,7 @@ import (
 
 type Config struct {
 	AppName           string
+	AppVersion        string
 	AppEnv            string
 	BackendHost       string
 	BackendPort       string
@@ -27,6 +28,7 @@ func Load() Config {
 
 	return Config{
 		AppName:           getEnv("APP_NAME", "MessHub"),
+		AppVersion:        getEnv("APP_VERSION", "dev"),
 		AppEnv:            getEnv("APP_ENV", "development"),
 		BackendHost:       getEnv("BACKEND_HOST", "0.0.0.0"),
 		BackendPort:       getEnv("PORT", getEnv("BACKEND_PORT", "4100")),

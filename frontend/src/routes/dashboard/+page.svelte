@@ -91,7 +91,7 @@
 <div class="space-y-4">
   <PageCard
     title={`Halo, ${data.user?.name ?? 'Member'}`}
-    description="Dashboard sekarang menampilkan fondasi auth, members, wallet, dan wifi billing untuk STEP 3."
+    description="Ringkasan mobile-first untuk wallet, wifi, kontribusi, dan smart mess notifications."
   >
     <div class="grid gap-3 md:grid-cols-3">
       <div class="stat-card">
@@ -186,21 +186,51 @@
   </PageCard>
 
   <PageCard
-    title="Foundation Scope"
-    description="Fondasi yang sudah aktif setelah STEP 2 wallet dasar selesai ditambahkan."
+    title="Contribution Leaderboard"
+    description="Poin kontribusi bulan berjalan dihitung dari aktivitas bertipe contribution."
+  >
+    {#if data.leaderboardSummary.state === 'ready'}
+      <div class="space-y-3">
+        {#each data.leaderboardSummary.items as item}
+          <div class="flex items-center justify-between rounded-3xl border border-slate-200 bg-white px-4 py-3">
+            <div>
+              <p class="text-sm font-semibold text-ink">#{item.rank} {item.user_name}</p>
+              <p class="mt-1 text-xs text-slate-500">{item.total_activities} aktivitas tercatat</p>
+            </div>
+
+            <div class="text-right">
+              <p class="text-xl font-semibold tracking-[-0.04em] text-ink">{item.total_points}</p>
+              <p class="text-xs uppercase tracking-[0.16em] text-slate-400">points</p>
+            </div>
+          </div>
+        {/each}
+      </div>
+    {:else if data.leaderboardSummary.state === 'empty'}
+      <div class="empty-state">{data.leaderboardSummary.message}</div>
+    {:else}
+      <div class="helper-box-brand">
+        <p class="helper-label text-sky-700">Error</p>
+        <p class="mt-2 text-sm leading-6 text-slate-700">{data.leaderboardSummary.message}</p>
+      </div>
+    {/if}
+  </PageCard>
+
+  <PageCard
+    title="Step 5 Scope"
+    description="Fondasi smart mess yang aktif setelah leaderboard, feed interactions, dan in-app notifications ditambahkan."
   >
     <div class="grid gap-3 md:grid-cols-2">
       <div class="helper-box-brand">
         <p class="helper-label text-sky-700">Backend</p>
         <p class="mt-2 text-sm leading-6 text-slate-700">
-          Login, me, auth middleware, role middleware, member API, wallet summary plus transaction API, serta wifi billing with audit log.
+          Activity feed, leaderboard, food claim, rice response, notifications, wifi notifications, dan audit log aksi smart mess.
         </p>
       </div>
 
       <div class="helper-box">
         <p class="helper-label">Frontend</p>
         <p class="mt-2 text-sm leading-6 text-slate-600">
-          Login end-to-end, route protection, dashboard summary, wallet list/form, members list, dan halaman wifi mobile-first.
+          Dashboard leaderboard, feed cards interaktif, halaman notifications, dan notification badge di app shell.
         </p>
       </div>
     </div>

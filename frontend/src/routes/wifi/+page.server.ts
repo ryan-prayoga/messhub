@@ -1,6 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { ApiError, wifiServerApi } from '$lib/api/server';
+import { ApiError, settingsServerApi, wifiServerApi } from '$lib/api/server';
 import type { WifiBillStatus } from '$lib/api/types';
 
 function canManage(role: string | undefined) {
@@ -11,16 +11,18 @@ function normalizeString(value: FormDataEntryValue | null) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function buildDefaultBillValues() {
+function buildDefaultBillValues(wifiPrice = 20000, wifiDeadlineDay = 10) {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
-  const deadlineDate = `${year}-${String(month).padStart(2, '0')}-10`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const deadlineDay = Math.min(Math.max(wifiDeadlineDay, 1), lastDay);
+  const deadlineDate = `${year}-${String(month).padStart(2, '0')}-${String(deadlineDay).padStart(2, '0')}`;
 
   return {
     month: String(month),
     year: String(year),
-    nominal_per_person: '20000',
+    nominal_per_person: String(wifiPrice),
     deadline_date: deadlineDate,
     status: 'active'
   };
@@ -29,7 +31,19 @@ function buildDefaultBillValues() {
 export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
   await parent();
 
-  const defaults = buildDefaultBillValues();
+  let defaults = buildDefaultBillValues();
+
+  if (locals.token && canManage(locals.user?.role)) {
+    try {
+      const settingsResponse = await settingsServerApi.get(fetch, locals.token);
+      defaults = buildDefaultBillValues(
+        settingsResponse.data?.wifi_price ?? 20000,
+        settingsResponse.data?.wifi_deadline_day ?? 10
+      );
+    } catch (error) {
+      console.error('wifi defaults failed', error);
+    }
+  }
 
   if (!locals.token || !locals.user) {
     return {

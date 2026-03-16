@@ -2,14 +2,25 @@
 
 ## Current Objective
 
-- Complete STEP 3 wifi billing and audit log foundation on top of the existing auth, session, member, and wallet runtime.
+- Complete STEP 6 system settings, profile management, and admin panel improvements on top of the existing auth, member, wallet, wifi, and smart mess runtime.
 
 ## Current Phase
 
-- Phase 3 — Wifi Billing and Audit Log Foundation
+- Phase 6 — System Settings, Profile, and Admin Panel
 
 ## Summary Status
 
+- Observed: backend now has `backend/db/migrations/006_settings_profile_step6.sql`, extending `users` with `phone` and `avatar_url` plus a singleton `mess_settings` table with wifi and bank defaults.
+- Observed: backend now exposes authenticated `GET /api/v1/profile`, `PATCH /api/v1/profile`, `PATCH /api/v1/profile/password`, `GET /api/v1/settings`, and `GET /api/v1/system/status`, plus admin-only `PATCH /api/v1/settings`.
+- Observed: profile, password-change, settings, role-change, and activation flows now record the required audit actions, and API errors now use a shared `{ message, data, error.code }` envelope from the response helper.
+- Observed: frontend `/profile` is now a live account page for editing name, phone, avatar URL, and password, while `/settings` is now an admin-only configuration screen with live system status.
+- Observed: frontend `/members` is no longer read-only for admins; it now supports role updates and activate/deactivate controls, while treasurers remain read-only viewers.
+- Observed: wifi bill creation defaults now read from live mess settings instead of duplicating the initial `Rp20.000` / day-10 defaults only in the wifi page form.
+- Observed: backend now has `backend/db/migrations/005_smart_mess_step5.sql`, introducing the Step 5 smart mess schema for `activities`, comments, reactions, food claims, rice responses, and normalized notifications.
+- Observed: backend now exposes authenticated activity feed APIs for list/create/comment/reaction plus food claim and rice response actions, contribution leaderboard APIs, and notifications list/read APIs.
+- Observed: wifi bill creation and wifi payment verification now generate in-app notifications, while new activities and new comments also fan out notifications to active members.
+- Observed: audit logging now records `food_claim`, `rice_response`, and `notification_read` in addition to the earlier wifi, wallet, and user-audit actions.
+- Observed: frontend now includes an interactive `/feed` page, `/contributions` leaderboard page, `/notifications` inbox, dashboard leaderboard section, and a notification badge in the shared app shell header.
 - Observed: monorepo baseline now exists with `frontend/`, `backend/`, root env/compose/readme, and initial database migration.
 - Observed: GitHub Actions deployment automation is now defined for pushes to `main`, using SSH into the VPS, `git pull --ff-only origin main`, GAS CLI rebuilds for backend/frontend, and a backend health check.
 - Observed: frontend now verifies the access token server-side through `GET /api/v1/auth/me` instead of trusting copied identity cookies.
@@ -43,26 +54,31 @@
 - GitHub Actions CI/CD baseline added for `main` branch deploys to the VPS through SSH, reusing the existing GAS CLI + PM2 runtime commands and backend health check.
 - STEP 1 auth/session foundation is now connected end-to-end: login stores a single access-token cookie, SvelteKit verifies it through `auth/me`, and protected routes now rely on verified server-side user state.
 - Member management foundation is now available: users schema is hardened, admin seed is non-duplicating, and backend/frontend now support the initial members list flow.
-- Dashboard now has a meaningful placeholder with auth status, current role, and member count summary when the user role is allowed to read the members API.
+- Dashboard now has meaningful summary cards for member counts, wallet, wifi, and contribution leaderboard data when the current role is allowed to read the supporting APIs.
 - STEP 2 wallet foundation is now available end-to-end: database migration, backend summary/list/create flows, role-aware authorization, wallet pages, and dashboard balance summary are connected.
 - STEP 3 wifi billing foundation is now available end-to-end: migration, backend billing/proof/review flows, dashboard wifi summary, frontend `/wifi` screen, and reusable audit logging are connected.
+- STEP 5 smart mess features are now available end-to-end: unified activity feed, comments/reactions, contribution leaderboard, food claim, rice response, notifications UI, and notification triggers for activity/comment/wifi events.
+- STEP 6 system settings, profile management, and admin controls are now available end-to-end: backend settings/profile/system status APIs, standardized API errors, frontend `/profile` and `/settings`, and admin member role/activation controls are connected.
 
 ## In Progress
 
-- Domain modules beyond auth, members, wallet, and wifi are still placeholder-only or read-only placeholders on the frontend.
+- Shared expenses and proposals are still placeholder-only on the frontend and do not yet have live runtime integration.
 - The new GitHub Actions deploy workflow has been authored, but it has not been exercised against the live VPS from this workspace yet.
-- Admin create/edit UI for members is still backend-only; frontend currently ships the members list only.
+- Admin user creation is still backend-only; frontend now supports role and activation updates on `/members`, but it still does not provide a create-member form.
 
 ## Blockers / Risks
 
 - Migration is manual; schema application is not yet automated.
 - Wallet rollout now depends on applying `backend/db/migrations/003_wallet_step2.sql` after the existing migrations in each environment.
 - Wifi rollout now depends on applying `backend/db/migrations/004_wifi_audit_step3.sql` after the existing migrations in each environment.
+- Smart mess rollout now depends on applying `backend/db/migrations/005_smart_mess_step5.sql` after the earlier migrations in each environment.
+- Step 6 rollout now depends on applying `backend/db/migrations/006_settings_profile_step6.sql` after the earlier migrations in each environment.
 - Production deploy has not been validated with live GAS build or Nginx apply yet.
 - Risk: GitHub Actions deploy depends on repository secrets plus non-interactive `git pull` access already working on the VPS checkout.
 - Residual: `frontend/npm audit` still reports 3 low severity vulnerabilities from SvelteKit's current `cookie@0.6.0` dependency chain; no safe local override has been applied yet.
-- Risk: scope can expand too early if phase order is not enforced.
+- Risk: shared expenses and proposals still remain out of sequence relative to the original phase order; repo planning must keep that explicit rather than implying they are already done.
 - Risk: `frontend/.env` now needs a valid `PRIVATE_API_BASE_URL` for server-side auth and data loads outside the Nginx split runtime.
+- Assumption risk: avatar is currently stored as a string URL/reference only; no upload pipeline or image storage flow was added in this step.
 
 ## Recently Touched Areas
 
@@ -98,15 +114,29 @@
 - `backend/db/migrations/002_auth_foundation.sql`
 - `backend/db/migrations/003_wallet_step2.sql`
 - `backend/db/migrations/004_wifi_audit_step3.sql`
+- `backend/db/migrations/005_smart_mess_step5.sql`
+- `backend/db/migrations/006_settings_profile_step6.sql`
+- `backend/internal/handlers/profile_handler.go`
+- `backend/internal/handlers/settings_handler.go`
+- `backend/internal/handlers/system_handler.go`
 - `backend/internal/handlers/user_handler.go`
 - `backend/internal/handlers/wallet_handler.go`
 - `backend/internal/handlers/wifi_handler.go`
+- `backend/internal/handlers/activity_handler.go`
+- `backend/internal/handlers/notification_handler.go`
 - `backend/internal/response/json.go`
 - `backend/internal/repository/audit_repository.go`
+- `backend/internal/repository/activity_repository.go`
+- `backend/internal/repository/notification_repository.go`
+- `backend/internal/repository/settings_repository.go`
 - `backend/internal/repository/wallet_repository.go`
 - `backend/internal/repository/wifi_repository.go`
 - `backend/internal/services/wallet_service.go`
+- `backend/internal/services/activity_service.go`
 - `backend/internal/services/audit_service.go`
+- `backend/internal/services/notification_service.go`
+- `backend/internal/services/settings_service.go`
+- `backend/internal/services/system_service.go`
 - `backend/internal/services/user_service.go`
 - `backend/internal/services/wifi_service.go`
 - `frontend/src/lib/api/client.ts`
@@ -114,7 +144,17 @@
 - `frontend/src/lib/api/types.ts`
 - `frontend/src/routes/dashboard/+page.server.ts`
 - `frontend/src/routes/dashboard/+page.svelte`
+- `frontend/src/routes/feed/+page.server.ts`
+- `frontend/src/routes/feed/+page.svelte`
+- `frontend/src/routes/contributions/+page.server.ts`
+- `frontend/src/routes/contributions/+page.svelte`
+- `frontend/src/routes/notifications/+page.server.ts`
+- `frontend/src/routes/notifications/+page.svelte`
 - `frontend/src/routes/members/+page.server.ts`
+- `frontend/src/routes/profile/+page.server.ts`
+- `frontend/src/routes/profile/+page.svelte`
+- `frontend/src/routes/settings/+page.server.ts`
+- `frontend/src/routes/settings/+page.svelte`
 - `frontend/src/routes/wallet/+page.server.ts`
 - `frontend/src/routes/wallet/+page.svelte`
 - `frontend/src/routes/wallet/new/+page.server.ts`
@@ -134,10 +174,10 @@
 
 ## Next Recommended Steps
 
-- Apply `backend/db/migrations/002_auth_foundation.sql` and `backend/db/migrations/003_wallet_step2.sql`, then run the seed admin command if the environment is still new.
-- Validate the wallet flow against a real Postgres database by creating sample income and expense transactions through the new frontend form.
-- Apply `backend/db/migrations/004_wifi_audit_step3.sql`, then validate create bill, submit proof, and verify/reject flows against the live Postgres runtime.
-- Continue to STEP 4 modules only after confirming the wifi flow and audit log entries on the VPS.
+- Apply migrations through `backend/db/migrations/006_settings_profile_step6.sql` in each environment, then validate the new profile/settings schema before deploy.
+- Validate live Step 6 flows against Postgres: update profile, change password, edit settings, change member role, activate/deactivate member, and confirm `GET /api/v1/system/status`.
+- Re-check wifi bill creation defaults after settings changes so the configured wifi price and deadline day are reflected in the `/wifi` admin form.
+- Return to the still-pending shared expenses and proposals modules after Step 6 rollout is confirmed.
 - Add the required `VPS_HOST`, `VPS_USER`, and `VPS_SSH_KEY` repository secrets in GitHub, then run the workflow with a test push to `main`.
 - Validate the updated runtime on the VPS with the new `PRIVATE_API_BASE_URL` frontend env.
 - Re-check the `cookie` advisory after the next SvelteKit release before applying any auth-related dependency override.

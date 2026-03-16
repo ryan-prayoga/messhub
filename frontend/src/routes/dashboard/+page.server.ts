@@ -1,5 +1,11 @@
 import type { PageServerLoad } from './$types';
-import { ApiError, usersServerApi, walletServerApi, wifiServerApi } from '$lib/api/server';
+import {
+  ApiError,
+  contributionsServerApi,
+  usersServerApi,
+  walletServerApi,
+  wifiServerApi
+} from '$lib/api/server';
 
 type MemberSummary = {
   total: number | null;
@@ -26,6 +32,17 @@ type WifiSummary = {
   totalTarget: number | null;
   myStatus: string | null;
   deadline: string | null;
+  state: 'ready' | 'empty' | 'error';
+  message: string | null;
+};
+
+type LeaderboardSummary = {
+  items: {
+    rank: number;
+    user_name: string;
+    total_points: number;
+    total_activities: number;
+  }[];
   state: 'ready' | 'empty' | 'error';
   message: string | null;
 };
@@ -62,19 +79,35 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
     message: 'No active wifi bill'
   };
 
-  if (locals.token) {
-    try {
-      const [walletResponse, wifiResponse] = await Promise.all([
-        walletServerApi.summary(fetch, locals.token),
-        wifiServerApi.getActive(fetch, locals.token)
-      ]);
+  const leaderboardSummary: LeaderboardSummary = {
+    items: [],
+    state: 'empty',
+    message: 'Belum ada kontribusi bulan ini'
+  };
 
-      walletSummary.balance = walletResponse.data.balance;
-      walletSummary.totalIncome = walletResponse.data.total_income;
-      walletSummary.totalExpense = walletResponse.data.total_expense;
+  if (locals.token) {
+    const [walletResult, wifiResult, leaderboardResult] = await Promise.allSettled([
+      walletServerApi.summary(fetch, locals.token),
+      wifiServerApi.getActive(fetch, locals.token),
+      contributionsServerApi.leaderboard(fetch, locals.token, 'month')
+    ]);
+
+    if (walletResult.status === 'fulfilled') {
+      walletSummary.balance = walletResult.value.data.balance;
+      walletSummary.totalIncome = walletResult.value.data.total_income;
+      walletSummary.totalExpense = walletResult.value.data.total_expense;
       walletSummary.state = 'ready';
       walletSummary.message = null;
+    } else {
+      walletSummary.state = 'error';
+      walletSummary.message =
+        walletResult.reason instanceof Error
+          ? walletResult.reason.message
+          : 'Failed to load wallet summary';
+    }
 
+    if (wifiResult.status === 'fulfilled') {
+      const wifiResponse = wifiResult.value;
       if (wifiResponse.data) {
         const bill = wifiResponse.data.bill;
         const member = wifiResponse.data.members[0] ?? null;
@@ -93,11 +126,23 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
         wifiSummary.state = 'ready';
         wifiSummary.message = null;
       }
-    } catch (error) {
-      walletSummary.state = 'error';
-      walletSummary.message = error instanceof Error ? error.message : 'Failed to load wallet summary';
+    } else {
       wifiSummary.state = 'error';
-      wifiSummary.message = error instanceof Error ? error.message : 'Failed to load wifi summary';
+      wifiSummary.message =
+        wifiResult.reason instanceof Error ? wifiResult.reason.message : 'Failed to load wifi summary';
+    }
+
+    if (leaderboardResult.status === 'fulfilled') {
+      leaderboardSummary.items = leaderboardResult.value.data;
+      leaderboardSummary.state = leaderboardResult.value.data.length > 0 ? 'ready' : 'empty';
+      leaderboardSummary.message =
+        leaderboardResult.value.data.length > 0 ? null : 'Belum ada kontribusi bulan ini';
+    } else {
+      leaderboardSummary.state = 'error';
+      leaderboardSummary.message =
+        leaderboardResult.reason instanceof Error
+          ? leaderboardResult.reason.message
+          : 'Failed to load contribution leaderboard';
     }
   }
 
@@ -125,6 +170,7 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
     authStatus: locals.user ? 'authenticated' : 'unauthenticated',
     memberSummary: summary,
     walletSummary,
-    wifiSummary
+    wifiSummary,
+    leaderboardSummary
   };
 };

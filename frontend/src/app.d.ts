@@ -7,6 +7,7 @@ declare global {
 
     interface PageData {
       user: App.Locals['user'];
+      notificationSummary?: import('$lib/api/types').NotificationList;
     }
   }
 }
