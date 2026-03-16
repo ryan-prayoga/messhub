@@ -55,32 +55,17 @@
       minute: '2-digit'
     }).format(new Date(value));
   }
-
-  function formatUptime(seconds: number) {
-    if (!seconds || seconds < 60) {
-      return `${seconds || 0}s`;
-    }
-
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-
-    if (hours === 0) {
-      return `${minutes}m`;
-    }
-
-    return `${hours}h ${minutes}m`;
-  }
 </script>
 
 <div class="space-y-4">
   <PageCard
-    title="Settings"
-    description="Admin panel untuk konfigurasi mess, nominal wifi, deadline, dan info transfer."
+    title="Pengaturan Mess"
+    description="Kelola nama mess, nominal wifi, deadline, dan rekening tujuan dari satu tempat."
   >
     {#if $navigating?.to?.url.pathname === '/settings' || pendingAction}
       <StatePanel
         tone="loading"
-        title="Loading"
+        title="Memuat"
         message={pendingAction ? 'Menyimpan pengaturan...' : 'Memuat ulang data pengaturan...'}
       />
     {/if}
@@ -88,30 +73,30 @@
     {#if data.accessDenied}
       <StatePanel
         tone="forbidden"
-        title="Forbidden"
-        message={`Role ${data.user?.role} tidak memiliki akses ke admin settings.`}
+        title="Akses ditolak"
+        message="Halaman ini hanya dapat dibuka oleh admin mess."
       />
     {:else}
       {#if form?.message}
         <StatePanel
           tone="error"
-          title="Error"
+          title="Gagal memproses"
           message={form.message}
           requestId={form && 'requestId' in form && typeof form.requestId === 'string' ? form.requestId : null}
         />
       {:else if form?.success}
         <div class="helper-box mb-4 border-emerald-200 bg-emerald-50/80">
-          <p class="helper-label text-emerald-700">Success</p>
+          <p class="helper-label text-emerald-700">Berhasil</p>
           <p class="mt-2 text-sm leading-6 text-emerald-800">{form.success}</p>
         </div>
       {/if}
 
       {#if data.loadError || !data.settings}
-        <StatePanel tone="error" title="Error" message={data.loadError ?? 'Settings unavailable'} />
+        <StatePanel tone="error" title="Gagal memuat" message={data.loadError ?? 'Pengaturan belum tersedia.'} />
       {:else}
         <div class="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
           <article class="app-panel p-5">
-            <p class="eyebrow">Mess config</p>
+            <p class="eyebrow">Konfigurasi</p>
             <h2 class="section-title mt-1">Pengaturan operasional</h2>
 
             <form
@@ -121,7 +106,7 @@
               use:enhance={enhanceWithAction('updateSettings')}
             >
               <label>
-                <span class="field-label">Mess name</span>
+                <span class="field-label">Nama mess</span>
                 <input
                   class="input-field"
                   type="text"
@@ -133,7 +118,7 @@
 
               <div class="grid gap-4 sm:grid-cols-2">
                 <label>
-                  <span class="field-label">Wifi price</span>
+                  <span class="field-label">Nominal wifi</span>
                   <input
                     class="input-field"
                     type="number"
@@ -147,7 +132,7 @@
                 </label>
 
                 <label>
-                  <span class="field-label">Wifi deadline day</span>
+                  <span class="field-label">Tanggal deadline wifi</span>
                   <input
                     class="input-field"
                     type="number"
@@ -163,7 +148,7 @@
               </div>
 
               <label>
-                <span class="field-label">Bank account name</span>
+                <span class="field-label">Nama rekening</span>
                 <input
                   class="input-field"
                   type="text"
@@ -174,7 +159,7 @@
               </label>
 
               <label>
-                <span class="field-label">Bank account number</span>
+                <span class="field-label">Nomor rekening</span>
                 <input
                   class="input-field"
                   type="text"
@@ -189,14 +174,14 @@
                 class="btn-primary w-full px-4 py-3"
                 disabled={pendingAction === 'updateSettings'}
               >
-                {pendingAction === 'updateSettings' ? 'Saving...' : 'Save settings'}
+                {pendingAction === 'updateSettings' ? 'Menyimpan...' : 'Simpan pengaturan'}
               </button>
             </form>
           </article>
 
           <section class="space-y-4">
             <article class="stat-card bg-slate-950 text-white">
-              <p class="helper-label text-slate-300">Current transfer target</p>
+              <p class="helper-label text-slate-300">Rekening tujuan saat ini</p>
               <p class="mt-2 text-2xl font-semibold tracking-[-0.03em]">{data.settings.mess_name}</p>
               <p class="mt-2 text-sm text-slate-300">
                 Wifi {formatCurrency(data.settings.wifi_price)} per orang, deadline tanggal {data.settings.wifi_deadline_day}.
@@ -207,44 +192,41 @@
             </article>
 
             <article class="app-panel p-5">
-              <p class="eyebrow">System status</p>
-              <h2 class="section-title mt-1">Runtime ringkas</h2>
+              <p class="eyebrow">Status layanan</p>
+              <h2 class="section-title mt-1">Pantauan singkat</h2>
 
               {#if data.systemStatus}
-                <div class="mt-4 space-y-3">
+                <div class="mt-4 grid gap-3 sm:grid-cols-2">
                   <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p class="helper-label">App status</p>
+                    <p class="helper-label">Status aplikasi</p>
                     <p class="mt-2 text-sm font-semibold text-ink">{data.systemStatus.status}</p>
                   </div>
 
                   <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p class="helper-label">Database</p>
+                    <p class="helper-label">Koneksi data</p>
                     <p class="mt-2 text-sm font-semibold text-ink">
-                      {data.systemStatus.database_status} ({data.systemStatus.database_reachable ? 'reachable' : 'unreachable'})
+                      {data.systemStatus.database_reachable
+                        ? 'Terhubung dengan baik'
+                        : 'Perlu pengecekan'}
                     </p>
                   </div>
 
                   <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p class="helper-label">Server time</p>
+                    <p class="helper-label">Waktu server</p>
                     <p class="mt-2 text-sm font-semibold text-ink">
                       {formatDateTime(data.systemStatus.server_time)}
                     </p>
                   </div>
 
                   <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p class="helper-label">App version</p>
-                    <p class="mt-2 text-sm font-semibold text-ink">{data.systemStatus.app_version}</p>
-                  </div>
-
-                  <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p class="helper-label">Uptime</p>
+                    <p class="helper-label">Catatan</p>
                     <p class="mt-2 text-sm font-semibold text-ink">
-                      {formatUptime(data.systemStatus.uptime_seconds)}
+                      Gunakan halaman ini untuk memastikan pengaturan dan layanan utama tetap siap dipakai.
                     </p>
                   </div>
                 </div>
               {:else}
-                <StatePanel tone="empty" title="Empty" message="System status belum tersedia dari backend." />
+                <StatePanel tone="empty" title="Belum ada data" message="Status layanan belum tersedia saat ini." />
               {/if}
             </article>
           </section>

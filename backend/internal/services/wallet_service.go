@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/ryanprayoga/messhub/backend/internal/models"
 	"github.com/ryanprayoga/messhub/backend/internal/repository"
@@ -120,11 +121,13 @@ func (s *WalletService) CreateTransaction(ctx context.Context, createdBy string,
 	defer tx.Rollback()
 
 	transaction, err := s.walletRepository.CreateTx(ctx, tx, repository.CreateWalletTransactionParams{
-		Type:        transactionType,
-		Category:    category,
-		Amount:      input.Amount,
-		Description: description,
-		CreatedBy:   createdBy,
+		TransactionDate: time.Now().UTC(),
+		Type:            transactionType,
+		Category:        category,
+		Amount:          input.Amount,
+		Description:     description,
+		Source:          "manual",
+		CreatedBy:       createdBy,
 	})
 	if err != nil {
 		return nil, err

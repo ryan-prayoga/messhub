@@ -13,7 +13,7 @@ export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) =
   if (!locals.token) {
     return {
       profile: null,
-      loadError: 'Missing auth token'
+      loadError: 'Sesi login tidak ditemukan.'
     };
   }
 
@@ -26,7 +26,7 @@ export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) =
     };
   } catch (error) {
     throwIfUnauthorized(error, cookies);
-    const failure = toApiFailureState(error, 'Failed to load profile');
+    const failure = toApiFailureState(error, 'Profil belum dapat dimuat.');
 
     return {
       profile: null,
@@ -47,7 +47,7 @@ export const actions: Actions = {
     if (!locals.token) {
       return fail(401, {
         action: 'updateProfile',
-        message: 'Missing authenticated session',
+        message: 'Sesi login tidak ditemukan.',
         values
       });
     }
@@ -55,7 +55,7 @@ export const actions: Actions = {
     if (values.name === '') {
       return fail(400, {
         action: 'updateProfile',
-        message: 'Name is required',
+        message: 'Nama wajib diisi.',
         values
       });
     }
@@ -65,11 +65,11 @@ export const actions: Actions = {
 
       return {
         action: 'updateProfile',
-        success: 'Profile updated.'
+        success: 'Profil berhasil diperbarui.'
       };
     } catch (error) {
       throwIfUnauthorized(error, cookies);
-      const failure = toApiFailureState(error, 'Failed to update profile');
+      const failure = toApiFailureState(error, 'Profil belum dapat diperbarui.');
 
       return fail(failure.status, {
         action: 'updateProfile',
@@ -90,7 +90,7 @@ export const actions: Actions = {
     if (!locals.token) {
       return fail(401, {
         action: 'changePassword',
-        message: 'Missing authenticated session'
+        message: 'Sesi login tidak ditemukan.'
       });
     }
 
@@ -101,14 +101,14 @@ export const actions: Actions = {
     ) {
       return fail(400, {
         action: 'changePassword',
-        message: 'Current password, new password, and confirmation are required'
+        message: 'Password lama, password baru, dan konfirmasi wajib diisi.'
       });
     }
 
     if (values.new_password !== values.confirm_password) {
       return fail(400, {
         action: 'changePassword',
-        message: 'Password confirmation does not match'
+        message: 'Konfirmasi password baru belum sama.'
       });
     }
 
@@ -120,11 +120,11 @@ export const actions: Actions = {
 
       return {
         action: 'changePassword',
-        success: 'Password changed.'
+        success: 'Password berhasil diganti.'
       };
     } catch (error) {
       throwIfUnauthorized(error, cookies);
-      const failure = toApiFailureState(error, 'Failed to change password');
+      const failure = toApiFailureState(error, 'Password belum dapat diganti.');
 
       return fail(failure.status, {
         action: 'changePassword',

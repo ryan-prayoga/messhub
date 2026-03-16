@@ -25,7 +25,7 @@ export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) =
       },
       canManage: false,
       accessDenied: false,
-      loadError: 'Missing auth token'
+      loadError: 'Sesi login tidak ditemukan.'
     };
   }
 
@@ -62,7 +62,7 @@ export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) =
       };
     }
 
-    const failure = toApiFailureState(error, 'Failed to load members');
+    const failure = toApiFailureState(error, 'Daftar anggota belum dapat dimuat.');
 
     return {
       members: [],
@@ -89,7 +89,7 @@ export const actions: Actions = {
     if (!locals.token || !locals.user) {
       return fail(401, {
         action: 'updateRole',
-        message: 'Missing authenticated session',
+        message: 'Sesi login tidak ditemukan.',
         values
       });
     }
@@ -97,7 +97,7 @@ export const actions: Actions = {
     if (!canManage(locals.user.role)) {
       return fail(403, {
         action: 'updateRole',
-        message: 'Only admin can update member roles',
+        message: 'Hanya admin yang bisa mengubah role anggota.',
         values
       });
     }
@@ -108,7 +108,7 @@ export const actions: Actions = {
     ) {
       return fail(400, {
         action: 'updateRole',
-        message: 'Member reference and role are required',
+        message: 'Data anggota dan role wajib dipilih.',
         values
       });
     }
@@ -120,11 +120,11 @@ export const actions: Actions = {
 
       return {
         action: 'updateRole',
-        success: 'Member role updated.'
+        success: 'Role anggota berhasil diperbarui.'
       };
     } catch (error) {
       throwIfUnauthorized(error, cookies);
-      const failure = toApiFailureState(error, 'Failed to update member role');
+      const failure = toApiFailureState(error, 'Role anggota belum dapat diperbarui.');
 
       return fail(failure.status, {
         action: 'updateRole',
@@ -144,7 +144,7 @@ export const actions: Actions = {
     if (!locals.token || !locals.user) {
       return fail(401, {
         action: 'toggleActive',
-        message: 'Missing authenticated session',
+        message: 'Sesi login tidak ditemukan.',
         values
       });
     }
@@ -152,7 +152,7 @@ export const actions: Actions = {
     if (!canManage(locals.user.role)) {
       return fail(403, {
         action: 'toggleActive',
-        message: 'Only admin can update member activation',
+        message: 'Hanya admin yang bisa mengubah status anggota.',
         values
       });
     }
@@ -160,7 +160,7 @@ export const actions: Actions = {
     if (values.member_id === '' || (values.is_active !== 'true' && values.is_active !== 'false')) {
       return fail(400, {
         action: 'toggleActive',
-        message: 'Member reference and activation state are required',
+        message: 'Data anggota dan status aktif wajib diisi.',
         values
       });
     }
@@ -173,11 +173,11 @@ export const actions: Actions = {
 
       return {
         action: 'toggleActive',
-        success: isActive ? 'Member activated.' : 'Member deactivated.'
+        success: isActive ? 'Anggota berhasil diaktifkan.' : 'Anggota berhasil dinonaktifkan.'
       };
     } catch (error) {
       throwIfUnauthorized(error, cookies);
-      const failure = toApiFailureState(error, 'Failed to update member activation');
+      const failure = toApiFailureState(error, 'Status anggota belum dapat diperbarui.');
 
       return fail(failure.status, {
         action: 'toggleActive',

@@ -45,13 +45,13 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 
 		switch status {
 		case fiber.StatusBadRequest:
-			return response.InvalidRequest(c, err.Error())
+			return response.InvalidRequest(c, "Email dan password wajib diisi.")
 		case fiber.StatusUnauthorized:
-			return response.Unauthorized(c, "authentication required")
+			return response.Unauthorized(c, "Email atau password salah.")
 		case fiber.StatusForbidden:
-			return response.Forbidden(c, "insufficient permissions")
+			return response.Forbidden(c, "Akun ini sedang nonaktif. Hubungi admin mess.")
 		default:
-			return response.InternalServerError(c, "failed to sign in")
+			return response.InternalServerError(c, "Tidak dapat memproses login saat ini.")
 		}
 	}
 

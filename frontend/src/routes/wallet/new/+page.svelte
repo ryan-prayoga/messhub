@@ -9,21 +9,21 @@
 
 <div class="space-y-4">
   <PageCard
-    title="New Wallet Transaction"
+    title="Tambah Transaksi Kas"
     description="Form pencatatan Kantong Duafa. Pembayaran tetap dilakukan di luar aplikasi, halaman ini hanya mencatat transaksi."
   >
     {#if data.accessDenied}
       <StatePanel
         tone="forbidden"
-        title="Forbidden"
-        message={`Role ${data.user?.role} hanya punya akses baca. Pencatatan transaksi wallet tersedia untuk admin dan treasurer.`}
+        title="Akses ditolak"
+        message="Pencatatan transaksi kas hanya tersedia untuk admin dan bendahara."
       />
     {:else}
       <form method="POST" class="space-y-4">
         {#if form?.message}
           <StatePanel
             tone="error"
-            title="Error"
+            title="Gagal memproses"
             message={form.message}
             requestId={form && 'requestId' in form && typeof form.requestId === 'string' ? form.requestId : null}
           />
@@ -31,15 +31,15 @@
 
         <div class="grid gap-4 sm:grid-cols-2">
           <label>
-            <span class="field-label">Type</span>
+            <span class="field-label">Jenis transaksi</span>
             <select name="type" class="input-field" required>
-              <option value="income" selected={(form?.values?.type ?? 'income') === 'income'}>Income</option>
-              <option value="expense" selected={(form?.values?.type ?? '') === 'expense'}>Expense</option>
+              <option value="income" selected={(form?.values?.type ?? 'income') === 'income'}>Pemasukan</option>
+              <option value="expense" selected={(form?.values?.type ?? '') === 'expense'}>Pengeluaran</option>
             </select>
           </label>
 
           <label>
-            <span class="field-label">Amount</span>
+            <span class="field-label">Nominal</span>
             <input
               class="input-field"
               type="number"
@@ -55,7 +55,7 @@
         </div>
 
         <label>
-          <span class="field-label">Category</span>
+          <span class="field-label">Kategori</span>
           <input
             class="input-field"
             type="text"
@@ -67,7 +67,7 @@
         </label>
 
         <label>
-          <span class="field-label">Description</span>
+          <span class="field-label">Deskripsi</span>
           <textarea
             class="input-field min-h-32 resize-y"
             name="description"
@@ -77,8 +77,8 @@
         </label>
 
         <div class="flex items-center justify-between gap-3">
-          <a href="/wallet" class="btn-secondary px-4 py-3">Back to wallet</a>
-          <button type="submit" class="btn-primary px-4 py-3">Save transaction</button>
+          <a href="/wallet" class="btn-secondary px-4 py-3">Kembali</a>
+          <button type="submit" class="btn-primary px-4 py-3">Simpan transaksi</button>
         </div>
       </form>
     {/if}

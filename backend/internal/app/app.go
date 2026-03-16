@@ -60,6 +60,7 @@ func New() (*App, error) {
 	wifiRepository := repository.NewWifiRepository(db)
 	activityRepository := repository.NewActivityRepository(db)
 	auditRepository := repository.NewAuditLogRepository(db)
+	importJobRepository := repository.NewImportJobRepository(db)
 	notificationRepository := repository.NewNotificationRepository(db)
 	pushSubscriptionRepository := repository.NewPushSubscriptionRepository(db)
 	authService := services.NewAuthService(cfg, userRepository)
@@ -69,6 +70,7 @@ func New() (*App, error) {
 	pushService := services.NewPushService(cfg, pushSubscriptionRepository)
 	userService := services.NewUserService(db, userRepository, auditService)
 	walletService := services.NewWalletService(db, walletRepository, auditService)
+	importService := services.NewImportService(db, userRepository, walletRepository, importJobRepository, auditService)
 	notificationService := services.NewNotificationService(db, notificationRepository, userRepository, pushService, auditService)
 	wifiService := services.NewWifiService(db, wifiRepository, settingsService, auditService, notificationService)
 	activityService := services.NewActivityService(db, activityRepository, notificationService, auditService)
@@ -80,6 +82,7 @@ func New() (*App, error) {
 	settingsHandler := handlers.NewSettingsHandler(settingsService)
 	systemHandler := handlers.NewSystemHandler(systemService)
 	walletHandler := handlers.NewWalletHandler(walletService)
+	importHandler := handlers.NewImportHandler(importService)
 	wifiHandler := handlers.NewWifiHandler(wifiService)
 	activityHandler := handlers.NewActivityHandler(activityService)
 	notificationHandler := handlers.NewNotificationHandler(notificationService)
@@ -94,6 +97,7 @@ func New() (*App, error) {
 		settingsHandler,
 		systemHandler,
 		walletHandler,
+		importHandler,
 		wifiHandler,
 		activityHandler,
 		notificationHandler,

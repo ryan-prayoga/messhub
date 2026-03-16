@@ -6,7 +6,18 @@
   type NavItem = {
     href: string;
     label: string;
-    icon: 'dashboard' | 'feed' | 'wallet' | 'wifi' | 'profile' | 'members' | 'contrib' | 'notifications' | 'shared' | 'proposals' | 'settings';
+    icon:
+      | 'dashboard'
+      | 'feed'
+      | 'wallet'
+      | 'wifi'
+      | 'profile'
+      | 'members'
+      | 'contrib'
+      | 'notifications'
+      | 'shared'
+      | 'proposals'
+      | 'settings';
   };
 
   export let user: App.Locals['user'];
@@ -18,26 +29,35 @@
   const navItems: NavItem[] = [
     { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
     { href: '/feed', label: 'Feed', icon: 'feed' },
-    { href: '/wallet', label: 'Wallet', icon: 'wallet' },
+    { href: '/wallet', label: 'Kas', icon: 'wallet' },
     { href: '/wifi', label: 'Wifi', icon: 'wifi' },
-    { href: '/profile', label: 'Profile', icon: 'profile' }
+    { href: '/profile', label: 'Profil', icon: 'profile' }
   ];
 
   const utilityBaseItems: NavItem[] = [
-    { href: '/members', label: 'Members', icon: 'members' },
+    { href: '/members', label: 'Anggota', icon: 'members' },
     { href: '/notifications', label: 'Inbox', icon: 'notifications' },
-    { href: '/contributions', label: 'Contrib', icon: 'contrib' },
-    { href: '/shared-expenses', label: 'Shared', icon: 'shared' },
-    { href: '/proposals', label: 'Proposals', icon: 'proposals' }
+    { href: '/contributions', label: 'Kontribusi', icon: 'contrib' },
+    { href: '/shared-expenses', label: 'Patungan', icon: 'shared' },
+    { href: '/proposals', label: 'Usulan', icon: 'proposals' }
   ];
 
   let utilityItems: NavItem[] = utilityBaseItems;
+  const roleLabels: Record<string, string> = {
+    admin: 'Admin',
+    treasurer: 'Bendahara',
+    member: 'Anggota'
+  };
 
   const isCurrentPath = (href: string) =>
     currentPath === href || (href !== '/' && currentPath.startsWith(`${href}/`));
 
   $: utilityItems = user?.role === 'admin'
-    ? [...utilityBaseItems, { href: '/settings', label: 'Settings', icon: 'settings' }]
+    ? [
+        ...utilityBaseItems,
+        { href: '/admin/import', label: 'Impor', icon: 'settings' },
+        { href: '/settings', label: 'Pengaturan', icon: 'settings' }
+      ]
     : utilityBaseItems;
   $: currentItem = [...navItems, ...utilityItems].find((item) =>
     isCurrentPath(item.href)
@@ -55,10 +75,10 @@
       <div class="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6">
         <div class="flex items-start justify-between gap-4">
           <div class="min-w-0">
-            <p class="eyebrow">Internal Mess App</p>
+            <p class="eyebrow">Operasional Mess</p>
             <h1 class="mt-1 text-2xl font-semibold tracking-[-0.03em] text-ink">{APP_NAME}</h1>
             <p class="mt-1 text-sm text-slate-500">
-              {currentItem?.label || 'Workspace'} untuk operasional harian mess.
+              {currentItem?.label || 'Beranda'} untuk operasional harian mess.
             </p>
           </div>
 
@@ -95,12 +115,12 @@
             {#if user}
               <div class="hidden rounded-2xl border border-line bg-slate-50 px-3 py-2 text-right text-xs sm:block">
                 <p class="font-semibold text-ink">{user.name}</p>
-                <p class="text-slate-500">{user.role}</p>
+                <p class="text-slate-500">{roleLabels[user.role] ?? user.role}</p>
               </div>
             {/if}
 
             <form method="POST" action="/logout" on:submit={handleSignOut}>
-              <button type="submit" class="btn-secondary px-3 py-2 text-xs">Sign out</button>
+              <button type="submit" class="btn-secondary px-3 py-2 text-xs">Keluar</button>
             </form>
           </div>
         </div>
@@ -110,7 +130,7 @@
             <div class="inline-flex rounded-full border border-line bg-slate-50 px-3 py-1.5 text-xs text-slate-600">
               <span class="font-semibold text-ink">{user.name}</span>
               <span class="mx-2 text-slate-300">/</span>
-              <span>{user.role}</span>
+              <span>{roleLabels[user.role] ?? user.role}</span>
             </div>
           </div>
         {/if}

@@ -30,7 +30,7 @@ export const load: PageServerLoad = async ({ cookies, fetch, locals, parent, url
         total_pages: 0
       },
       canCreate: false,
-      loadError: 'Missing auth token'
+      loadError: 'Sesi login tidak ditemukan.'
     };
   }
 
@@ -52,7 +52,7 @@ export const load: PageServerLoad = async ({ cookies, fetch, locals, parent, url
     };
   } catch (error) {
     throwIfUnauthorized(error, cookies);
-    const failure = toApiFailureState(error, 'Failed to load wallet');
+    const failure = toApiFailureState(error, 'Data kas belum dapat dimuat.');
 
     return {
       summary: null,

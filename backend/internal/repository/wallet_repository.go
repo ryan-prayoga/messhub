@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"math"
+	"time"
 
 	"github.com/ryanprayoga/messhub/backend/internal/models"
 )
@@ -54,10 +55,14 @@ func (r *WalletRepository) List(ctx context.Context, params ListWalletTransactio
 	query := `
 		SELECT
 			wt.id,
+			wt.transaction_date,
 			wt.type,
 			wt.category,
 			wt.amount,
 			wt.description,
+			wt.proof_url,
+			wt.source,
+			wt.import_job_id,
 			wt.created_by,
 			u.name,
 			wt.created_at,
@@ -93,11 +98,15 @@ func (r *WalletRepository) List(ctx context.Context, params ListWalletTransactio
 }
 
 type CreateWalletTransactionParams struct {
-	Type        string
-	Category    string
-	Amount      int64
-	Description string
-	CreatedBy   string
+	TransactionDate time.Time
+	Type            string
+	Category        string
+	Amount          int64
+	Description     string
+	ProofURL        *string
+	Source          string
+	ImportJobID     *string
+	CreatedBy       string
 }
 
 func (r *WalletRepository) Create(ctx context.Context, params CreateWalletTransactionParams) (*models.WalletTransaction, error) {
@@ -110,44 +119,82 @@ func (r *WalletRepository) CreateTx(ctx context.Context, tx *sql.Tx, params Crea
 
 func (r *WalletRepository) create(ctx context.Context, runner walletQueryRunner, params CreateWalletTransactionParams) (*models.WalletTransaction, error) {
 	query := `
-		INSERT INTO wallet_transactions (type, category, amount, description, created_by)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, type, category, amount, description, created_by, created_at, updated_at
+		WITH inserted AS (
+			INSERT INTO wallet_transactions (
+				transaction_date,
+				type,
+				category,
+				amount,
+				description,
+				proof_url,
+				source,
+				import_job_id,
+				created_by
+			)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			RETURNING
+				id,
+				transaction_date,
+				type,
+				category,
+				amount,
+				description,
+				proof_url,
+				source,
+				import_job_id,
+				created_by,
+				created_at,
+				updated_at
+		)
+		SELECT
+			inserted.id,
+			inserted.transaction_date,
+			inserted.type,
+			inserted.category,
+			inserted.amount,
+			inserted.description,
+			inserted.proof_url,
+			inserted.source,
+			inserted.import_job_id,
+			inserted.created_by,
+			u.name,
+			inserted.created_at,
+			inserted.updated_at
+		FROM inserted
+		JOIN users u ON u.id = inserted.created_by
 	`
 
-	transaction := &models.WalletTransaction{}
-	if err := runner.QueryRowContext(
-		ctx,
-		query,
-		params.Type,
-		params.Category,
-		params.Amount,
-		params.Description,
-		params.CreatedBy,
-	).Scan(
-		&transaction.ID,
-		&transaction.Type,
-		&transaction.Category,
-		&transaction.Amount,
-		&transaction.Description,
-		&transaction.CreatedBy,
-		&transaction.CreatedAt,
-		&transaction.UpdatedAt,
-	); err != nil {
-		return nil, err
-	}
-
-	return transaction, nil
+	return scanWalletTransaction(
+		runner.QueryRowContext(
+			ctx,
+			query,
+			params.TransactionDate,
+			params.Type,
+			params.Category,
+			params.Amount,
+			params.Description,
+			nullableString(params.ProofURL),
+			params.Source,
+			params.ImportJobID,
+			params.CreatedBy,
+		),
+	)
 }
 
 func scanWalletTransaction(row scanner) (*models.WalletTransaction, error) {
 	transaction := &models.WalletTransaction{}
+	var proofURL sql.NullString
+	var importJobID sql.NullString
 	if err := row.Scan(
 		&transaction.ID,
+		&transaction.TransactionDate,
 		&transaction.Type,
 		&transaction.Category,
 		&transaction.Amount,
 		&transaction.Description,
+		&proofURL,
+		&transaction.Source,
+		&importJobID,
 		&transaction.CreatedBy,
 		&transaction.CreatedByName,
 		&transaction.CreatedAt,
@@ -155,6 +202,9 @@ func scanWalletTransaction(row scanner) (*models.WalletTransaction, error) {
 	); err != nil {
 		return nil, err
 	}
+
+	transaction.ProofURL = nullStringPtr(proofURL)
+	transaction.ImportJobID = nullStringPtr(importJobID)
 
 	return transaction, nil
 }

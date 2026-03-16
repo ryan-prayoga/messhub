@@ -12,12 +12,15 @@ import type {
   ActivityType,
   ApiEnvelope,
   ContributionLeaderboardEntry,
+  ImportCommitResult,
+  MemberImportPreview,
   MessSettings,
   MemberUser,
   NotificationList,
   Profile,
   SessionUser,
   SystemStatus,
+  WalletImportPreview,
   WifiBillDetail,
   WifiBillWithSummary,
   WifiMyBill,
@@ -327,6 +330,47 @@ export const walletServerApi = {
     }
   ) =>
     apiServerRequest(fetcher, '/wallet/transactions', {
+      method: 'POST',
+      token,
+      body: payload
+    })
+};
+
+export const importsServerApi = {
+  previewMembers: (fetcher: typeof fetch, token: string, formData: FormData) =>
+    apiServerRequest<MemberImportPreview>(fetcher, '/import/members/preview', {
+      method: 'POST',
+      token,
+      body: formData
+    }),
+  commitMembers: (
+    fetcher: typeof fetch,
+    token: string,
+    payload: {
+      job_id: string;
+      duplicate_strategy: 'skip' | 'fail';
+      temporary_password: string;
+    }
+  ) =>
+    apiServerRequest<ImportCommitResult>(fetcher, '/import/members/commit', {
+      method: 'POST',
+      token,
+      body: payload
+    }),
+  previewWallet: (fetcher: typeof fetch, token: string, formData: FormData) =>
+    apiServerRequest<WalletImportPreview>(fetcher, '/import/wallet/preview', {
+      method: 'POST',
+      token,
+      body: formData
+    }),
+  commitWallet: (
+    fetcher: typeof fetch,
+    token: string,
+    payload: {
+      job_id: string;
+    }
+  ) =>
+    apiServerRequest<ImportCommitResult>(fetcher, '/import/wallet/commit', {
       method: 'POST',
       token,
       body: payload

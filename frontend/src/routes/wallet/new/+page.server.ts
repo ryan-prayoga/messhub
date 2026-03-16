@@ -32,14 +32,14 @@ export const actions: Actions = {
 
     if (!locals.token || !locals.user) {
       return fail(401, {
-        message: 'Missing authenticated session',
+        message: 'Sesi login tidak ditemukan.',
         values
       });
     }
 
     if (!canCreate(locals.user.role)) {
       return fail(403, {
-        message: 'Only admin and treasurer can create wallet transactions',
+        message: 'Hanya admin dan bendahara yang bisa menambah transaksi kas.',
         values
       });
     }
@@ -53,7 +53,7 @@ export const actions: Actions = {
       amount <= 0
     ) {
       return fail(400, {
-        message: 'Type, category, amount, and description are required',
+        message: 'Jenis transaksi, kategori, nominal, dan deskripsi wajib diisi.',
         values
       });
     }
@@ -67,7 +67,7 @@ export const actions: Actions = {
       });
     } catch (error) {
       throwIfUnauthorized(error, cookies);
-      const failure = toApiFailureState(error, 'Failed to create wallet transaction');
+      const failure = toApiFailureState(error, 'Transaksi kas belum dapat disimpan.');
 
       return fail(failure.status, {
         message: failure.message,

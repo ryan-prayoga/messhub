@@ -117,13 +117,21 @@ type CreateUserParams struct {
 }
 
 func (r *UserRepository) Create(ctx context.Context, params CreateUserParams) (*models.User, error) {
+	return r.create(ctx, r.db, params)
+}
+
+func (r *UserRepository) CreateTx(ctx context.Context, tx *sql.Tx, params CreateUserParams) (*models.User, error) {
+	return r.create(ctx, tx, params)
+}
+
+func (r *UserRepository) create(ctx context.Context, runner userQueryRunner, params CreateUserParams) (*models.User, error) {
 	query := `
 		INSERT INTO users (name, email, password_hash, role, is_active, joined_at)
 		VALUES ($1, $2, $3, $4, $5, NOW())
 		RETURNING id, name, email, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
 	`
 
-	row := r.db.QueryRowContext(
+	row := runner.QueryRowContext(
 		ctx,
 		query,
 		params.Name,

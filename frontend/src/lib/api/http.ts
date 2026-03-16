@@ -3,7 +3,7 @@ import type { ApiEnvelope } from '$lib/api/types';
 export type RequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   token?: string;
-  body?: Record<string, unknown>;
+  body?: Record<string, unknown> | FormData;
 };
 
 type ErrorPayloadShape =
@@ -43,14 +43,22 @@ export class ApiError extends Error {
 }
 
 export function buildRequestInit(options: RequestOptions = {}): RequestInit {
+  const isFormData =
+    typeof FormData !== 'undefined' && options.body instanceof FormData;
+  const body: BodyInit | undefined = isFormData
+    ? (options.body as FormData)
+    : options.body
+      ? JSON.stringify(options.body)
+      : undefined;
+
   return {
     method: options.method || 'GET',
     credentials: 'same-origin',
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(options.token ? { Authorization: `Bearer ${options.token}` } : {})
     },
-    body: options.body ? JSON.stringify(options.body) : undefined
+    body
   };
 }
 

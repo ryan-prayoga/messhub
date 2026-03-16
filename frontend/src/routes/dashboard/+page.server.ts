@@ -6,6 +6,7 @@ import {
   walletServerApi,
   wifiServerApi
 } from '$lib/api/server';
+import { toApiFailureState } from '$lib/server/api-errors';
 
 type MemberSummary = {
   total: number | null;
@@ -63,7 +64,7 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
     totalIncome: null,
     totalExpense: null,
     state: 'error',
-    message: 'Wallet summary unavailable'
+    message: 'Ringkasan kas belum tersedia.'
   };
 
   const wifiSummary: WifiSummary = {
@@ -76,7 +77,7 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
     myStatus: null,
     deadline: null,
     state: 'empty',
-    message: 'No active wifi bill'
+    message: 'Belum ada tagihan wifi aktif.'
   };
 
   const leaderboardSummary: LeaderboardSummary = {
@@ -99,11 +100,9 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
       walletSummary.state = 'ready';
       walletSummary.message = null;
     } else {
+      const failure = toApiFailureState(walletResult.reason, 'Ringkasan kas belum dapat dimuat.');
       walletSummary.state = 'error';
-      walletSummary.message =
-        walletResult.reason instanceof Error
-          ? walletResult.reason.message
-          : 'Failed to load wallet summary';
+      walletSummary.message = failure.message;
     }
 
     if (wifiResult.status === 'fulfilled') {
@@ -127,9 +126,9 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
         wifiSummary.message = null;
       }
     } else {
+      const failure = toApiFailureState(wifiResult.reason, 'Ringkasan wifi belum dapat dimuat.');
       wifiSummary.state = 'error';
-      wifiSummary.message =
-        wifiResult.reason instanceof Error ? wifiResult.reason.message : 'Failed to load wifi summary';
+      wifiSummary.message = failure.message;
     }
 
     if (leaderboardResult.status === 'fulfilled') {
@@ -138,11 +137,12 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
       leaderboardSummary.message =
         leaderboardResult.value.data.length > 0 ? null : 'Belum ada kontribusi bulan ini';
     } else {
+      const failure = toApiFailureState(
+        leaderboardResult.reason,
+        'Data kontribusi belum dapat dimuat.'
+      );
       leaderboardSummary.state = 'error';
-      leaderboardSummary.message =
-        leaderboardResult.reason instanceof Error
-          ? leaderboardResult.reason.message
-          : 'Failed to load contribution leaderboard';
+      leaderboardSummary.message = failure.message;
     }
   }
 
@@ -160,14 +160,14 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
       if (error instanceof ApiError && error.status === 403) {
         summary.state = 'restricted';
       } else {
+        const failure = toApiFailureState(error, 'Ringkasan anggota belum dapat dimuat.');
         summary.state = 'error';
-        summary.message = error instanceof Error ? error.message : 'Failed to load members summary';
+        summary.message = failure.message;
       }
     }
   }
 
   return {
-    authStatus: locals.user ? 'authenticated' : 'unauthenticated',
     memberSummary: summary,
     walletSummary,
     wifiSummary,

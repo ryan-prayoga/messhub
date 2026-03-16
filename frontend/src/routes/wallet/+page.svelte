@@ -18,28 +18,30 @@
     return new Intl.DateTimeFormat('id-ID', {
       day: '2-digit',
       month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: 'numeric'
     }).format(new Date(value));
+  }
+
+  function isLink(value: string | null) {
+    return typeof value === 'string' && /^https?:\/\//i.test(value);
   }
 </script>
 
 <div class="space-y-4">
   <PageCard
-    title="Wallet"
-    description="Ringkasan Kantong Duafa dan daftar transaksi terbaru. Semua role bisa melihat, admin dan treasurer bisa mencatat transaksi baru."
+    title="Kantong Duafa"
+    description="Ringkasan saldo dan daftar transaksi kas. Semua role bisa melihat, admin dan bendahara bisa mencatat transaksi baru."
   >
     {#if $navigating?.to?.url.pathname === '/wallet'}
-      <StatePanel tone="loading" title="Loading" message="Memuat ulang saldo dan transaksi wallet..." />
+      <StatePanel tone="loading" title="Memuat" message="Memuat ulang saldo dan transaksi kas..." />
     {/if}
 
     {#if data.loadError}
-      <StatePanel tone="error" title="Error" message={data.loadError} />
+      <StatePanel tone="error" title="Gagal memuat" message={data.loadError} />
     {:else if data.summary}
       <div class="grid gap-3 sm:grid-cols-3">
         <div class="stat-card bg-slate-950 text-white">
-          <p class="helper-label text-slate-300">Current balance</p>
+          <p class="helper-label text-slate-300">Saldo saat ini</p>
           <p class="mt-2 text-3xl font-semibold tracking-[-0.04em]">
             {formatCurrency(data.summary.balance)}
           </p>
@@ -47,40 +49,46 @@
         </div>
 
         <div class="stat-card bg-emerald-50">
-          <p class="helper-label text-emerald-700">Total income</p>
+          <p class="helper-label text-emerald-700">Total pemasukan</p>
           <p class="mt-2 text-3xl font-semibold tracking-[-0.04em] text-ink">
             {formatCurrency(data.summary.total_income)}
           </p>
         </div>
 
         <div class="stat-card bg-rose-50">
-          <p class="helper-label text-rose-700">Total expense</p>
+          <p class="helper-label text-rose-700">Total pengeluaran</p>
           <p class="mt-2 text-3xl font-semibold tracking-[-0.04em] text-ink">
             {formatCurrency(data.summary.total_expense)}
           </p>
         </div>
       </div>
 
-      <div class="mt-4 flex items-center justify-between gap-3">
+      <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="helper-box grow">
-          <p class="helper-label">Audit trail</p>
+          <p class="helper-label">Riwayat transaksi</p>
           <p class="mt-2 text-sm leading-6 text-slate-600">
             Semua transaksi diurutkan dari yang terbaru. Total data saat ini: {data.pagination.total_items}.
           </p>
         </div>
 
-        {#if data.canCreate}
-          <a href="/wallet/new" class="btn-primary shrink-0 px-4 py-3">
-            New transaction
-          </a>
-        {/if}
+        <div class="flex flex-wrap gap-3">
+          {#if data.user?.role === 'admin'}
+            <a href="/admin/import/wallet" class="btn-secondary shrink-0 px-4 py-3">Impor CSV</a>
+          {/if}
+
+          {#if data.canCreate}
+            <a href="/wallet/new" class="btn-primary shrink-0 px-4 py-3">
+              Tambah transaksi
+            </a>
+          {/if}
+        </div>
       </div>
 
       {#if data.transactions.length === 0}
         <StatePanel
           tone="empty"
-          title="Empty"
-          message="Belum ada transaksi wallet. Setelah admin atau treasurer mencatat transaksi pertama, daftar ini akan terisi."
+          title="Belum ada data"
+          message="Belum ada transaksi kas. Setelah transaksi pertama dicatat atau diimpor, daftar ini akan terisi."
         />
       {:else}
         <div class="mt-4 space-y-3">
@@ -95,7 +103,7 @@
                         ? 'badge bg-emerald-100 text-emerald-700'
                         : 'badge bg-rose-100 text-rose-700'}
                     >
-                      {transaction.type}
+                      {transaction.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}
                     </span>
                   </div>
 
@@ -108,16 +116,41 @@
                     : 'text-lg font-semibold text-rose-700'}>
                     {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
                   </p>
-                  <p class="mt-1 text-xs text-slate-500">{formatDate(transaction.created_at)}</p>
+                  <p class="mt-1 text-xs text-slate-500">{formatDate(transaction.transaction_date)}</p>
                 </div>
               </div>
 
-              <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <p class="helper-label">Created by</p>
-                <p class="mt-2 text-sm font-medium text-ink">
-                  {transaction.created_by_name || transaction.created_by}
-                </p>
+              <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p class="helper-label">Tanggal transaksi</p>
+                  <p class="mt-2 text-sm font-medium text-ink">{formatDate(transaction.transaction_date)}</p>
+                </div>
+
+                <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p class="helper-label">Dicatat oleh</p>
+                  <p class="mt-2 text-sm font-medium text-ink">
+                    {transaction.created_by_name || transaction.created_by}
+                  </p>
+                </div>
               </div>
+
+              {#if transaction.proof_url}
+                <div class="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p class="helper-label">Bukti</p>
+                  {#if isLink(transaction.proof_url)}
+                    <a
+                      href={transaction.proof_url}
+                      class="mt-2 inline-flex text-sm font-medium text-sky-700 underline"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Buka bukti transaksi
+                    </a>
+                  {:else}
+                    <p class="mt-2 break-all text-sm font-medium text-ink">{transaction.proof_url}</p>
+                  {/if}
+                </div>
+              {/if}
             </article>
           {/each}
         </div>
@@ -128,11 +161,11 @@
               href={data.pagination.page > 1 ? `/wallet?page=${data.pagination.page - 1}` : '/wallet'}
               class={`btn-secondary px-4 py-3 ${data.pagination.page <= 1 ? 'pointer-events-none opacity-50' : ''}`}
             >
-              Previous
+              Sebelumnya
             </a>
 
             <p class="text-sm text-slate-500">
-              Page {data.pagination.page} / {data.pagination.total_pages}
+              Halaman {data.pagination.page} / {data.pagination.total_pages}
             </p>
 
             <a
@@ -145,7 +178,7 @@
                   : ''
               }`}
             >
-              Next
+              Berikutnya
             </a>
           </div>
         {/if}

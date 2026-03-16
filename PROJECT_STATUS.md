@@ -2,14 +2,18 @@
 
 ## Current Objective
 
-- Complete STEP 8 PWA upgrade and mobile experience on top of the existing production-ready auth, member, wallet, wifi, smart mess, profile, settings, and admin runtime.
+- Complete STEP 9 data import, production UI cleanup, and spreadsheet migration tooling on top of the existing production-ready auth, member, wallet, wifi, smart mess, profile, settings, and admin runtime.
 
 ## Current Phase
 
-- Phase 8 — PWA Upgrade and Mobile Experience
+- Phase 9 — Data Import, UI Cleanup, and Migration Tools
 
 ## Summary Status
 
+- Observed: production-facing copy across login, dashboard, members, wallet, profile, settings, the shared app shell, and the global error boundary has been cleaned up so the UI no longer exposes seed-account, `.env`, backend-auth, or phase-internal helper text, while admin-facing messaging is now more user-friendly.
+- Observed: backend now has `backend/db/migrations/008_import_step9.sql`, an `import_jobs` tracking table, wallet `transaction_date` + `proof_url` + `source` metadata, and admin-only CSV preview/commit endpoints for `/api/v1/import/members/...` and `/api/v1/import/wallet/...`, with audit logs for preview and commit actions.
+- Observed: frontend now includes an admin import hub at `/admin/import`, dedicated `/admin/import/members` and `/admin/import/wallet` flows, downloadable CSV templates, mobile-friendly preview cards, duplicate/validation summaries, and commit guards before data is persisted.
+- Observed: `docs/data-import.md` now documents Google Sheets CSV export steps, legacy spreadsheet-to-template column mapping, member temporary-password handling, sample preview payloads, and the rule that wallet balances are recalculated from imported transactions instead of spreadsheet saldo values.
 - Observed: frontend manifest now targets a standalone `/dashboard` start experience, includes install-ready `192x192` and `512x512` PNG icons, safe-area mobile meta tags, and a conditional `Install MessHub App` prompt in the authenticated shell.
 - Observed: frontend now has a richer native PWA runtime with versioned service-worker caches for static assets plus safe dashboard/feed/wallet/wifi routes, an `/offline` fallback page, Web Push notification handlers, notification-click routing, logout-time runtime cache clearing, and a lightweight IndexedDB outbox for background sync of offline activity/comment submissions.
 - Observed: frontend mobile UX now includes an upgraded bottom navigation for `Dashboard`, `Feed`, `Wallet`, `Wifi`, and `Profile`, pull-to-refresh interactions on dashboard/feed, an offline-mode banner, a push-permission prompt, and clearer outbox/offline messaging when feed writes are queued.
@@ -51,6 +55,7 @@
 
 ## Done
 
+- STEP 9 data import, UI cleanup, and migration tooling is now implemented end-to-end: admin-only CSV preview/commit APIs for members and wallet, import job tracking plus audit logs, import templates and docs, admin import hub/pages, wallet history date/proof preservation, and production UI copy cleanup on key pages.
 - Masterplan exists in `messhub-masterplan.md`.
 - Shared context baseline created: `AGENTS.md`, `PROJECT_STATUS.md`, `TASKS.md`, `docs/decisions.md`, `docs/handoffs/HANDOFF_TEMPLATE.md`.
 - Agent runtime ignore baseline created in `.gitignore`.
@@ -73,6 +78,7 @@
 
 ## In Progress
 
+- Live validation with real exported Google Sheets/legacy CSV files is still pending, including final confirmation of member duplicate handling and wallet category inference against actual mess data.
 - Live browser/device validation for Step 8 is still pending for standalone install, Android push delivery, offline cache behavior after logout/login, and background-sync replay after reconnect.
 - Shared expenses and proposals are still placeholder-only on the frontend and do not yet have live runtime integration.
 - The new GitHub Actions deploy workflow has been authored, but it has not been exercised against the live VPS from this workspace yet.
@@ -80,6 +86,7 @@
 
 ## Blockers / Risks
 
+- Step 9 rollout now depends on applying `backend/db/migrations/008_import_step9.sql` after the earlier migrations in each environment before the new import screens or wallet transaction metadata can be used safely.
 - Migration is manual; schema application is not yet automated.
 - Wallet rollout now depends on applying `backend/db/migrations/003_wallet_step2.sql` after the existing migrations in each environment.
 - Wifi rollout now depends on applying `backend/db/migrations/004_wifi_audit_step3.sql` after the existing migrations in each environment.
@@ -98,6 +105,13 @@
 
 ## Recently Touched Areas
 
+- `backend/db/migrations/008_import_step9.sql`
+- `backend/internal/handlers/import_handler.go`
+- `backend/internal/repository/import_job_repository.go`
+- `backend/internal/services/import_service.go`
+- `docs/data-import.md`
+- `frontend/src/routes/admin/import/`
+- `frontend/static/templates/`
 - `.gitignore`
 - `.github/workflows/deploy.yml`
 - `frontend/.env.example`
@@ -217,7 +231,7 @@
 
 ## Next Recommended Steps
 
-- Apply migrations through `backend/db/migrations/007_push_step8.sql` in each environment, then set matching VAPID keys on backend/frontend env files before deploy.
+- Apply migrations through `backend/db/migrations/008_import_step9.sql`, then run one dry-run import with real member and kas CSV exports before using the new admin import flow in production.
 - Validate Step 8 on a real mobile browser and homescreen install: install prompt, standalone opening, push permission/subscription, wifi/activity/comment push delivery, offline dashboard/feed loads, and activity/comment outbox replay after reconnect.
 - Re-check logout/login behavior with the new authenticated runtime caches so offline pages from one user are not retained into another user session.
 - Return to the still-pending shared expenses and proposals modules after Step 8 rollout is confirmed.

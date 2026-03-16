@@ -58,18 +58,24 @@
     }).format(new Date(value));
   }
 
+  const roleLabels: Record<string, string> = {
+    admin: 'Admin',
+    treasurer: 'Bendahara',
+    member: 'Anggota'
+  };
+
   $: avatarPreview = profileValue('avatar_url');
 </script>
 
 <div class="space-y-4">
   <PageCard
-    title="Profile"
+    title="Profil"
     description="Kelola identitas akun pribadi, kontak, avatar, dan password."
   >
     {#if $navigating?.to?.url.pathname === '/profile' || pendingAction}
       <StatePanel
         tone="loading"
-        title="Loading"
+        title="Memuat"
         message={pendingAction ? 'Memproses perubahan profil...' : 'Memuat ulang data profil...'}
       />
     {/if}
@@ -77,24 +83,24 @@
     {#if form?.message}
       <StatePanel
         tone="error"
-        title="Error"
+        title="Gagal memproses"
         message={form.message}
         requestId={form && 'requestId' in form && typeof form.requestId === 'string' ? form.requestId : null}
       />
     {:else if form?.success}
       <div class="helper-box mb-4 border-emerald-200 bg-emerald-50/80">
-        <p class="helper-label text-emerald-700">Success</p>
+        <p class="helper-label text-emerald-700">Berhasil</p>
         <p class="mt-2 text-sm leading-6 text-emerald-800">{form.success}</p>
       </div>
     {/if}
 
     {#if data.loadError || !data.profile}
-      <StatePanel tone="error" title="Error" message={data.loadError ?? 'Profile unavailable'} />
+      <StatePanel tone="error" title="Gagal memuat" message={data.loadError ?? 'Profil belum tersedia.'} />
     {:else}
       <div class="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
         <section class="space-y-4">
           <article class="stat-card bg-slate-950 text-white">
-            <p class="helper-label text-slate-300">Current account</p>
+            <p class="helper-label text-slate-300">Akun aktif</p>
             <div class="mt-4 flex items-center gap-4">
               {#if avatarPreview}
                 <img
@@ -112,9 +118,11 @@
                 <h2 class="text-xl font-semibold tracking-[-0.03em]">{data.profile.name}</h2>
                 <p class="mt-1 break-all text-sm text-slate-300">{data.profile.email}</p>
                 <div class="mt-3 flex flex-wrap gap-2">
-                  <span class="badge bg-white/10 text-white">{data.profile.role}</span>
+                  <span class="badge bg-white/10 text-white">
+                    {roleLabels[data.profile.role] ?? data.profile.role}
+                  </span>
                   <span class={`badge ${data.profile.is_active ? 'bg-emerald-500/20 text-emerald-100' : 'bg-rose-500/20 text-rose-100'}`}>
-                    {data.profile.is_active ? 'Active' : 'Inactive'}
+                    {data.profile.is_active ? 'Aktif' : 'Nonaktif'}
                   </span>
                 </div>
               </div>
@@ -122,17 +130,17 @@
           </article>
 
           <article class="app-panel p-5">
-            <p class="eyebrow">Account facts</p>
-            <h2 class="section-title mt-1">Info saat ini</h2>
+            <p class="eyebrow">Info akun</p>
+            <h2 class="section-title mt-1">Data saat ini</h2>
 
             <div class="mt-4 grid gap-3 sm:grid-cols-2">
               <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <p class="helper-label">Phone</p>
+                <p class="helper-label">Nomor HP</p>
                 <p class="mt-2 text-sm font-medium text-ink">{data.profile.phone ?? '-'}</p>
               </div>
 
               <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <p class="helper-label">Joined</p>
+                <p class="helper-label">Mulai tinggal</p>
                 <p class="mt-2 text-sm font-medium text-ink">{formatDate(data.profile.joined_at)}</p>
               </div>
             </div>
@@ -141,8 +149,8 @@
 
         <section class="space-y-4">
           <article class="app-panel p-5">
-            <p class="eyebrow">Edit profile</p>
-            <h2 class="section-title mt-1">Perbarui data pribadi</h2>
+            <p class="eyebrow">Perbarui profil</p>
+            <h2 class="section-title mt-1">Ubah data pribadi</h2>
 
             <form
               method="POST"
@@ -151,7 +159,7 @@
               use:enhance={enhanceWithAction('updateProfile')}
             >
               <label>
-                <span class="field-label">Name</span>
+                <span class="field-label">Nama</span>
                 <input
                   class="input-field"
                   type="text"
@@ -162,7 +170,7 @@
               </label>
 
               <label>
-                <span class="field-label">Phone</span>
+                <span class="field-label">Nomor HP</span>
                 <input
                   class="input-field"
                   type="tel"
@@ -173,7 +181,7 @@
               </label>
 
               <label>
-                <span class="field-label">Avatar URL</span>
+                <span class="field-label">URL avatar</span>
                 <input
                   class="input-field"
                   type="url"
@@ -188,17 +196,15 @@
                 class="btn-primary w-full px-4 py-3"
                 disabled={pendingAction === 'updateProfile'}
               >
-                {pendingAction === 'updateProfile' ? 'Saving...' : 'Save profile'}
+                {pendingAction === 'updateProfile' ? 'Menyimpan...' : 'Simpan profil'}
               </button>
             </form>
           </article>
 
           <article class="app-panel p-5">
-            <p class="eyebrow">Security</p>
+            <p class="eyebrow">Keamanan</p>
             <h2 class="section-title mt-1">Ganti password</h2>
-            <p class="section-subtitle mt-2">
-              Password baru harus minimal 8 karakter.
-            </p>
+            <p class="section-subtitle mt-2">Password baru harus minimal 8 karakter.</p>
 
             <form
               method="POST"
@@ -207,17 +213,17 @@
               use:enhance={enhanceWithAction('changePassword')}
             >
               <label>
-                <span class="field-label">Current password</span>
+                <span class="field-label">Password saat ini</span>
                 <input class="input-field" type="password" name="current_password" required />
               </label>
 
               <label>
-                <span class="field-label">New password</span>
+                <span class="field-label">Password baru</span>
                 <input class="input-field" type="password" name="new_password" minlength="8" required />
               </label>
 
               <label>
-                <span class="field-label">Confirm new password</span>
+                <span class="field-label">Konfirmasi password baru</span>
                 <input class="input-field" type="password" name="confirm_password" minlength="8" required />
               </label>
 
@@ -226,7 +232,7 @@
                 class="btn-secondary w-full px-4 py-3"
                 disabled={pendingAction === 'changePassword'}
               >
-                {pendingAction === 'changePassword' ? 'Updating...' : 'Change password'}
+                {pendingAction === 'changePassword' ? 'Memperbarui...' : 'Ganti password'}
               </button>
             </form>
           </article>

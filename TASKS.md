@@ -22,6 +22,13 @@
 - None observed.
 
 ## Done
+- ID: OPS-005
+  Title: Implement STEP 9 data import, UI cleanup, and migration tools
+  Priority: P1
+  Owner/Agent: Codex
+  Dependencies: OPS-004, T-003, T-004
+  Notes: Added admin-only CSV preview/commit flows for members and wallet, import job tracking plus audit logs, downloadable templates, spreadsheet migration docs, wallet transaction date/proof preservation, and production-facing UI copy cleanup across key pages.
+
 - ID: OPS-004
   Title: Implement STEP 8 PWA upgrade and mobile experience
   Priority: P1

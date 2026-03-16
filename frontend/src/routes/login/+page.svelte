@@ -50,7 +50,7 @@
             name="email"
             type="email"
             autocomplete="username"
-            placeholder="admin@messhub.local"
+            placeholder="nama@email.com"
             class="input-field"
             value={form?.values?.email ?? ''}
             disabled={isSubmitting}
@@ -79,27 +79,26 @@
           {#if isSubmitting}
             Memproses...
           {:else}
-            Sign in
+            Masuk
           {/if}
         </button>
 
         <p class="text-center text-sm text-slate-500">
-          Jika login gagal, cek kredensial seed atau koneksi frontend ke backend auth.
+          Gunakan akun yang sudah dibuatkan admin. Jika belum punya akun, hubungi admin mess.
         </p>
       </form>
 
       <div class="mt-6 helper-box-brand">
-        <p class="helper-label text-sky-700">Akun seed default</p>
-        <p class="mt-2 text-sm font-medium text-slate-900">Email: <code>admin@messhub.local</code></p>
+        <p class="helper-label text-sky-700">Tips login</p>
         <p class="mt-1 text-sm leading-6 text-slate-600">
-          Password mengikuti nilai di <code>.env</code> atau <code>.env.example</code> backend.
+          Pastikan email dan password sesuai akun yang aktif. Pesan gagal login tidak akan menampilkan detail sensitif.
         </p>
       </div>
 
       <div class="mt-4 helper-box">
         <p class="helper-label">Catatan</p>
         <p class="mt-2 text-sm leading-6 text-slate-600">
-          Halaman ini dibuat ringan dan mobile-first agar enak dipakai di HP tanpa mengubah flow auth inti.
+          MessHub dirancang ringan dan nyaman dipakai dari HP untuk kebutuhan harian penghuni mess.
         </p>
       </div>
     </section>

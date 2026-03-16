@@ -11,19 +11,19 @@
 <div class="app-shell">
   <main class="page-container">
     <PageCard
-      title="Something went wrong"
-      description="UI tetap dijaga agar tidak blank saat backend, load function, atau route action gagal."
+      title="Terjadi Kendala"
+      description="Halaman tetap dijaga agar tidak kosong saat ada gangguan pemuatan atau proses data."
     >
       <StatePanel
         tone={status === 403 ? 'forbidden' : 'error'}
-        title={status === 403 ? 'Forbidden' : `Error ${status}`}
-        message={error?.message ?? 'Unexpected application failure'}
+        title={status === 403 ? 'Akses ditolak' : `Status ${status}`}
+        message={error?.message ?? 'Terjadi gangguan yang belum dapat diproses.'}
         requestId={error?.requestId ?? null}
       />
 
       <div class="mt-4 flex flex-wrap gap-3">
-        <a href="/dashboard" class="btn-primary px-4 py-3">Back to dashboard</a>
-        <a href={$page.url.pathname} class="btn-secondary px-4 py-3">Try again</a>
+        <a href="/dashboard" class="btn-primary px-4 py-3">Kembali ke dashboard</a>
+        <a href={$page.url.pathname} class="btn-secondary px-4 py-3">Coba lagi</a>
       </div>
     </PageCard>
   </main>

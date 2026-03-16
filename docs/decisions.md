@@ -135,3 +135,11 @@
 - Rationale: This preserves the current cookie security model, avoids exposing tokens to client JavaScript just to support Push/Background Sync, and keeps PWA/offline behavior incremental on top of the native SvelteKit service worker baseline instead of introducing a parallel proxy/auth stack.
 - Impact: Future client-side PWA features should prefer same-origin `/api/v1` calls that rely on the existing auth cookie, and any new service-worker caching should stay on explicit allowlists rather than broad authenticated API caching.
 - Follow-up: Validate the cookie-auth + service-worker flow on the live HTTPS origin and revisit the cache allowlist if later phases add more offline-safe routes or more sensitive browser-side data.
+
+## Decision 18
+- Date: 2026-03-16
+- Context: STEP 9 needs a practical migration path from legacy spreadsheets without introducing unstable live integrations or allowing imports to write directly into production data without review.
+- Decision: Use admin-only CSV imports with a two-step preview/commit flow, store preview metadata in `import_jobs`, preserve wallet `transaction_date` and optional `proof_url`, skip spreadsheet saldo as a source of truth, and recalculate wallet balance from imported transactions.
+- Rationale: CSV works with Google Sheets exports and old spreadsheet structures, keeps migration deterministic, allows row-level validation plus duplicate warnings before writes happen, and leaves a durable audit/import trail without adding direct Google Sheets coupling.
+- Impact: Future migration work should extend the existing CSV preview/commit pipeline first, and any wallet reporting or re-import logic must continue treating transactions as canonical while leaving spreadsheet balances informational only.
+- Follow-up: Validate the import rules against real exported mess spreadsheets and refine category inference or duplicate handling only if actual data shows gaps.

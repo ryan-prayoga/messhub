@@ -51,15 +51,19 @@ type User struct {
 }
 
 type WalletTransaction struct {
-	ID            string    `json:"id"`
-	Type          string    `json:"type"`
-	Category      string    `json:"category"`
-	Amount        int64     `json:"amount"`
-	Description   string    `json:"description"`
-	CreatedBy     string    `json:"created_by"`
-	CreatedByName string    `json:"created_by_name,omitempty"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID              string    `json:"id"`
+	TransactionDate time.Time `json:"transaction_date"`
+	Type            string    `json:"type"`
+	Category        string    `json:"category"`
+	Amount          int64     `json:"amount"`
+	Description     string    `json:"description"`
+	ProofURL        *string   `json:"proof_url,omitempty"`
+	Source          string    `json:"source"`
+	ImportJobID     *string   `json:"import_job_id,omitempty"`
+	CreatedBy       string    `json:"created_by"`
+	CreatedByName   string    `json:"created_by_name,omitempty"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 type WalletSummary struct {
@@ -323,6 +327,29 @@ type PushSubscription struct {
 	P256DHKey string    `json:"p256dh_key"`
 	AuthKey   string    `json:"auth_key"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type ImportJob struct {
+	ID                string          `json:"id"`
+	ImportType        string          `json:"import_type"`
+	Status            string          `json:"status"`
+	Source            string          `json:"source"`
+	FileName          string          `json:"file_name"`
+	FileHash          string          `json:"file_hash"`
+	CreatedBy         string          `json:"created_by"`
+	CreatedByName     *string         `json:"created_by_name,omitempty"`
+	DuplicateStrategy *string         `json:"duplicate_strategy,omitempty"`
+	TotalRows         int             `json:"total_rows"`
+	ValidRows         int             `json:"valid_rows"`
+	InvalidRows       int             `json:"invalid_rows"`
+	CommittedRows     int             `json:"committed_rows"`
+	SkippedRows       int             `json:"skipped_rows"`
+	FailedRows        int             `json:"failed_rows"`
+	PreviewPayload    json.RawMessage `json:"preview_payload,omitempty"`
+	CommitSummary     json.RawMessage `json:"commit_summary,omitempty"`
+	CommittedAt       *time.Time      `json:"committed_at,omitempty"`
+	CreatedAt         time.Time       `json:"created_at"`
+	UpdatedAt         time.Time       `json:"updated_at"`
 }
 
 type AuditLog struct {

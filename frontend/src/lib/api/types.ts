@@ -55,10 +55,14 @@ export type WalletSummary = {
 
 export type WalletTransaction = {
   id: string;
+  transaction_date: string;
   type: WalletTransactionType;
   category: string;
   amount: number;
   description: string;
+  proof_url: string | null;
+  source: string;
+  import_job_id: string | null;
   created_by: string;
   created_by_name?: string;
   created_at: string;
@@ -237,3 +241,83 @@ export type ApiEnvelope<T> = {
 };
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
+
+export type ImportRowStatus = 'valid' | 'invalid' | 'duplicate';
+
+export type ImportWarning = {
+  code: string;
+  message: string;
+};
+
+export type MemberImportPreviewRow = {
+  row_number: number;
+  status: ImportRowStatus;
+  name: string;
+  email: string;
+  role: string;
+  normalized_role: string;
+  is_active: string;
+  normalized_is_active?: boolean | null;
+  errors: string[];
+  warnings: string[];
+};
+
+export type MemberImportPreview = {
+  job_id: string;
+  file_name: string;
+  summary: {
+    total_rows: number;
+    valid_rows: number;
+    invalid_rows: number;
+    duplicate_rows: number;
+    importable_rows: number;
+  };
+  rows: MemberImportPreviewRow[];
+  warnings: ImportWarning[];
+  can_commit: boolean;
+  requires_temporary_password: boolean;
+};
+
+export type WalletImportPreviewRow = {
+  row_number: number;
+  status: Exclude<ImportRowStatus, 'duplicate'>;
+  transaction_date: string;
+  normalized_transaction_date?: string | null;
+  description: string;
+  income: string;
+  expense: string;
+  type: WalletTransactionType | '';
+  amount?: number | null;
+  category: string;
+  proof: string;
+  errors: string[];
+  warnings: string[];
+};
+
+export type WalletImportPreview = {
+  job_id: string;
+  file_name: string;
+  summary: {
+    total_rows: number;
+    valid_rows: number;
+    invalid_rows: number;
+    importable_rows: number;
+    total_income: number;
+    total_expense: number;
+  };
+  rows: WalletImportPreviewRow[];
+  warnings: ImportWarning[];
+  can_commit: boolean;
+};
+
+export type ImportCommitResult = {
+  job_id: string;
+  import_type: 'members' | 'wallet';
+  imported_rows: number;
+  skipped_rows: number;
+  failed_rows: number;
+  total_rows: number;
+  duplicate_strategy?: 'skip' | 'fail' | null;
+  total_income?: number;
+  total_expense?: number;
+};

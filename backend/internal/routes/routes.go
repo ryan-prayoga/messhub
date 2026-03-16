@@ -16,6 +16,7 @@ func Register(
 	settingsHandler *handlers.SettingsHandler,
 	systemHandler *handlers.SystemHandler,
 	walletHandler *handlers.WalletHandler,
+	importHandler *handlers.ImportHandler,
 	wifiHandler *handlers.WifiHandler,
 	activityHandler *handlers.ActivityHandler,
 	notificationHandler *handlers.NotificationHandler,
@@ -68,6 +69,10 @@ func Register(
 	adminOnly.Patch("/users/:id", userHandler.Update)
 	adminOnly.Patch("/settings", settingsHandler.Update)
 	adminOnly.Get("/system/status", systemHandler.GetStatus)
+	adminOnly.Post("/import/members/preview", importHandler.PreviewMembers)
+	adminOnly.Post("/import/members/commit", importHandler.CommitMembers)
+	adminOnly.Post("/import/wallet/preview", importHandler.PreviewWallet)
+	adminOnly.Post("/import/wallet/commit", importHandler.CommitWallet)
 
 	adminOnly.Get("/admin/ping", func(c *fiber.Ctx) error {
 		return response.Success(c, fiber.StatusOK, "admin access granted", fiber.Map{

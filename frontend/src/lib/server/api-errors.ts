@@ -23,10 +23,15 @@ export function throwIfUnauthorized(error: unknown, cookies: Cookies) {
 export function toApiFailureState(error: unknown, fallbackMessage: string): ApiFailureState {
   if (error instanceof ApiError) {
     const apiError = error;
+    const message = apiError.isNetworkError
+      ? 'Tidak dapat terhubung ke server.'
+      : apiError.status >= 500
+        ? fallbackMessage
+        : apiError.message || fallbackMessage;
 
     return {
       status: apiError.status || 503,
-      message: apiError.message || fallbackMessage,
+      message,
       code: apiError.code,
       requestId: apiError.requestId,
       kind: apiError.status === 403 ? 'forbidden' : apiError.isNetworkError ? 'network' : 'error'

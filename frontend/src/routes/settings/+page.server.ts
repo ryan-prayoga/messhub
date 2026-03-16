@@ -19,7 +19,7 @@ export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) =
       accessDenied: false,
       settings: null,
       systemStatus: null,
-      loadError: 'Missing auth token'
+      loadError: 'Sesi login tidak ditemukan.'
     };
   }
 
@@ -47,7 +47,7 @@ export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) =
 
   const settingsFailure =
     settingsResult.status === 'rejected'
-      ? toApiFailureState(settingsResult.reason, 'Failed to load settings')
+      ? toApiFailureState(settingsResult.reason, 'Pengaturan belum dapat dimuat.')
       : null;
 
   return {
@@ -72,7 +72,7 @@ export const actions: Actions = {
     if (!locals.token || !locals.user) {
       return fail(401, {
         action: 'updateSettings',
-        message: 'Missing authenticated session',
+        message: 'Sesi login tidak ditemukan.',
         values
       });
     }
@@ -80,7 +80,7 @@ export const actions: Actions = {
     if (!isAdmin(locals.user.role)) {
       return fail(403, {
         action: 'updateSettings',
-        message: 'Only admin can update settings',
+        message: 'Hanya admin yang bisa mengubah pengaturan mess.',
         values
       });
     }
@@ -100,7 +100,7 @@ export const actions: Actions = {
     ) {
       return fail(400, {
         action: 'updateSettings',
-        message: 'All settings fields are required and must be valid',
+        message: 'Semua field pengaturan wajib diisi dengan nilai yang valid.',
         values
       });
     }
@@ -116,11 +116,11 @@ export const actions: Actions = {
 
       return {
         action: 'updateSettings',
-        success: 'Settings updated.'
+        success: 'Pengaturan berhasil diperbarui.'
       };
     } catch (error) {
       throwIfUnauthorized(error, cookies);
-      const failure = toApiFailureState(error, 'Failed to update settings');
+      const failure = toApiFailureState(error, 'Pengaturan belum dapat diperbarui.');
 
       return fail(failure.status, {
         action: 'updateSettings',

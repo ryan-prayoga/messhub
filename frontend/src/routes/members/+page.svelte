@@ -10,8 +10,8 @@
 
   const roleLabels: Record<UserRole, string> = {
     admin: 'Admin',
-    treasurer: 'Treasurer',
-    member: 'Member'
+    treasurer: 'Bendahara',
+    member: 'Anggota'
   };
 
   function roleBadgeClass(role: UserRole) {
@@ -62,33 +62,46 @@
 
 <div class="space-y-4">
   <PageCard
-    title="Members"
-    description="Daftar anggota mess dengan admin controls untuk role dan status aktif."
+    title="Anggota Mess"
+    description="Kelola daftar penghuni, role, dan status aktif anggota mess."
   >
     {#if $navigating?.to?.url.pathname === '/members'}
-      <StatePanel tone="loading" title="Loading" message="Memuat ulang data anggota mess..." />
+      <StatePanel tone="loading" title="Memuat" message="Memuat ulang data anggota mess..." />
     {/if}
 
     {#if data.accessDenied}
       <StatePanel
         tone="forbidden"
-        title="Forbidden"
-        message={`Role ${data.user?.role} belum diizinkan melihat daftar anggota. Akses tersedia untuk admin dan treasurer.`}
+        title="Akses ditolak"
+        message="Daftar anggota hanya dapat dibuka oleh admin dan bendahara."
       />
     {:else if data.loadError}
-      <StatePanel tone="error" title="Error" message={data.loadError} />
+      <StatePanel tone="error" title="Gagal memuat" message={data.loadError} />
     {:else}
       {#if form?.message}
         <StatePanel
           tone="error"
-          title="Error"
+          title="Gagal memproses"
           message={form.message}
           requestId={form && 'requestId' in form && typeof form.requestId === 'string' ? form.requestId : null}
         />
       {:else if form?.success}
         <div class="helper-box mb-4 border-emerald-200 bg-emerald-50/80">
-          <p class="helper-label text-emerald-700">Success</p>
+          <p class="helper-label text-emerald-700">Berhasil</p>
           <p class="mt-2 text-sm leading-6 text-emerald-800">{form.success}</p>
+        </div>
+      {/if}
+
+      {#if data.canManage}
+        <div class="mb-4 flex flex-col gap-3 rounded-3xl border border-sky-200 bg-sky-50/80 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p class="helper-label text-sky-700">Impor data</p>
+            <p class="mt-2 text-sm leading-6 text-slate-700">
+              Pindahkan daftar penghuni lama ke MessHub lewat CSV, lengkap dengan preview validasi sebelum data disimpan.
+            </p>
+          </div>
+
+          <a href="/admin/import/members" class="btn-secondary px-4 py-3">Buka impor anggota</a>
         </div>
       {/if}
 
@@ -112,8 +125,8 @@
       {#if data.members.length === 0}
         <StatePanel
           tone="empty"
-          title="Empty"
-          message="Belum ada anggota yang tampil dari backend. Setelah admin menambahkan user baru, daftar ini akan langsung terisi."
+          title="Belum ada data"
+          message="Belum ada anggota yang ditampilkan. Setelah data anggota ditambahkan, daftar ini akan terisi otomatis."
         />
       {:else}
         <div class="mt-4 space-y-3">
@@ -128,25 +141,25 @@
                 <div class="flex flex-wrap gap-2">
                   <span class={roleBadgeClass(member.role)}>{roleLabels[member.role]}</span>
                   <span class={statusBadgeClass(member.is_active)}>
-                    {member.is_active ? 'Active' : 'Inactive'}
+                    {member.is_active ? 'Aktif' : 'Nonaktif'}
                   </span>
                 </div>
               </div>
 
               <div class="mt-4 grid gap-2 sm:grid-cols-2">
                 <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p class="helper-label">Joined</p>
+                  <p class="helper-label">Mulai tinggal</p>
                   <p class="mt-2 text-sm font-medium text-ink">{formatDate(member.joined_at)}</p>
                 </div>
 
                 <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p class="helper-label">Left</p>
+                  <p class="helper-label">Keluar</p>
                   <p class="mt-2 text-sm font-medium text-ink">{formatDate(member.left_at)}</p>
                 </div>
               </div>
 
               <div class="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <p class="helper-label">Phone</p>
+                <p class="helper-label">Nomor HP</p>
                 <p class="mt-2 text-sm font-medium text-ink">{member.phone ?? '-'}</p>
               </div>
 
@@ -158,11 +171,11 @@
                       <span class="field-label">Role</span>
                       <select name="role" class="input-field">
                         <option value="admin" selected={roleValue(member.id, member.role) === 'admin'}>Admin</option>
-                        <option value="treasurer" selected={roleValue(member.id, member.role) === 'treasurer'}>Treasurer</option>
-                        <option value="member" selected={roleValue(member.id, member.role) === 'member'}>Member</option>
+                        <option value="treasurer" selected={roleValue(member.id, member.role) === 'treasurer'}>Bendahara</option>
+                        <option value="member" selected={roleValue(member.id, member.role) === 'member'}>Anggota</option>
                       </select>
                     </label>
-                    <button type="submit" class="btn-secondary w-full px-4 py-3">Save role</button>
+                    <button type="submit" class="btn-secondary w-full px-4 py-3">Simpan role</button>
                   </form>
 
                   <form method="POST" action="?/toggleActive" class="flex items-end">
@@ -172,7 +185,7 @@
                       type="submit"
                       class={member.is_active ? 'btn-secondary w-full px-4 py-3' : 'btn-primary w-full px-4 py-3'}
                     >
-                      {member.is_active ? 'Deactivate' : 'Activate'}
+                      {member.is_active ? 'Nonaktifkan' : 'Aktifkan'}
                     </button>
                   </form>
                 </div>

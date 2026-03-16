@@ -29,7 +29,7 @@ export const actions: Actions = {
 
       cookies.set(AUTH_COOKIE_KEYS.token, token, buildAuthCookieOptions(url));
     } catch (error) {
-      const failure = toApiFailureState(error, 'Failed to sign in');
+      const failure = toApiFailureState(error, 'Tidak dapat memproses login saat ini.');
       return fail(failure.status, {
         message: failure.message,
         requestId: failure.requestId,
