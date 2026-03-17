@@ -4,12 +4,15 @@
   import { navigating } from '$app/stores';
   import type { SubmitFunction } from '@sveltejs/kit';
   import { toast } from 'svelte-sonner';
+  import ActionButtonGroup from '$lib/components/ActionButtonGroup.svelte';
   import ActionSheet from '$lib/components/ActionSheet.svelte';
   import AppIcon from '$lib/components/AppIcon.svelte';
+  import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
   import FeedbackBanner from '$lib/components/FeedbackBanner.svelte';
   import PageCard from '$lib/components/PageCard.svelte';
   import PageSkeleton from '$lib/components/PageSkeleton.svelte';
   import StatePanel from '$lib/components/StatePanel.svelte';
+  import { createConfirmableSubmitController } from '$lib/forms/confirmable';
   import type { ActionData, PageData } from './$types';
   import type { MemberUser, UserRole } from '$lib/api/types';
 
@@ -30,6 +33,12 @@
   let editTargetId: string | null = null;
   let passwordTargetId: string | null = null;
   let lastToastKey = '';
+  const confirmController = createConfirmableSubmitController({
+    setPendingAction: (value) => {
+      pendingAction = value;
+    }
+  });
+  const confirmationState = confirmController.state;
 
   function enhanceWithAction(actionName: string): SubmitFunction {
     return () => {
@@ -40,6 +49,13 @@
         pendingAction = null;
       };
     };
+  }
+
+  function enhanceWithConfirmation(
+    actionName: string,
+    confirmation: Parameters<typeof confirmController.enhance>[1]
+  ): SubmitFunction {
+    return confirmController.enhance(actionName, confirmation);
   }
 
   function roleBadgeClass(role: UserRole) {
@@ -115,14 +131,6 @@
     const inStatus = statusFilter === 'all' || currentStatus === statusFilter;
 
     return inSearch && inRole && inStatus;
-  }
-
-  function confirmAction(message: string) {
-    return (event: SubmitEvent) => {
-      if (!confirm(message)) {
-        event.preventDefault();
-      }
-    };
   }
 
   function countByRole(role: UserRole) {
@@ -264,9 +272,13 @@
       lastToastKey = key;
     }
   }
+  $: confirmationDialog = $confirmationState.dialog;
+  $: confirmationLoading =
+    !!confirmationDialog &&
+    ($confirmationState.requestingActionKey === confirmationDialog.actionKey || pendingAction === confirmationDialog.actionKey);
 </script>
 
-<div class="space-y-4">
+<div class="space-y-5 lg:space-y-6">
   <PageCard
     eyebrow="Members"
     icon="lucide:users"
@@ -308,7 +320,7 @@
         <FeedbackBanner tone="success" title="Berhasil" message={pageSuccess} />
       {/if}
 
-      <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div class="stat-card bg-slate-950 text-white">
           <p class="helper-label text-slate-300">Total member</p>
           <p class="mt-2 text-3xl font-semibold tracking-[-0.04em]">{data.summary.total}</p>
@@ -338,9 +350,17 @@
         </div>
       </div>
 
-      <section class="mt-4 rounded-[28px] border border-line bg-panel/80 p-4">
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div class="grid flex-1 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.4fr)_repeat(2,minmax(0,0.7fr))]">
+      <section class="rounded-[30px] border border-line bg-panel/80 p-5 sm:p-6">
+        <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div class="space-y-2">
+            <p class="eyebrow">Cari & filter</p>
+            <h3 class="section-title text-[1.1rem] sm:text-[1.25rem]">Rapikan daftar anggota yang sedang dibuka</h3>
+            <p class="section-subtitle">
+              Menampilkan {filteredMembers.length} dari {data.members.length} anggota dengan filter yang aktif saat ini.
+            </p>
+          </div>
+
+          <div class="grid flex-1 gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.4fr)_repeat(2,minmax(0,0.7fr))]">
             <label class="sm:col-span-2 xl:col-span-1">
               <span class="field-label">Cari member</span>
               <div class="relative">
@@ -380,7 +400,7 @@
           {#if searchTerm !== '' || roleFilter !== 'all' || statusFilter !== 'all'}
             <button
               type="button"
-              class="btn-secondary px-4 py-3"
+              class="btn-secondary shrink-0 px-4 py-3"
               on:click={() => {
                 searchTerm = '';
                 roleFilter = 'all';
@@ -431,71 +451,82 @@
           </div>
         </StatePanel>
       {:else}
-        <div class="mt-4 grid gap-4 xl:grid-cols-2">
+        <div class="grid gap-5 xl:grid-cols-2">
           {#each filteredMembers as member}
             <article class="stat-card bg-white">
-              <div class="flex flex-col gap-4">
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div class="min-w-0">
-                    <div class="flex flex-wrap items-center gap-2">
-                      <h3 class="text-lg font-semibold text-ink">{member.name}</h3>
-                      <span class={roleBadgeClass(member.role)}>{roleLabels[member.role]}</span>
-                      <span class={statusBadgeClass(memberStatus(member))}>
-                        {statusLabel(memberStatus(member))}
-                      </span>
+              <div class="flex flex-col gap-5">
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div class="min-w-0 space-y-3">
+                    <div class="flex flex-wrap items-start gap-3">
+                      <div class="avatar-chip avatar-chip-sm mt-0.5">{member.name.slice(0, 1)}</div>
+
+                      <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center gap-2.5">
+                          <h3 class="text-lg font-semibold text-ink">{member.name}</h3>
+                          <span class={roleBadgeClass(member.role)}>{roleLabels[member.role]}</span>
+                          <span class={statusBadgeClass(memberStatus(member))}>
+                            {statusLabel(memberStatus(member))}
+                          </span>
+                        </div>
+                        <p class="mt-2 break-all text-sm text-muted">{member.email}</p>
+                        <p class="mt-1 text-xs uppercase tracking-[0.16em] text-dusty">@{member.username}</p>
+                      </div>
                     </div>
-                    <p class="mt-2 break-all text-sm text-muted">{member.email}</p>
-                    <p class="mt-1 text-xs uppercase tracking-[0.16em] text-dusty">@{member.username}</p>
                   </div>
 
-                  <div class="flex flex-wrap gap-2">
+                  <ActionButtonGroup align="end">
                     {#if data.canManage}
-                      <button type="button" class="btn-secondary px-3 py-2.5" on:click={() => openEditSheet(member.id)}>
-                        Edit
+                      <button type="button" class="btn-secondary px-3.5 py-2.5" on:click={() => openEditSheet(member.id)}>
+                        <AppIcon icon="lucide:square-pen" className="h-4 w-4" />
+                        <span>Edit</span>
                       </button>
-                      <button type="button" class="btn-secondary px-3 py-2.5" on:click={() => openPasswordSheet(member.id)}>
-                        Reset password
+                      <button type="button" class="btn-secondary px-3.5 py-2.5" on:click={() => openPasswordSheet(member.id)}>
+                        <AppIcon icon="lucide:key-round" className="h-4 w-4" />
+                        <span>Reset password</span>
                       </button>
                     {/if}
-                  </div>
+                  </ActionButtonGroup>
                 </div>
 
-                <div class="grid gap-3 sm:grid-cols-2">
-                  <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div class="content-grid-tight">
+                  <div class="meta-card">
                     <p class="helper-label">Nomor HP</p>
                     <p class="mt-2 text-sm font-medium text-ink">{member.phone ?? '-'}</p>
                   </div>
 
-                  <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <div class="meta-card">
                     <p class="helper-label">Mulai tinggal</p>
                     <p class="mt-2 text-sm font-medium text-ink">{formatDate(member.joined_at)}</p>
                   </div>
 
-                  <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <div class="meta-card">
                     <p class="helper-label">Status keluar</p>
                     <p class="mt-2 text-sm font-medium text-ink">
                       {member.archived_at ? `Diarsipkan ${formatDate(member.archived_at)}` : formatDate(member.left_at)}
                     </p>
                   </div>
 
-                  <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <div class="meta-card">
                     <p class="helper-label">Terakhir diperbarui</p>
                     <p class="mt-2 text-sm font-medium text-ink">{formatDate(member.updated_at)}</p>
                   </div>
                 </div>
 
                 {#if data.canManage}
-                  <div class="flex flex-wrap gap-3 border-t border-line pt-4">
+                  <ActionButtonGroup bordered>
                     {#if !member.archived_at}
                       <form
                         method="POST"
                         action="?/toggleActive"
-                        use:enhance={enhanceWithAction(`toggle-${member.id}`)}
-                        on:submit={confirmAction(
-                          member.is_active
-                            ? 'Nonaktifkan anggota ini dari siklus aktif mess? Riwayat lama tetap disimpan.'
-                            : 'Aktifkan kembali anggota ini ke status aktif?'
-                        )}
+                        use:enhance={enhanceWithConfirmation(`toggle-${member.id}`, {
+                          title: member.is_active ? `Nonaktifkan ${member.name}?` : `Aktifkan kembali ${member.name}?`,
+                          description: member.is_active
+                            ? 'Akun akan keluar dari siklus aktif mess. Riwayat lama tetap aman dan bisa diaktifkan lagi kapan saja.'
+                            : 'Akun akan kembali masuk ke siklus aktif mess dan dipakai lagi untuk operasional berikutnya.',
+                          confirmLabel: member.is_active ? 'Nonaktifkan' : 'Aktifkan kembali',
+                          icon: member.is_active ? 'lucide:user-x' : 'lucide:user-check',
+                          destructive: member.is_active
+                        })}
                       >
                         <input type="hidden" name="member_id" value={member.id} />
                         <input type="hidden" name="is_active" value={member.is_active ? 'false' : 'true'} />
@@ -504,11 +535,17 @@
                           class={member.is_active ? 'btn-secondary px-4 py-3' : 'btn-primary px-4 py-3'}
                           disabled={pendingAction === `toggle-${member.id}`}
                         >
-                          {pendingAction === `toggle-${member.id}`
-                            ? 'Menyimpan...'
-                            : member.is_active
-                              ? 'Nonaktifkan akun'
-                              : 'Aktifkan kembali'}
+                          <AppIcon
+                            icon={member.is_active ? 'lucide:user-x' : 'lucide:user-check'}
+                            className="h-4 w-4"
+                          />
+                          <span>
+                            {pendingAction === `toggle-${member.id}`
+                              ? 'Menyimpan...'
+                              : member.is_active
+                                ? 'Nonaktifkan akun'
+                                : 'Aktifkan kembali'}
+                          </span>
                         </button>
                       </form>
                     {/if}
@@ -517,8 +554,12 @@
                       <form
                         method="POST"
                         action="?/reactivateMember"
-                        use:enhance={enhanceWithAction(`reactivate-${member.id}`)}
-                        on:submit={confirmAction('Aktifkan kembali anggota yang sudah diarsipkan ini?')}
+                        use:enhance={enhanceWithConfirmation(`reactivate-${member.id}`, {
+                          title: `Keluarkan ${member.name} dari arsip?`,
+                          description: 'Akun akan kembali aktif dan bisa dipakai lagi untuk login, wifi, dan operasional mess berikutnya.',
+                          confirmLabel: 'Aktifkan dari arsip',
+                          icon: 'lucide:archive-restore'
+                        })}
                       >
                         <input type="hidden" name="member_id" value={member.id} />
                         <button
@@ -526,15 +567,21 @@
                           class="btn-primary px-4 py-3"
                           disabled={pendingAction === `reactivate-${member.id}`}
                         >
-                          {pendingAction === `reactivate-${member.id}` ? 'Menyimpan...' : 'Aktifkan dari arsip'}
+                          <AppIcon icon="lucide:archive-restore" className="h-4 w-4" />
+                          <span>{pendingAction === `reactivate-${member.id}` ? 'Menyimpan...' : 'Aktifkan dari arsip'}</span>
                         </button>
                       </form>
                     {:else}
                       <form
                         method="POST"
                         action="?/archiveMember"
-                        use:enhance={enhanceWithAction(`archive-${member.id}`)}
-                        on:submit={confirmAction('Arsipkan anggota ini? Akun akan keluar dari lifecycle aktif, tetapi histori tetap utuh.')}
+                        use:enhance={enhanceWithConfirmation(`archive-${member.id}`, {
+                          title: `Arsipkan ${member.name}?`,
+                          description: 'Akun akan keluar dari lifecycle aktif, tetapi seluruh histori tetap utuh dan masih bisa dipulihkan bila diperlukan.',
+                          confirmLabel: 'Arsipkan',
+                          icon: 'lucide:archive',
+                          destructive: true
+                        })}
                       >
                         <input type="hidden" name="member_id" value={member.id} />
                         <button
@@ -542,7 +589,8 @@
                           class="btn-secondary px-4 py-3"
                           disabled={pendingAction === `archive-${member.id}`}
                         >
-                          {pendingAction === `archive-${member.id}` ? 'Mengarsipkan...' : 'Arsipkan akun'}
+                          <AppIcon icon="lucide:archive" className="h-4 w-4" />
+                          <span>{pendingAction === `archive-${member.id}` ? 'Mengarsipkan...' : 'Arsipkan akun'}</span>
                         </button>
                       </form>
                     {/if}
@@ -551,24 +599,31 @@
                       <form
                         method="POST"
                         action="?/deletePermanent"
-                        use:enhance={enhanceWithAction(`delete-${member.id}`)}
-                        on:submit={confirmAction('Hapus permanen akun ini? Sistem hanya akan mengizinkan jika akun benar-benar belum punya relasi atau histori penting.')}
+                        use:enhance={enhanceWithConfirmation(`delete-${member.id}`, {
+                          title: `Hapus permanen ${member.name}?`,
+                          description: 'Tindakan ini hanya akan berhasil jika akun benar-benar belum punya relasi penting. Jika histori masih ada, sistem akan menolak penghapusan demi keamanan data.',
+                          confirmLabel: 'Hapus permanen',
+                          icon: 'lucide:trash-2',
+                          destructive: true
+                        })}
                       >
                         <input type="hidden" name="member_id" value={member.id} />
                         <button
                           type="submit"
-                          class="btn-secondary px-4 py-3"
+                          class="btn-danger px-4 py-3"
                           disabled={pendingAction === `delete-${member.id}`}
                         >
-                          {pendingAction === `delete-${member.id}` ? 'Menghapus...' : 'Hapus permanen'}
+                          <AppIcon icon="lucide:trash-2" className="h-4 w-4" />
+                          <span>{pendingAction === `delete-${member.id}` ? 'Menghapus...' : 'Hapus permanen'}</span>
                         </button>
                       </form>
                     {/if}
 
                     <button type="button" class="btn-secondary px-4 py-3" on:click={() => openEditSheet(member.id)}>
-                      Ubah role & data
+                      <AppIcon icon="lucide:shield-ellipsis" className="h-4 w-4" />
+                      <span>Ubah role & data</span>
                     </button>
-                  </div>
+                  </ActionButtonGroup>
                 {/if}
               </div>
             </article>
@@ -657,7 +712,7 @@
           </p>
         </div>
 
-        <div class="flex flex-wrap gap-3 border-t border-line pt-4">
+        <ActionButtonGroup bordered>
           <button
             type="submit"
             class="btn-primary px-4 py-3"
@@ -668,7 +723,7 @@
           <button type="button" class="btn-secondary px-4 py-3" on:click={closeSheets}>
             Batal
           </button>
-        </div>
+        </ActionButtonGroup>
       </form>
     </ActionSheet>
 
@@ -743,7 +798,7 @@
             </p>
           </div>
 
-          <div class="flex flex-wrap gap-3 border-t border-line pt-4">
+          <ActionButtonGroup bordered>
             <button
               type="submit"
               class="btn-primary px-4 py-3"
@@ -754,7 +809,7 @@
             <button type="button" class="btn-secondary px-4 py-3" on:click={closeSheets}>
               Tutup
             </button>
-          </div>
+          </ActionButtonGroup>
         </form>
       </ActionSheet>
     {/if}
@@ -796,7 +851,7 @@
             <input class="input-field" type="password" name="confirm_password" value={passwordValue('confirm_password')} required />
           </label>
 
-          <div class="flex flex-wrap gap-3 border-t border-line pt-4">
+          <ActionButtonGroup bordered>
             <button
               type="submit"
               class="btn-primary px-4 py-3"
@@ -807,9 +862,22 @@
             <button type="button" class="btn-secondary px-4 py-3" on:click={closeSheets}>
               Batal
             </button>
-          </div>
+          </ActionButtonGroup>
         </form>
       </ActionSheet>
     {/if}
   {/if}
+
+  <ConfirmDialog
+    open={!!confirmationDialog}
+    title={confirmationDialog?.title ?? 'Konfirmasi aksi'}
+    description={confirmationDialog?.description ?? ''}
+    confirmLabel={confirmationDialog?.confirmLabel ?? 'Lanjutkan'}
+    cancelLabel={confirmationDialog?.cancelLabel ?? 'Batal'}
+    icon={confirmationDialog?.icon ?? 'lucide:triangle-alert'}
+    destructive={confirmationDialog?.destructive ?? false}
+    loading={confirmationLoading}
+    on:close={confirmController.closeDialog}
+    on:confirm={confirmController.confirmDialog}
+  />
 </div>

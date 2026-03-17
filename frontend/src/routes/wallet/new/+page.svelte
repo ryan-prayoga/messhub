@@ -7,7 +7,7 @@
   export let form: ActionData;
 </script>
 
-<div class="space-y-4">
+<div class="space-y-5 lg:space-y-6">
   <PageCard
     eyebrow="Wallet"
     icon="lucide:plus"

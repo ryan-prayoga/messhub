@@ -2,10 +2,12 @@
   import { enhance } from '$app/forms';
   import { navigating } from '$app/stores';
   import type { SubmitFunction } from '@sveltejs/kit';
+  import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
   import FeedbackBanner from '$lib/components/FeedbackBanner.svelte';
   import PageCard from '$lib/components/PageCard.svelte';
   import PageSkeleton from '$lib/components/PageSkeleton.svelte';
   import StatePanel from '$lib/components/StatePanel.svelte';
+  import { createConfirmableSubmitController } from '$lib/forms/confirmable';
   import type { WifiBill, WifiBillMember, WifiBillStatus } from '$lib/api/types';
   import type { ActionData, PageData } from './$types';
 
@@ -19,6 +21,12 @@
   };
 
   let pendingAction: string | null = null;
+  const confirmController = createConfirmableSubmitController({
+    setPendingAction: (value) => {
+      pendingAction = value;
+    }
+  });
+  const confirmationState = confirmController.state;
 
   function enhanceWithAction(actionName: string): SubmitFunction {
     return () => {
@@ -29,6 +37,13 @@
         pendingAction = null;
       };
     };
+  }
+
+  function enhanceWithConfirmation(
+    actionName: string,
+    confirmation: Parameters<typeof confirmController.enhance>[1]
+  ): SubmitFunction {
+    return confirmController.enhance(actionName, confirmation);
   }
 
   function formatCurrency(value: number) {
@@ -123,6 +138,33 @@
     }
   }
 
+  function lifecycleConfirmation(bill: WifiBill, nextStatus: WifiBillStatus) {
+    if (nextStatus === 'closed') {
+      return {
+        title: `Tutup tagihan ${formatMonthYear(bill.month, bill.year)}?`,
+        description: 'Tagihan akan berhenti menerima alur aktif baru. Gunakan ini saat periode sudah final dan tidak perlu lagi dibuka untuk verifikasi harian.',
+        confirmLabel: 'Tutup tagihan',
+        icon: 'lucide:lock'
+      };
+    }
+
+    if (nextStatus === 'active') {
+      return {
+        title: `Aktifkan tagihan ${formatMonthYear(bill.month, bill.year)}?`,
+        description: 'Tagihan ini akan menjadi periode aktif dan dipakai lagi untuk operasional wifi berjalan.',
+        confirmLabel: 'Aktifkan tagihan',
+        icon: 'lucide:circle-check-big'
+      };
+    }
+
+    return {
+      title: `Kembalikan ${formatMonthYear(bill.month, bill.year)} ke draft?`,
+      description: 'Status tagihan akan diturunkan ke draft. Pastikan perubahan ini memang diperlukan sebelum periode dipakai lagi.',
+      confirmLabel: 'Jadikan draft',
+      icon: 'lucide:file-pen'
+    };
+  }
+
   function findOwnBillItem(bill: WifiBill | null | undefined) {
     if (!bill) {
       return null;
@@ -169,9 +211,13 @@
   }
 
   $: ownActiveBill = findOwnBillItem(data.activeBill?.bill);
+  $: confirmationDialog = $confirmationState.dialog;
+  $: confirmationLoading =
+    !!confirmationDialog &&
+    ($confirmationState.requestingActionKey === confirmationDialog.actionKey || pendingAction === confirmationDialog.actionKey);
 </script>
 
-<div class="space-y-4">
+<div class="space-y-5 lg:space-y-6">
   <PageCard
     eyebrow="Wifi"
     icon="lucide:wifi"
@@ -197,8 +243,8 @@
       <StatePanel tone="error" title="Belum bisa memuat wifi" message={data.loadError} />
     {:else}
       {#if data.activeBill}
-        <section class="space-y-4">
-          <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <section class="space-y-5">
+          <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div class="stat-card bg-slate-950 text-white sm:col-span-2">
               <div class="flex flex-wrap items-center gap-2">
                 <p class="helper-label text-slate-300">Tagihan aktif</p>
@@ -237,7 +283,7 @@
             </div>
           </div>
 
-          <div class="grid gap-3 sm:grid-cols-3">
+          <div class="grid gap-4 sm:grid-cols-3">
             <div class="stat-card bg-white">
               <p class="helper-label">Menunggu</p>
               <p class="mt-2 text-2xl font-semibold tracking-[-0.04em] text-ink">
@@ -269,8 +315,8 @@
       {/if}
 
       {#if data.canManage}
-        <div class="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
-          <section class="space-y-4">
+        <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
+          <section class="space-y-5">
             <article class="app-panel p-5">
               <div class="flex items-start justify-between gap-3">
                 <div>
@@ -368,7 +414,7 @@
               {#if data.bills.length === 0}
                 <StatePanel tone="empty" title="Belum ada riwayat" message="Belum ada tagihan wifi yang tercatat." />
               {:else}
-                <div class="mt-4 space-y-3">
+                <div class="mt-5 space-y-4">
                   {#each data.bills as bill}
                     <article class="stat-card bg-white">
                       <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -396,31 +442,34 @@
                         </div>
                       </div>
 
-                      <div class="mt-4 grid gap-2 sm:grid-cols-4">
-                        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <div class="mt-5 grid gap-3 sm:grid-cols-4">
+                        <div class="meta-card">
                           <p class="helper-label">Terverifikasi</p>
                           <p class="mt-2 text-sm font-semibold text-ink">{bill.summary.verified_count}</p>
                         </div>
-                        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <div class="meta-card">
                           <p class="helper-label">Menunggu</p>
                           <p class="mt-2 text-sm font-semibold text-ink">{bill.summary.pending_count}</p>
                         </div>
-                        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <div class="meta-card">
                           <p class="helper-label">Belum bayar</p>
                           <p class="mt-2 text-sm font-semibold text-ink">{bill.summary.unpaid_count}</p>
                         </div>
-                        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <div class="meta-card">
                           <p class="helper-label">Ditolak</p>
                           <p class="mt-2 text-sm font-semibold text-ink">{bill.summary.rejected_count}</p>
                         </div>
                       </div>
 
-                      <div class="mt-4 flex flex-wrap gap-2">
+                      <div class="mt-5 flex flex-wrap gap-3">
                         {#each lifecycleTargets(bill.status) as nextStatus}
                           <form
                             method="POST"
                             action="?/updateBillStatus"
-                            use:enhance={enhanceWithAction(`bill-status-${bill.id}-${nextStatus}`)}
+                            use:enhance={enhanceWithConfirmation(
+                              `bill-status-${bill.id}-${nextStatus}`,
+                              lifecycleConfirmation(bill, nextStatus)
+                            )}
                           >
                             <input type="hidden" name="bill_id" value={bill.id} />
                             <input type="hidden" name="status" value={nextStatus} />
@@ -453,7 +502,7 @@
             {:else if data.activeBill.members.length === 0}
               <StatePanel tone="empty" title="Belum ada anggota" message="Belum ada record anggota pada tagihan aktif ini." />
             {:else}
-              <div class="mt-4 space-y-3">
+              <div class="mt-5 space-y-4">
                 {#each data.activeBill.members as member}
                   <article class="stat-card bg-white">
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -475,8 +524,8 @@
                       </div>
                     </div>
 
-                    <div class="mt-4 grid gap-2">
-                      <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <div class="mt-5 grid gap-3">
+                      <div class="meta-card">
                         <p class="helper-label">Bukti transfer</p>
                         <p class="mt-2 break-all text-sm text-slate-700">
                           {member.proof_url || 'Belum ada bukti transfer'}
@@ -484,7 +533,7 @@
                       </div>
 
                       {#if member.note}
-                        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <div class="meta-card">
                           <p class="helper-label">Catatan</p>
                           <p class="mt-2 text-sm text-slate-700">{member.note}</p>
                         </div>
@@ -549,8 +598,8 @@
           </article>
         </div>
       {:else}
-        <div class="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)]">
-          <section class="space-y-4">
+        <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)]">
+          <section class="space-y-5">
             <article class="app-panel p-5">
               <p class="eyebrow">Tagihan Saya</p>
               <h2 class="section-title mt-1">Status pembayaran saya</h2>
@@ -561,7 +610,7 @@
               {#if !data.activeBill || !ownActiveBill}
                 <StatePanel tone="empty" title="Tidak ada tagihan aktif" message="Tidak ada tagihan aktif yang perlu Anda kirim saat ini." />
               {:else}
-                <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                <div class="mt-5 grid gap-4 sm:grid-cols-2">
                   <div class="stat-card bg-slate-950 text-white">
                     <p class="helper-label text-slate-300">Tagihan</p>
                     <p class="mt-2 text-2xl font-semibold tracking-[-0.04em]">
@@ -585,16 +634,16 @@
                   </div>
                 </div>
 
-                <div class="mt-4 space-y-3">
+                <div class="mt-5 space-y-4">
                   {#if ownActiveBill.proof_url}
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <div class="meta-card">
                       <p class="helper-label">Bukti terakhir</p>
                       <p class="mt-2 break-all text-sm text-slate-700">{ownActiveBill.proof_url}</p>
                     </div>
                   {/if}
 
                   {#if ownActiveBill.note}
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <div class="meta-card">
                       <p class="helper-label">Catatan terakhir</p>
                       <p class="mt-2 text-sm text-slate-700">{ownActiveBill.note}</p>
                     </div>
@@ -717,4 +766,17 @@
       {/if}
     {/if}
   </PageCard>
+
+  <ConfirmDialog
+    open={!!confirmationDialog}
+    title={confirmationDialog?.title ?? 'Konfirmasi aksi'}
+    description={confirmationDialog?.description ?? ''}
+    confirmLabel={confirmationDialog?.confirmLabel ?? 'Lanjutkan'}
+    cancelLabel={confirmationDialog?.cancelLabel ?? 'Batal'}
+    icon={confirmationDialog?.icon ?? 'lucide:badge-alert'}
+    destructive={confirmationDialog?.destructive ?? false}
+    loading={confirmationLoading}
+    on:close={confirmController.closeDialog}
+    on:confirm={confirmController.confirmDialog}
+  />
 </div>

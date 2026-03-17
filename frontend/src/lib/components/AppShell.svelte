@@ -21,16 +21,23 @@
 
   let mobileMenuOpen = false;
   let userMenuOpen = false;
+  let pendingNavIntent: string | null = null;
 
   $: actualPath = $page.url.pathname || currentPath;
-  $: displayPath = $navigating?.to?.url.pathname ?? actualPath;
+  $: routePath = $navigating?.to?.url.pathname ?? actualPath;
   $: navGroups = getVisibleNavigation(user);
-  $: currentItem = getCurrentNavigationItem(displayPath, user);
-  $: currentMeta = getPageMeta(displayPath, user);
+  $: currentItem = getCurrentNavigationItem(routePath, user);
+  $: currentMeta = getPageMeta(routePath, user);
   $: unreadCount = notificationSummary?.unread_count ?? 0;
   $: if (actualPath) {
     mobileMenuOpen = false;
     userMenuOpen = false;
+  }
+  $: if (pendingNavIntent && isPathActive(actualPath, pendingNavIntent)) {
+    pendingNavIntent = null;
+  }
+  $: if (pendingNavIntent && $navigating?.to?.url.pathname && !isPathActive($navigating.to.url.pathname, pendingNavIntent)) {
+    pendingNavIntent = null;
   }
 
   function toggleMobileMenu() {
@@ -54,6 +61,28 @@
   function closeMenus() {
     mobileMenuOpen = false;
     userMenuOpen = false;
+  }
+
+  function primeNavigation(href: string) {
+    if (!isPathActive(actualPath, href)) {
+      pendingNavIntent = href;
+    }
+  }
+
+  function navStateClass(href: string, activeClass: string, pendingClass: string) {
+    if (isPathActive(routePath, href)) {
+      return activeClass;
+    }
+
+    if (pendingNavIntent && isPathActive(pendingNavIntent, href)) {
+      return pendingClass;
+    }
+
+    return '';
+  }
+
+  function isCurrentNavItem(href: string) {
+    return isPathActive(routePath, href);
   }
 
   function handleWindowKeydown(event: KeyboardEvent) {
@@ -89,9 +118,14 @@
           {#each navGroups.primary as item}
             <a
               href={item.href}
-              class={`nav-link ${isPathActive(displayPath, item.href) ? 'nav-link-active' : ''}`}
+              class={`nav-link ${navStateClass(item.href, 'nav-link-active', 'nav-link-pending')}`}
+              aria-current={isCurrentNavItem(item.href) ? 'page' : undefined}
               data-sveltekit-preload-data="tap"
-              on:click={closeMenus}
+              on:pointerdown={() => primeNavigation(item.href)}
+              on:click={() => {
+                primeNavigation(item.href);
+                closeMenus();
+              }}
             >
               <span class="nav-link-icon">
                 <AppIcon icon={item.icon} className="h-5 w-5" />
@@ -100,6 +134,7 @@
                 <span class="nav-link-label">{item.label}</span>
                 <span class="nav-link-copy">{item.description}</span>
               </span>
+              <span class="nav-link-indicator" aria-hidden="true"></span>
               <AppIcon icon="lucide:chevron-right" className="nav-link-chevron" />
             </a>
           {/each}
@@ -112,9 +147,14 @@
           {#each [...navGroups.workspace, ...navGroups.admin] as item}
             <a
               href={item.href}
-              class={`nav-link ${isPathActive(displayPath, item.href) ? 'nav-link-active' : ''}`}
+              class={`nav-link ${navStateClass(item.href, 'nav-link-active', 'nav-link-pending')}`}
+              aria-current={isCurrentNavItem(item.href) ? 'page' : undefined}
               data-sveltekit-preload-data="tap"
-              on:click={closeMenus}
+              on:pointerdown={() => primeNavigation(item.href)}
+              on:click={() => {
+                primeNavigation(item.href);
+                closeMenus();
+              }}
             >
               <span class="nav-link-icon">
                 <AppIcon icon={item.icon} className="h-5 w-5" />
@@ -123,6 +163,7 @@
                 <span class="nav-link-label">{item.label}</span>
                 <span class="nav-link-copy">{item.description}</span>
               </span>
+              <span class="nav-link-indicator" aria-hidden="true"></span>
               {#if item.href === '/notifications' && unreadCount > 0}
                 <span class="nav-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
               {:else}
@@ -163,10 +204,15 @@
         <div class="shell-header-actions">
           <a
             href="/notifications"
-            class={`icon-button ${isPathActive(displayPath, '/notifications') ? 'icon-button-active' : ''}`}
+            class={`icon-button ${navStateClass('/notifications', 'icon-button-active', 'icon-button-pending')}`}
             aria-label="Buka notifikasi"
+            aria-current={isCurrentNavItem('/notifications') ? 'page' : undefined}
             data-sveltekit-preload-data="tap"
-            on:click={closeMenus}
+            on:pointerdown={() => primeNavigation('/notifications')}
+            on:click={() => {
+              primeNavigation('/notifications');
+              closeMenus();
+            }}
           >
             <AppIcon icon="lucide:bell-ring" className="h-5 w-5" />
             {#if unreadCount > 0}
@@ -245,9 +291,14 @@
             {#each [...navGroups.primary, ...navGroups.workspace, ...navGroups.admin] as item}
               <a
                 href={item.href}
-                class={`mobile-menu-link ${isPathActive(displayPath, item.href) ? 'mobile-menu-link-active' : ''}`}
+                class={`mobile-menu-link ${navStateClass(item.href, 'mobile-menu-link-active', 'mobile-menu-link-pending')}`}
+                aria-current={isCurrentNavItem(item.href) ? 'page' : undefined}
                 data-sveltekit-preload-data="tap"
-                on:click={closeMenus}
+                on:pointerdown={() => primeNavigation(item.href)}
+                on:click={() => {
+                  primeNavigation(item.href);
+                  closeMenus();
+                }}
               >
                 <AppIcon icon={item.icon} className="h-5 w-5" />
                 <div class="min-w-0">
@@ -264,7 +315,7 @@
 
       <main class="page-container">
         <div class="page-stack">
-          {#key currentPath}
+          {#key actualPath}
             <div class="page-transition-frame" transition:fly={{ y: 12, duration: 180 }}>
               <slot />
             </div>
@@ -277,9 +328,14 @@
           {#each navGroups.bottom as item}
             <a
               href={item.href}
-              class={`bottom-nav-link ${isPathActive(displayPath, item.href) ? 'bottom-nav-link-active' : ''}`}
+              class={`bottom-nav-link ${navStateClass(item.href, 'bottom-nav-link-active', 'bottom-nav-link-pending')}`}
+              aria-current={isCurrentNavItem(item.href) ? 'page' : undefined}
               data-sveltekit-preload-data="tap"
-              on:click={closeMenus}
+              on:pointerdown={() => primeNavigation(item.href)}
+              on:click={() => {
+                primeNavigation(item.href);
+                closeMenus();
+              }}
             >
               <span class="bottom-nav-icon">
                 <AppIcon icon={item.icon} className="h-5 w-5" />

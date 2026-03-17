@@ -69,7 +69,7 @@
   $: avatarPreview = profileValue('avatar_url');
 </script>
 
-<div class="space-y-4">
+<div class="space-y-5 lg:space-y-6">
   <PageCard
     eyebrow="Profile"
     icon="lucide:user-round"
@@ -94,8 +94,8 @@
     {#if data.loadError || !data.profile}
       <StatePanel tone="error" title="Gagal memuat" message={data.loadError ?? 'Profil belum tersedia.'} />
     {:else}
-      <div class="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-        <section class="space-y-4">
+      <div class="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        <section class="space-y-5">
           <article class="stat-card bg-slate-950 text-white">
             <p class="helper-label text-slate-300">Akun aktif</p>
             <div class="mt-4 flex items-center gap-4">
@@ -149,7 +149,7 @@
           </article>
         </section>
 
-        <section class="space-y-4">
+        <section class="space-y-5">
           <article class="app-panel p-5">
             <p class="eyebrow">Perbarui profil</p>
             <h2 class="section-title mt-1">Ubah data pribadi</h2>

@@ -8,7 +8,7 @@
 </script>
 
 <section class="app-panel">
-  <div class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+  <div class="page-card-header">
     <div class="flex min-w-0 items-start gap-4">
       {#if icon}
         <div class="nav-link-icon mt-0.5">
@@ -32,5 +32,7 @@
     <slot name="actions" />
   </div>
 
-  <slot />
+  <div class="page-card-body">
+    <slot />
+  </div>
 </section>

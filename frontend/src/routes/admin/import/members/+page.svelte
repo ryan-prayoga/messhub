@@ -72,7 +72,7 @@
   }
 </script>
 
-<div class="space-y-4">
+<div class="space-y-5 lg:space-y-6">
   <PageCard
     title="Impor Anggota"
     description="Unggah CSV anggota, cek baris valid dan duplikat, lalu simpan hanya data yang siap dipakai."

@@ -10,6 +10,13 @@
 - None observed.
 
 ## Done
+- ID: OPS-009
+  Title: Replace native confirms, fix destructive-action correctness, and polish shell/page spacing
+  Priority: P1
+  Owner/Agent: Codex
+  Dependencies: OPS-008, UX-001
+  Notes: Replaced the last native browser confirm flow with a reusable accessible confirmation dialog plus shared confirmable submit controller, fixed the Cancel path that could still leak into enhanced form submission, added loading/double-submit protection for destructive member and wifi lifecycle actions, refined modal/page spacing across the key routes, and made desktop/mobile navigation feel immediately responsive while keeping active state tied to the actual route.
+
 - ID: OPS-008
   Title: Ship sprint hardening, shared expenses, proposals, and safe member lifecycle
   Priority: P1

@@ -199,3 +199,11 @@
 - Rationale: This keeps scope tight, avoids schema duplication, and turns the existing placeholder routes into production-usable modules with minimal architectural drift.
 - Impact: Future reporting or workflow improvements for these modules should extend the current runtime first, and they should continue to stay separate from wallet transactions and wifi billing.
 - Follow-up: Revisit deeper proposal workflow or reimbursement analytics only after live usage shows where the current implementation is too thin.
+
+## Decision 26
+- Date: 2026-03-17
+- Context: Admin/member lifecycle actions still relied on a native browser confirm and enhanced-form timing that could let a cancelled destructive action continue, while the shell/page polish still felt denser and less responsive than the new design baseline.
+- Decision: Standardize risky frontend mutations on a reusable accessible modal dialog + confirmable-submit controller, reuse the same modal foundation for sheets and confirms, and keep navigation active state route-driven while adding only a transient pending visual for tap/click responsiveness.
+- Rationale: This removes brittle native-dialog behavior, fixes the Cancel-path bug without a backend rewrite, keeps destructive UX consistent across modules, and improves perceived speed/polish without reintroducing stale local navigation state.
+- Impact: Future risky actions should use the shared confirm dialog/controller instead of `window.confirm`, future modal surfaces should build on the shared dialog wrapper for focus/ESC/backdrop handling, and shell/menu active styling should stay tied to actual route state with optional pending visuals layered on top.
+- Follow-up: Reuse the same confirm/controller pattern for any future irreversible admin action, and complete live device/browser verification once a safe authenticated test account is available in this workspace.

@@ -183,7 +183,7 @@
 </script>
 
 <PullToRefresh onRefresh={refreshPage}>
-<div class="space-y-4">
+<div class="space-y-5 lg:space-y-6">
   <PageCard
     eyebrow="Feed"
     icon="lucide:newspaper"
@@ -284,7 +284,7 @@
           icon="lucide:sparkles"
         />
       {:else}
-        <div class="mt-4 space-y-4">
+        <div class="space-y-5">
           {#each data.activities as item}
             <article class="app-panel p-5">
               <div class="flex flex-wrap items-start justify-between gap-3">
@@ -427,7 +427,7 @@
             icon="lucide:history"
           />
         {:else}
-          <div class="mt-4 space-y-4">
+          <div class="space-y-5">
             {#each data.expiredActivities as item}
               <article class="rounded-[24px] border border-line bg-white/70 p-5">
                 <div class="flex flex-wrap items-start justify-between gap-3">

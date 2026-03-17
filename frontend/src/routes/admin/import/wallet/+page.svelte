@@ -50,7 +50,7 @@
   }
 </script>
 
-<div class="space-y-4">
+<div class="space-y-5 lg:space-y-6">
   <PageCard
     title="Impor Transaksi Kas"
     description="Unggah CSV kas lama, cek hasil parsing dan total nominal, lalu commit setelah preview."

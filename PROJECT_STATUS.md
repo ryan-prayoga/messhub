@@ -18,6 +18,9 @@
 - Observed: shared expenses are now fully implemented on the existing schema with list/create/update APIs, audit logs for create/update/status changes, a real `/shared-expenses` page, and dashboard summary integration without touching the main wallet balance.
 - Observed: proposals and voting are now fully implemented on the existing schema with create/list/detail/vote/close/finalize APIs, audit logs for create/vote/close/finalize, a real `/proposals` page, and dashboard summary integration for active/open decisions.
 - Observed: member lifecycle now supports `active`, `inactive`, and `archived` states through `archived_at`, admin-only archive/reactivate/delete-safe endpoints, relation-aware permanent delete blocking, richer `/members` status filters/actions, and audit logs for archive/reactivate/delete attempts.
+- Observed: destructive and semi-destructive member/wifi lifecycle changes now use a reusable accessible confirmation dialog instead of native browser confirm, the previous Cancel path no longer leaks through to the submit enhancer, modal focus/close handling is standardized, and duplicate destructive submits are locked while a request is in flight.
+- Observed: frontend spacing and interaction polish are now more consistent across members, wallet, wifi, feed, profile, settings, and admin import screens through a refined modal wrapper, reusable action-button grouping, looser page/card rhythm, and a cleaner `/members` information hierarchy for filters, metadata blocks, and footer actions.
+- Observed: the app shell navigation now keeps active state derived from the real route while also showing immediate pending feedback on tap/click, adds `aria-current` semantics, and makes desktop/mobile menu transitions feel more responsive without waiting for a full page refresh.
 - Observed: protected SvelteKit server actions now resolve the current user through a shared server-side auth helper before checking role-sensitive mutations, fixing the false "Sesi login tidak ditemukan" error on settings saves and other admin/member actions while still redirecting expired sessions back to `/login`.
 - Observed: the shared app shell now uses navigation-start aware route state, closes menus consistently on click, and keeps the desktop sidebar bounded to the viewport with its own scroll area so the sidebar no longer bleeds down over the content column.
 - Observed: `/members` is now a fuller admin workspace with search/filter controls, member create/edit sheets, activate/deactivate actions, role/status updates, admin password reset, and clearer empty/error feedback on both desktop and mobile.
@@ -124,7 +127,11 @@
 - frontend/src/lib/components/ActionSheet.svelte
 - frontend/src/lib/components/StatePanel.svelte
 - frontend/src/lib/components/AppShell.svelte
+- frontend/src/lib/components/ModalDialog.svelte
+- frontend/src/lib/components/ConfirmDialog.svelte
+- frontend/src/lib/components/ActionButtonGroup.svelte
 - frontend/src/app.css
+- frontend/src/lib/forms/confirmable.ts
 - frontend/src/routes/login/
 - frontend/src/routes/dashboard/
 - frontend/src/routes/wallet/

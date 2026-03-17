@@ -21,7 +21,7 @@
   ];
 </script>
 
-<div class="space-y-4">
+<div class="space-y-5 lg:space-y-6">
   <PageCard
     eyebrow="Admin"
     icon="lucide:download"

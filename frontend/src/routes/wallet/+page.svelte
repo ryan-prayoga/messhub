@@ -29,7 +29,7 @@
   }
 </script>
 
-<div class="space-y-4">
+<div class="space-y-5 lg:space-y-6">
   <PageCard
     eyebrow="Wallet"
     icon="lucide:wallet"
@@ -43,7 +43,7 @@
     {#if data.loadError}
       <StatePanel tone="error" title="Belum bisa memuat wallet" message={data.loadError} />
     {:else if data.summary}
-      <div class="grid gap-3 sm:grid-cols-3">
+      <div class="grid gap-4 sm:grid-cols-3">
         <div class="stat-card bg-slate-950 text-white">
           <div class="flex items-start justify-between gap-3">
             <div>
@@ -85,7 +85,7 @@
         </div>
       </div>
 
-      <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div class="helper-box grow">
           <p class="helper-label">Riwayat transaksi</p>
           <p class="mt-2 text-sm leading-6 text-slate-600">
@@ -115,7 +115,7 @@
           actionLabel={data.canCreate ? 'Tambah transaksi pertama' : ''}
         />
       {:else}
-        <div class="mt-4 space-y-3">
+        <div class="space-y-4">
           {#each data.transactions as transaction}
             <article class="stat-card bg-white">
               <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
