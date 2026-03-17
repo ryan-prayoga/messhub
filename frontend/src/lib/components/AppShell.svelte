@@ -22,12 +22,14 @@
   let mobileMenuOpen = false;
   let userMenuOpen = false;
   let pendingNavIntent: string | null = null;
+  let pendingNavResetTimeout: number | null = null;
 
   $: actualPath = $page.url.pathname || currentPath;
-  $: routePath = $navigating?.to?.url.pathname ?? actualPath;
+  $: targetPath = $navigating?.to?.url.pathname ?? null;
+  $: visualPath = pendingNavIntent ?? targetPath ?? actualPath;
   $: navGroups = getVisibleNavigation(user);
-  $: currentItem = getCurrentNavigationItem(routePath, user);
-  $: currentMeta = getPageMeta(routePath, user);
+  $: currentItem = getCurrentNavigationItem(visualPath, user);
+  $: currentMeta = getPageMeta(visualPath, user);
   $: unreadCount = notificationSummary?.unread_count ?? 0;
   $: if (actualPath) {
     mobileMenuOpen = false;
@@ -36,8 +38,12 @@
   $: if (pendingNavIntent && isPathActive(actualPath, pendingNavIntent)) {
     pendingNavIntent = null;
   }
-  $: if (pendingNavIntent && $navigating?.to?.url.pathname && !isPathActive($navigating.to.url.pathname, pendingNavIntent)) {
+  $: if (pendingNavIntent && targetPath && !isPathActive(targetPath, pendingNavIntent)) {
     pendingNavIntent = null;
+  }
+  $: if (!pendingNavIntent && pendingNavResetTimeout) {
+    clearTimeout(pendingNavResetTimeout);
+    pendingNavResetTimeout = null;
   }
 
   function toggleMobileMenu() {
@@ -63,14 +69,47 @@
     userMenuOpen = false;
   }
 
-  function primeNavigation(href: string) {
+  function schedulePendingReset() {
+    if (pendingNavResetTimeout) {
+      clearTimeout(pendingNavResetTimeout);
+    }
+
+    pendingNavResetTimeout = window.setTimeout(() => {
+      if (!targetPath && pendingNavIntent && !isPathActive(actualPath, pendingNavIntent)) {
+        pendingNavIntent = null;
+      }
+    }, 450);
+  }
+
+  function isNavigationIntent(event?: MouseEvent | PointerEvent) {
+    if (!event) {
+      return true;
+    }
+
+    if (event.defaultPrevented) {
+      return false;
+    }
+
+    if ('button' in event && event.button !== 0) {
+      return false;
+    }
+
+    return !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+  }
+
+  function primeNavigation(href: string, event?: MouseEvent | PointerEvent) {
+    if (!isNavigationIntent(event)) {
+      return;
+    }
+
     if (!isPathActive(actualPath, href)) {
       pendingNavIntent = href;
+      schedulePendingReset();
     }
   }
 
   function navStateClass(href: string, activeClass: string, pendingClass: string) {
-    if (isPathActive(routePath, href)) {
+    if (isPathActive(visualPath, href)) {
       return activeClass;
     }
 
@@ -82,7 +121,7 @@
   }
 
   function isCurrentNavItem(href: string) {
-    return isPathActive(routePath, href);
+    return isPathActive(actualPath, href);
   }
 
   function handleWindowKeydown(event: KeyboardEvent) {
@@ -97,7 +136,17 @@
 <div class="app-shell">
   <div class="shell-layout">
     <aside class="shell-sidebar">
-      <a href="/dashboard" class="shell-brand" data-sveltekit-preload-data="tap" on:click={closeMenus}>
+      <a
+        href="/dashboard"
+        class="shell-brand"
+        data-sveltekit-preload-code="viewport"
+        data-sveltekit-preload-data="tap"
+        on:pointerdown={(event) => primeNavigation('/dashboard', event)}
+        on:click={(event) => {
+          primeNavigation('/dashboard', event);
+          closeMenus();
+        }}
+      >
         <img
           src="/icons/logo.png"
           alt="Logo MessHub"
@@ -126,10 +175,11 @@
               href={item.href}
               class={`nav-link ${navStateClass(item.href, 'nav-link-active', 'nav-link-pending')}`}
               aria-current={isCurrentNavItem(item.href) ? 'page' : undefined}
+              data-sveltekit-preload-code="viewport"
               data-sveltekit-preload-data="tap"
-              on:pointerdown={() => primeNavigation(item.href)}
-              on:click={() => {
-                primeNavigation(item.href);
+              on:pointerdown={(event) => primeNavigation(item.href, event)}
+              on:click={(event) => {
+                primeNavigation(item.href, event);
                 closeMenus();
               }}
             >
@@ -155,10 +205,11 @@
               href={item.href}
               class={`nav-link ${navStateClass(item.href, 'nav-link-active', 'nav-link-pending')}`}
               aria-current={isCurrentNavItem(item.href) ? 'page' : undefined}
+              data-sveltekit-preload-code="viewport"
               data-sveltekit-preload-data="tap"
-              on:pointerdown={() => primeNavigation(item.href)}
-              on:click={() => {
-                primeNavigation(item.href);
+              on:pointerdown={(event) => primeNavigation(item.href, event)}
+              on:click={(event) => {
+                primeNavigation(item.href, event);
                 closeMenus();
               }}
             >
@@ -213,10 +264,11 @@
             class={`icon-button ${navStateClass('/notifications', 'icon-button-active', 'icon-button-pending')}`}
             aria-label="Buka notifikasi"
             aria-current={isCurrentNavItem('/notifications') ? 'page' : undefined}
+            data-sveltekit-preload-code="viewport"
             data-sveltekit-preload-data="tap"
-            on:pointerdown={() => primeNavigation('/notifications')}
-            on:click={() => {
-              primeNavigation('/notifications');
+            on:pointerdown={(event) => primeNavigation('/notifications', event)}
+            on:click={(event) => {
+              primeNavigation('/notifications', event);
               closeMenus();
             }}
           >
@@ -266,13 +318,33 @@
                     </div>
                   </div>
 
-                  <a href="/profile" class="menu-link" data-sveltekit-preload-data="tap" on:click={closeMenus}>
+                  <a
+                    href="/profile"
+                    class="menu-link"
+                    data-sveltekit-preload-code="viewport"
+                    data-sveltekit-preload-data="tap"
+                    on:pointerdown={(event) => primeNavigation('/profile', event)}
+                    on:click={(event) => {
+                      primeNavigation('/profile', event);
+                      closeMenus();
+                    }}
+                  >
                     <AppIcon icon="lucide:user-round" className="h-4 w-4" />
                     <span>Profile</span>
                   </a>
 
                   {#if user.role === 'admin'}
-                    <a href="/settings" class="menu-link" data-sveltekit-preload-data="tap" on:click={closeMenus}>
+                    <a
+                      href="/settings"
+                      class="menu-link"
+                      data-sveltekit-preload-code="viewport"
+                      data-sveltekit-preload-data="tap"
+                      on:pointerdown={(event) => primeNavigation('/settings', event)}
+                      on:click={(event) => {
+                        primeNavigation('/settings', event);
+                        closeMenus();
+                      }}
+                    >
                       <AppIcon icon="lucide:settings-2" className="h-4 w-4" />
                       <span>Settings</span>
                     </a>
@@ -299,10 +371,11 @@
                 href={item.href}
                 class={`mobile-menu-link ${navStateClass(item.href, 'mobile-menu-link-active', 'mobile-menu-link-pending')}`}
                 aria-current={isCurrentNavItem(item.href) ? 'page' : undefined}
+                data-sveltekit-preload-code="viewport"
                 data-sveltekit-preload-data="tap"
-                on:pointerdown={() => primeNavigation(item.href)}
-                on:click={() => {
-                  primeNavigation(item.href);
+                on:pointerdown={(event) => primeNavigation(item.href, event)}
+                on:click={(event) => {
+                  primeNavigation(item.href, event);
                   closeMenus();
                 }}
               >
@@ -322,7 +395,7 @@
       <main class="page-container">
         <div class="page-stack">
           {#key actualPath}
-            <div class="page-transition-frame" transition:fly={{ y: 12, duration: 180 }}>
+            <div class="page-transition-frame" in:fly={{ y: 8, duration: 140 }}>
               <slot />
             </div>
           {/key}
@@ -336,10 +409,11 @@
               href={item.href}
               class={`bottom-nav-link ${navStateClass(item.href, 'bottom-nav-link-active', 'bottom-nav-link-pending')}`}
               aria-current={isCurrentNavItem(item.href) ? 'page' : undefined}
+              data-sveltekit-preload-code="viewport"
               data-sveltekit-preload-data="tap"
-              on:pointerdown={() => primeNavigation(item.href)}
-              on:click={() => {
-                primeNavigation(item.href);
+              on:pointerdown={(event) => primeNavigation(item.href, event)}
+              on:click={(event) => {
+                primeNavigation(item.href, event);
                 closeMenus();
               }}
             >
