@@ -110,7 +110,7 @@ func (h *ProfileHandler) ChangePassword(c *fiber.Ctx) error {
 			errors.Is(err, services.ErrPasswordTooShort):
 			return response.InvalidRequest(c, err.Error())
 		case errors.Is(err, services.ErrCurrentPasswordInvalid):
-			return response.Unauthorized(c, err.Error())
+			return response.InvalidRequest(c, "current password is invalid")
 		case errors.Is(err, services.ErrUserNotFound):
 			return response.NotFound(c, err.Error())
 		default:

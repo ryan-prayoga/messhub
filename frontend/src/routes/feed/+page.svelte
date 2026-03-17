@@ -296,9 +296,6 @@
                     {#if item.activity.type === 'contribution'}
                       <span class="badge bg-emerald-50 text-emerald-700">{item.activity.points} poin</span>
                     {/if}
-                    {#if isExpired(item)}
-                      <span class="badge-muted">Sudah berakhir</span>
-                    {/if}
                   </div>
 
                   <h2 class="section-title mt-3">{item.activity.title}</h2>
@@ -414,6 +411,68 @@
           {/each}
         </div>
       {/if}
+
+      <article class="app-panel p-5">
+        <p class="eyebrow">Riwayat</p>
+        <h2 class="section-title mt-1">Aktivitas yang sudah berakhir</h2>
+        <p class="section-subtitle mt-2">
+          Post sementara yang sudah lewat masa aktif dipindahkan ke riwayat agar feed utama tetap fokus.
+        </p>
+
+        {#if data.expiredActivities.length === 0}
+          <StatePanel
+            tone="empty"
+            title="Belum ada riwayat expired"
+            message="Post sementara yang sudah lewat masa aktif akan muncul di sini."
+            icon="lucide:history"
+          />
+        {:else}
+          <div class="mt-4 space-y-4">
+            {#each data.expiredActivities as item}
+              <article class="rounded-[24px] border border-line bg-white/70 p-5">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <span class={activityBadgeClass(item.activity.type)}>
+                        {activityLabels[item.activity.type]}
+                      </span>
+                      <span class="badge-muted">Sudah berakhir</span>
+                    </div>
+
+                    <h3 class="section-title mt-3">{item.activity.title}</h3>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">{item.activity.content}</p>
+                  </div>
+
+                  <div class="text-right text-xs text-slate-500">
+                    <p class="font-semibold text-slate-700">{item.activity.created_by_name}</p>
+                    <p class="mt-1">{formatDate(item.activity.created_at)}</p>
+                    {#if item.activity.expires_at}
+                      <p class="mt-1">Berakhir {formatDate(item.activity.expires_at)}</p>
+                    {/if}
+                  </div>
+                </div>
+
+                <div class="mt-4 grid gap-3 sm:grid-cols-3">
+                  <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p class="helper-label">Komentar</p>
+                    <p class="mt-2 text-sm font-medium text-ink">{item.comments.length}</p>
+                  </div>
+                  <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p class="helper-label">Reaksi suka</p>
+                    <p class="mt-2 text-sm font-medium text-ink">{reactionState(item)?.count ?? 0}</p>
+                  </div>
+                  <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p class="helper-label">Riwayat interaksi</p>
+                    <p class="mt-2 text-sm font-medium text-ink">
+                      {item.claims.length + item.rice_responses.length}
+                    </p>
+                  </div>
+                </div>
+              </article>
+            {/each}
+          </div>
+        {/if}
+      </article>
     {/if}
   </PageCard>
 </div>

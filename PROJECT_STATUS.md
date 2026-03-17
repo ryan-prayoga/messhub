@@ -2,14 +2,22 @@
 
 ## Current Objective
 
-- Implement cross-app UX polish, navigation cleanup, title/meta consistency, Iconify adoption, and auth identifier login (`email` or `username`) on top of the existing production-ready auth, member, wallet, wifi, smart mess, profile, settings, import, and PWA runtime.
+- Complete the next production sprint: auth/session hardening, settings protection, feed expiry fix, wifi lifecycle fix, deploy/migration hardening, shared expenses, proposals, and safe member lifecycle completion.
 
 ## Current Phase
 
-- Phase 10 — UX Polish, Navigation, and Auth Refinement
+- Phase 11 — Hardening and Product Completion
 
 ## Summary Status
 
+- Observed: backend auth now invalidates old JWTs after password change/reset through `users.auth_version`, profile password mistakes no longer masquerade as expired sessions, and successful self password changes redirect back to `/login` with a fresh-login prompt instead of leaving the browser on a dead token.
+- Observed: backend now introduces `backend/db/migrations/010_next_sprint_step11.sql`, a bootstrap-aware Go migration runner (`backend/cmd/migrate`), and a safer deploy workflow that runs migrations before GAS rebuilds plus a minimal frontend smoke check after deploy.
+- Observed: `/api/v1/settings` read access is now limited to `admin`/`treasurer`, while the frontend settings load path also resolves auth through the shared server-side helper so the settings screen no longer depends on potentially stale `locals.user`.
+- Observed: feed expiry is now enforced consistently: active feed loads only non-expired posts by default, expired posts are split into a history section on `/feed`, and backend comment/reaction/claim/rice actions now reject interactions once the activity has expired.
+- Observed: wifi billing now has an explicit lifecycle update path (`PATCH /api/v1/wifi/bills/:id/status`), creation/activation guards prevent two active bills at once, rejected payments now notify the payer, and members can no longer overwrite proof that is already pending verification.
+- Observed: shared expenses are now fully implemented on the existing schema with list/create/update APIs, audit logs for create/update/status changes, a real `/shared-expenses` page, and dashboard summary integration without touching the main wallet balance.
+- Observed: proposals and voting are now fully implemented on the existing schema with create/list/detail/vote/close/finalize APIs, audit logs for create/vote/close/finalize, a real `/proposals` page, and dashboard summary integration for active/open decisions.
+- Observed: member lifecycle now supports `active`, `inactive`, and `archived` states through `archived_at`, admin-only archive/reactivate/delete-safe endpoints, relation-aware permanent delete blocking, richer `/members` status filters/actions, and audit logs for archive/reactivate/delete attempts.
 - Observed: protected SvelteKit server actions now resolve the current user through a shared server-side auth helper before checking role-sensitive mutations, fixing the false "Sesi login tidak ditemukan" error on settings saves and other admin/member actions while still redirecting expired sessions back to `/login`.
 - Observed: the shared app shell now uses navigation-start aware route state, closes menus consistently on click, and keeps the desktop sidebar bounded to the viewport with its own scroll area so the sidebar no longer bleeds down over the content column.
 - Observed: `/members` is now a fuller admin workspace with search/filter controls, member create/edit sheets, activate/deactivate actions, role/status updates, admin password reset, and clearer empty/error feedback on both desktop and mobile.
@@ -91,13 +99,11 @@
 
 - Live validation with real exported Google Sheets/legacy CSV files is still pending, including final confirmation of member duplicate handling and wallet category inference against actual mess data.
 - Live browser/device validation for Step 8 is still pending for standalone install, Android push delivery, offline cache behavior after logout/login, and background-sync replay after reconnect.
-- Shared expenses and proposals are still placeholder-only on the frontend and do not yet have live runtime integration.
-- The new GitHub Actions deploy workflow has been authored, but it has not been exercised against the live VPS from this workspace yet.
+- The new migration runner and updated deploy workflow have been authored, but they have not been exercised against the live VPS from this workspace yet.
 
 ## Blockers / Risks
 
-- Step 9 rollout now depends on applying `backend/db/migrations/008_import_step9.sql` after the earlier migrations in each environment before the new import screens or wallet transaction metadata can be used safely.
-- Migration is manual; schema application is not yet automated.
+- Phase 11 rollout now depends on applying `backend/db/migrations/010_next_sprint_step11.sql` or running `cd backend && go run ./cmd/migrate` on each environment before auth invalidation, member archive lifecycle, shared expenses, proposals, and deploy gating can work safely.
 - Wallet rollout now depends on applying `backend/db/migrations/003_wallet_step2.sql` after the existing migrations in each environment.
 - Wifi rollout now depends on applying `backend/db/migrations/004_wifi_audit_step3.sql` after the existing migrations in each environment.
 - Smart mess rollout now depends on applying `backend/db/migrations/005_smart_mess_step5.sql` after the earlier migrations in each environment.
@@ -108,8 +114,7 @@
 - Risk: GitHub Actions deploy depends on repository secrets plus non-interactive `git pull` access already working on the VPS checkout.
 - Risk: Web Push, homescreen installability, and service-worker background sync still need live validation on HTTPS/Android Chrome because they cannot be fully proven from static builds alone.
 - Risk: Authenticated offline caches are cleared on logout, but same-device account switching and stale cached pages should still be regression-checked in the browser after deploy.
-- Residual: `frontend/npm audit` still reports 3 low severity vulnerabilities from SvelteKit's current `cookie@0.6.0` dependency chain; no safe local override has been applied yet.
-- Risk: shared expenses and proposals still remain out of sequence relative to the original phase order; repo planning must keep that explicit rather than implying they are already done.
+- Observed on 2026-03-17: `frontend/npm audit --omit=dev` returns 0 production vulnerabilities from this workspace; the earlier low-severity dependency warning is no longer reproducible here.
 - Risk: `frontend/.env` now needs a valid `PRIVATE_API_BASE_URL` for server-side auth and data loads outside the Nginx split runtime.
 - Assumption risk: avatar is currently stored as a string URL/reference only; no upload pipeline or image storage flow was added in this step.
 

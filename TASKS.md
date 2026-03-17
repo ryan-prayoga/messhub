@@ -1,19 +1,7 @@
 # TASKS.md
 
 ## Todo
-- ID: T-007
-  Title: Implement shared expenses module
-  Priority: P2
-  Owner/Agent: Unassigned
-  Dependencies: T-003
-  Notes: Track payer, fronting, reimbursement status, and proof without affecting wallet balance.
-
-- ID: T-010
-  Title: Implement proposals and simple voting
-  Priority: P3
-  Owner/Agent: Unassigned
-  Dependencies: T-003
-  Notes: Candidate for v1.1 if scope tightens.
+- None.
 
 ## Doing
 - None.
@@ -22,6 +10,13 @@
 - None observed.
 
 ## Done
+- ID: OPS-008
+  Title: Ship sprint hardening, shared expenses, proposals, and safe member lifecycle
+  Priority: P1
+  Owner/Agent: Codex
+  Dependencies: OPS-007, T-007, T-010
+  Notes: Added JWT invalidation through `auth_version`, fixed the wrong-current-password logout path, restricted settings reads to manager roles, split feed into active/history with expired interaction guards, added wifi bill status lifecycle updates plus no-overwrite pending proof rules and reject notifications, introduced a bootstrap-aware Go migration runner and migration-backed deploy step, completed shared expenses and proposals end-to-end on the existing schema, and finished member lifecycle with archive/reactivate/delete-safe behavior plus richer admin UI.
+
 - ID: OPS-007
   Title: Complete admin member management, fix protected action session resolution, and refine shell states
   Priority: P1
@@ -104,7 +99,7 @@
   Priority: P1
   Owner/Agent: Codex
   Dependencies: T-002
-  Notes: Users schema is now hardened with `joined_at`, `phone`, and `avatar_url`; admin seed remains non-duplicating; backend users/profile APIs are live; and the frontend members list now supports admin role and activation controls.
+  Notes: Users schema is now hardened with `joined_at`, `phone`, `avatar_url`, `auth_version`, and `archived_at`; admin seed remains non-duplicating; backend users/profile APIs are live; and the frontend members list now supports admin role/status/lifecycle controls including archive, reactivate, and delete-safe guards.
 
 - ID: T-004
   Title: Implement wallet transactions module
@@ -118,7 +113,7 @@
   Priority: P1
   Owner/Agent: Codex
   Dependencies: T-003
-  Notes: Added `backend/db/migrations/004_wifi_audit_step3.sql`, wifi billing APIs for create/list/detail/active/my/submit/verify/reject, auto-generated monthly member obligations from active users, frontend `/wifi` page with proof submission and review UI, dashboard wifi summary, and reusable audit logging for wifi, wallet transaction creation, and user role/activation updates.
+  Notes: Added `backend/db/migrations/004_wifi_audit_step3.sql`, wifi billing APIs for create/list/detail/active/my/submit/verify/reject plus bill status lifecycle updates, auto-generated monthly member obligations from active non-archived users, frontend `/wifi` page with proof submission and review UI, dashboard wifi summary, and reusable audit logging for wifi, wallet transaction creation, and user role/activation updates.
 
 - ID: T-006
   Title: Implement dashboard summary
@@ -154,6 +149,20 @@
   Owner/Agent: Codex
   Dependencies: T-003, T-005, T-011
   Notes: Added `backend/db/migrations/006_settings_profile_step6.sql`, live profile/password/settings/system-status APIs, standardized API errors, frontend `/profile` and admin `/settings`, wifi defaults sourced from settings, and admin member role/activation controls on `/members`.
+
+- ID: T-007
+  Title: Implement shared expenses module
+  Priority: P2
+  Owner/Agent: Codex
+  Dependencies: T-003
+  Notes: Implemented list/create/update runtime on the existing `shared_expenses` table, added `updated_at` migration hardening, summary cards and admin forms on `/shared-expenses`, dashboard integration, and audit logs for create/update/reimbursement status changes without affecting wallet balance.
+
+- ID: T-010
+  Title: Implement proposals and simple voting
+  Priority: P3
+  Owner/Agent: Codex
+  Dependencies: T-003
+  Notes: Implemented create/list/detail/vote/close/finalize runtime on the existing proposals tables, added real `/proposals` UI with voting and admin finalization flows, dashboard proposal summary, and audit logs for proposal lifecycle actions.
 
 - ID: CTX-001
   Title: Normalize shared project context

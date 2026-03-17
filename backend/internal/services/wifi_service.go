@@ -26,6 +26,7 @@ var (
 	ErrDuplicateWifiBill        = errors.New("wifi bill for the selected month already exists")
 	ErrWifiBillNotFound         = errors.New("wifi bill not found")
 	ErrWifiBillInactive         = errors.New("wifi bill is not active")
+	ErrAnotherActiveWifiBill    = errors.New("another wifi bill is already active")
 	ErrWifiMemberNotFound       = errors.New("wifi member record not found")
 	ErrWifiProofRequired        = errors.New("payment proof is required")
 	ErrWifiSubmissionNotAllowed = errors.New("payment proof cannot be submitted for this bill")
@@ -40,6 +41,10 @@ type CreateWifiBillInput struct {
 	NominalPerPerson *int64  `json:"nominal_per_person"`
 	DeadlineDate     *string `json:"deadline_date"`
 	Status           string  `json:"status"`
+}
+
+type UpdateWifiBillStatusInput struct {
+	Status string `json:"status"`
 }
 
 type SubmitWifiPaymentInput struct {
@@ -117,6 +122,16 @@ func (s *WifiService) CreateBill(ctx context.Context, createdBy string, input Cr
 		return nil, err
 	}
 
+	if status == models.WifiBillStatusActive {
+		activeBill, err := s.wifiRepository.FindActiveBill(ctx)
+		switch {
+		case err == nil && activeBill != nil:
+			return nil, ErrAnotherActiveWifiBill
+		case err != nil && !errors.Is(err, sql.ErrNoRows):
+			return nil, err
+		}
+	}
+
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -192,6 +207,75 @@ func (s *WifiService) ListBills(ctx context.Context) ([]models.WifiBillWithSumma
 	return s.wifiRepository.ListBills(ctx)
 }
 
+func (s *WifiService) UpdateBillStatus(ctx context.Context, billID string, actorID string, input UpdateWifiBillStatusInput) (*models.WifiBillDetail, error) {
+	status := strings.TrimSpace(input.Status)
+	if !isValidWifiBillStatus(status) {
+		return nil, ErrInvalidWifiStatus
+	}
+
+	bill, err := s.wifiRepository.FindByID(ctx, billID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrWifiBillNotFound
+		}
+
+		return nil, err
+	}
+
+	if bill.Status == status {
+		return s.GetBillDetail(ctx, billID)
+	}
+
+	if status == models.WifiBillStatusActive {
+		activeBill, err := s.wifiRepository.FindActiveBill(ctx)
+		switch {
+		case err == nil && activeBill != nil && activeBill.ID != bill.ID:
+			return nil, ErrAnotherActiveWifiBill
+		case err != nil && !errors.Is(err, sql.ErrNoRows):
+			return nil, err
+		}
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	updatedBill, err := s.wifiRepository.UpdateBillStatusTx(ctx, tx, repository.UpdateWifiBillStatusParams{
+		BillID: bill.ID,
+		Status: status,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrWifiBillNotFound
+		}
+
+		return nil, err
+	}
+
+	if err := s.auditService.LogTx(ctx, tx, AuditLogInput{
+		UserID:     stringPtr(actorID),
+		Action:     "wifi_bill_status_updated",
+		EntityType: "wifi_bill",
+		EntityID:   stringPtr(updatedBill.ID),
+		OldValue: map[string]any{
+			"status": bill.Status,
+		},
+		NewValue: map[string]any{
+			"status": updatedBill.Status,
+		},
+	}); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return s.GetBillDetail(ctx, updatedBill.ID)
+}
+
 func (s *WifiService) GetActiveBill(ctx context.Context, viewerID string, viewerRole string) (*models.WifiBillDetail, error) {
 	bill, err := s.wifiRepository.FindActiveBill(ctx)
 	if err != nil {
@@ -263,7 +347,8 @@ func (s *WifiService) SubmitPaymentProof(ctx context.Context, billID string, use
 		return nil, err
 	}
 
-	if member.PaymentStatus == models.WifiPaymentStatusVerified {
+	if member.PaymentStatus == models.WifiPaymentStatusVerified ||
+		member.PaymentStatus == models.WifiPaymentStatusPendingVerification {
 		return nil, ErrWifiSubmissionNotAllowed
 	}
 
@@ -329,6 +414,10 @@ func (s *WifiService) VerifyPayment(ctx context.Context, billID string, memberID
 		}
 
 		return nil, err
+	}
+
+	if bill.Status != models.WifiBillStatusActive {
+		return nil, ErrWifiReviewNotAllowed
 	}
 
 	member, err := s.wifiRepository.FindBillMemberByID(ctx, billID, memberID)
@@ -403,6 +492,19 @@ func (s *WifiService) RejectPayment(ctx context.Context, billID string, memberID
 		return nil, ErrWifiRejectReasonRequired
 	}
 
+	bill, err := s.wifiRepository.FindByID(ctx, billID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrWifiBillNotFound
+		}
+
+		return nil, err
+	}
+
+	if bill.Status != models.WifiBillStatusActive {
+		return nil, ErrWifiReviewNotAllowed
+	}
+
 	member, err := s.wifiRepository.FindBillMemberByID(ctx, billID, memberID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -447,9 +549,24 @@ func (s *WifiService) RejectPayment(ctx context.Context, billID string, memberID
 		return nil, err
 	}
 
+	pushNotifications, err := s.notificationService.NotifyUserTx(
+		ctx,
+		tx,
+		updated.UserID,
+		"Pembayaran wifi ditolak",
+		fmt.Sprintf("Bukti pembayaran wifi %s %d ditolak. Periksa catatan penolakan lalu kirim ulang bukti yang benar.", monthNameID(bill.Month), bill.Year),
+		"wifi_payment_rejected",
+		stringPtr(updated.ID),
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
+
+	s.notificationService.DispatchPush(ctx, pushNotifications)
 
 	return updated, nil
 }

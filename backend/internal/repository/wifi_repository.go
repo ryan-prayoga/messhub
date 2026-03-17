@@ -24,6 +24,11 @@ type CreateWifiBillParams struct {
 	CreatedBy        string
 }
 
+type UpdateWifiBillStatusParams struct {
+	BillID string
+	Status string
+}
+
 func (r *WifiRepository) FindByID(ctx context.Context, billID string) (*models.WifiBill, error) {
 	query := `
 		SELECT id, month, year, nominal_per_person, deadline_date, status, created_by, created_at, updated_at
@@ -330,6 +335,19 @@ func (r *WifiRepository) GenerateMembersTx(ctx context.Context, tx *sql.Tx, bill
 	}
 
 	return int(affected), nil
+}
+
+func (r *WifiRepository) UpdateBillStatusTx(ctx context.Context, tx *sql.Tx, params UpdateWifiBillStatusParams) (*models.WifiBill, error) {
+	query := `
+		UPDATE wifi_bills
+		SET
+			status = $2,
+			updated_at = NOW()
+		WHERE id = $1
+		RETURNING id, month, year, nominal_per_person, deadline_date, status, created_by, created_at, updated_at
+	`
+
+	return scanWifiBill(tx.QueryRowContext(ctx, query, params.BillID, params.Status))
 }
 
 type UpdateWifiBillMemberSubmissionParams struct {

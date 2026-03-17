@@ -2,6 +2,7 @@ import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { activitiesServerApi, ApiError } from '$lib/api/server';
 import type { ActivityType } from '$lib/api/types';
+import { requireServerUser } from '$lib/auth/server';
 import { throwIfUnauthorized, toApiFailureState } from '$lib/server/api-errors';
 
 function normalizeString(value: FormDataEntryValue | null) {
@@ -21,16 +22,21 @@ export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) =
   if (!locals.token || !locals.user) {
     return {
       activities: [],
+      expiredActivities: [],
       loadError: 'Sesi login tidak ditemukan.',
       defaults
     };
   }
 
   try {
-    const response = await activitiesServerApi.list(fetch, locals.token, { limit: 20 });
+    const [activeResponse, historyResponse] = await Promise.all([
+      activitiesServerApi.list(fetch, locals.token, { limit: 20, status: 'active' }),
+      activitiesServerApi.list(fetch, locals.token, { limit: 10, status: 'expired' })
+    ]);
 
     return {
-      activities: response.data,
+      activities: activeResponse.data,
+      expiredActivities: historyResponse.data,
       loadError: null,
       defaults
     };
@@ -40,6 +46,7 @@ export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) =
 
     return {
       activities: [],
+      expiredActivities: [],
       loadError: failure.message,
       defaults
     };
@@ -56,13 +63,7 @@ export const actions: Actions = {
       points: normalizeString(formData.get('points')) || defaults.points
     };
 
-    if (!locals.token) {
-      return fail(401, {
-        action: 'createActivity',
-        message: 'Sesi login tidak ditemukan.',
-        values
-      });
-    }
+    const { token } = await requireServerUser({ cookies, fetch, locals });
 
     const points = Number(values.points);
     const payload: {
@@ -89,7 +90,7 @@ export const actions: Actions = {
     }
 
     try {
-      await activitiesServerApi.create(fetch, locals.token, payload);
+      await activitiesServerApi.create(fetch, token, payload);
 
       return {
         action: 'createActivity',
@@ -113,13 +114,7 @@ export const actions: Actions = {
       activity_id: normalizeString(formData.get('activity_id'))
     };
 
-    if (!locals.token) {
-      return fail(401, {
-        action: 'react',
-        message: 'Sesi login tidak ditemukan.',
-        values
-      });
-    }
+    const { token } = await requireServerUser({ cookies, fetch, locals });
 
     if (values.activity_id === '') {
       return fail(400, {
@@ -130,7 +125,7 @@ export const actions: Actions = {
     }
 
     try {
-      await activitiesServerApi.toggleReaction(fetch, locals.token, values.activity_id, {
+      await activitiesServerApi.toggleReaction(fetch, token, values.activity_id, {
         reaction_type: 'like'
       });
 
@@ -157,13 +152,7 @@ export const actions: Actions = {
       comment: normalizeString(formData.get('comment'))
     };
 
-    if (!locals.token) {
-      return fail(401, {
-        action: 'comment',
-        message: 'Sesi login tidak ditemukan.',
-        values
-      });
-    }
+    const { token } = await requireServerUser({ cookies, fetch, locals });
 
     if (values.activity_id === '' || values.comment === '') {
       return fail(400, {
@@ -174,7 +163,7 @@ export const actions: Actions = {
     }
 
     try {
-      await activitiesServerApi.addComment(fetch, locals.token, values.activity_id, {
+      await activitiesServerApi.addComment(fetch, token, values.activity_id, {
         comment: values.comment
       });
 
@@ -200,13 +189,7 @@ export const actions: Actions = {
       activity_id: normalizeString(formData.get('activity_id'))
     };
 
-    if (!locals.token) {
-      return fail(401, {
-        action: 'claim',
-        message: 'Sesi login tidak ditemukan.',
-        values
-      });
-    }
+    const { token } = await requireServerUser({ cookies, fetch, locals });
 
     if (values.activity_id === '') {
       return fail(400, {
@@ -217,7 +200,7 @@ export const actions: Actions = {
     }
 
     try {
-      await activitiesServerApi.claimFood(fetch, locals.token, values.activity_id);
+      await activitiesServerApi.claimFood(fetch, token, values.activity_id);
 
       return {
         action: 'claim',
@@ -241,13 +224,7 @@ export const actions: Actions = {
       activity_id: normalizeString(formData.get('activity_id'))
     };
 
-    if (!locals.token) {
-      return fail(401, {
-        action: 'riceResponse',
-        message: 'Sesi login tidak ditemukan.',
-        values
-      });
-    }
+    const { token } = await requireServerUser({ cookies, fetch, locals });
 
     if (values.activity_id === '') {
       return fail(400, {
@@ -258,7 +235,7 @@ export const actions: Actions = {
     }
 
     try {
-      await activitiesServerApi.respondRice(fetch, locals.token, values.activity_id);
+      await activitiesServerApi.respondRice(fetch, token, values.activity_id);
 
       return {
         action: 'riceResponse',

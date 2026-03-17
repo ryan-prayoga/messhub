@@ -19,6 +19,8 @@ func Register(
 	importHandler *handlers.ImportHandler,
 	wifiHandler *handlers.WifiHandler,
 	activityHandler *handlers.ActivityHandler,
+	sharedExpenseHandler *handlers.SharedExpenseHandler,
+	proposalHandler *handlers.ProposalHandler,
 	notificationHandler *handlers.NotificationHandler,
 	pushHandler *handlers.PushHandler,
 	authMiddleware *middleware.AuthMiddleware,
@@ -34,7 +36,6 @@ func Register(
 	authenticated.Get("/profile", profileHandler.Get)
 	authenticated.Patch("/profile", profileHandler.Update)
 	authenticated.Patch("/profile/password", profileHandler.ChangePassword)
-	authenticated.Get("/settings", settingsHandler.Get)
 	authenticated.Get("/activities", activityHandler.ListActivities)
 	authenticated.Post("/activities", middleware.PostRateLimit("activities"), activityHandler.CreateActivity)
 	authenticated.Get("/activities/:id/comments", activityHandler.ListComments)
@@ -45,6 +46,12 @@ func Register(
 	authenticated.Post("/activities/:id/rice-response", activityHandler.RespondRice)
 	authenticated.Get("/activities/:id/rice-responses", activityHandler.ListRiceResponses)
 	authenticated.Get("/contributions/leaderboard", activityHandler.GetContributionLeaderboard)
+	authenticated.Get("/shared-expenses", sharedExpenseHandler.List)
+	authenticated.Get("/shared-expenses/:id", sharedExpenseHandler.Get)
+	authenticated.Get("/proposals", proposalHandler.List)
+	authenticated.Get("/proposals/:id", proposalHandler.Get)
+	authenticated.Post("/proposals", proposalHandler.Create)
+	authenticated.Post("/proposals/:id/votes", proposalHandler.Vote)
 	authenticated.Get("/notifications", notificationHandler.List)
 	authenticated.Post("/notifications/read", notificationHandler.MarkRead)
 	authenticated.Post("/push/subscribe", pushHandler.Subscribe)
@@ -56,11 +63,15 @@ func Register(
 	authenticated.Post("/wifi/bills/:id/submit", wifiHandler.SubmitPaymentProof)
 
 	userReaders := authenticated.Group("", middleware.RequireRole("admin", "treasurer"))
+	userReaders.Get("/settings", settingsHandler.Get)
 	userReaders.Get("/users", userHandler.List)
 	userReaders.Post("/wallet/transactions", walletHandler.CreateTransaction)
+	userReaders.Post("/shared-expenses", sharedExpenseHandler.Create)
+	userReaders.Patch("/shared-expenses/:id", sharedExpenseHandler.Update)
 	userReaders.Post("/wifi/bills", wifiHandler.CreateBill)
 	userReaders.Get("/wifi/bills", wifiHandler.ListBills)
 	userReaders.Get("/wifi/bills/:id", wifiHandler.GetBillDetail)
+	userReaders.Patch("/wifi/bills/:id/status", wifiHandler.UpdateBillStatus)
 	userReaders.Patch("/wifi/bills/:id/verify/:memberId", wifiHandler.VerifyPayment)
 	userReaders.Patch("/wifi/bills/:id/reject/:memberId", wifiHandler.RejectPayment)
 
@@ -68,7 +79,12 @@ func Register(
 	adminOnly.Post("/users", userHandler.Create)
 	adminOnly.Patch("/users/:id", userHandler.Update)
 	adminOnly.Patch("/users/:id/password", userHandler.ResetPassword)
+	adminOnly.Patch("/users/:id/archive", userHandler.Archive)
+	adminOnly.Patch("/users/:id/reactivate", userHandler.Reactivate)
+	adminOnly.Delete("/users/:id", userHandler.DeletePermanent)
 	adminOnly.Patch("/settings", settingsHandler.Update)
+	adminOnly.Patch("/proposals/:id/close", proposalHandler.Close)
+	adminOnly.Patch("/proposals/:id/finalize", proposalHandler.Finalize)
 	adminOnly.Get("/system/status", systemHandler.GetStatus)
 	adminOnly.Post("/import/members/preview", importHandler.PreviewMembers)
 	adminOnly.Post("/import/members/commit", importHandler.CommitMembers)

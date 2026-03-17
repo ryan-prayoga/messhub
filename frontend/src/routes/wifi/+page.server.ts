@@ -283,5 +283,54 @@ export const actions: Actions = {
         values
       });
     }
+  },
+  updateBillStatus: async ({ cookies, fetch, locals, request }) => {
+    const formData = await request.formData();
+    const values = {
+      bill_id: normalizeString(formData.get('bill_id')),
+      status: normalizeString(formData.get('status'))
+    };
+
+    const { token, user } = await requireServerUser({ cookies, fetch, locals });
+
+    if (!canManage(user.role)) {
+      return fail(403, {
+        action: 'updateBillStatus',
+        message: 'Hanya admin dan bendahara yang bisa mengubah status tagihan wifi.',
+        values
+      });
+    }
+
+    if (
+      values.bill_id === '' ||
+      (values.status !== 'draft' && values.status !== 'active' && values.status !== 'closed')
+    ) {
+      return fail(400, {
+        action: 'updateBillStatus',
+        message: 'Referensi tagihan dan status baru wajib diisi dengan benar.',
+        values
+      });
+    }
+
+    try {
+      await wifiServerApi.updateBillStatus(fetch, token, values.bill_id, {
+        status: values.status as WifiBillStatus
+      });
+
+      return {
+        action: 'updateBillStatus',
+        success: 'Status tagihan wifi berhasil diperbarui.'
+      };
+    } catch (error) {
+      throwIfUnauthorized(error, cookies);
+      const failure = toApiFailureState(error, 'Status tagihan wifi belum dapat diperbarui.');
+
+      return fail(failure.status, {
+        action: 'updateBillStatus',
+        message: failure.message,
+        requestId: failure.requestId,
+        values
+      });
+    }
   }
 };

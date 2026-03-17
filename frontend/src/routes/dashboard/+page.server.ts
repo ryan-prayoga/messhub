@@ -2,6 +2,8 @@ import type { PageServerLoad } from './$types';
 import {
   ApiError,
   contributionsServerApi,
+  proposalsServerApi,
+  sharedExpensesServerApi,
   usersServerApi,
   walletServerApi,
   wifiServerApi
@@ -48,6 +50,20 @@ type LeaderboardSummary = {
   message: string | null;
 };
 
+type SharedExpenseDashboard = {
+  totalAmount: number | null;
+  outstandingAmount: number | null;
+  state: 'ready' | 'empty' | 'error';
+  message: string | null;
+};
+
+type ProposalDashboard = {
+  activeCount: number | null;
+  approvedCount: number | null;
+  state: 'ready' | 'empty' | 'error';
+  message: string | null;
+};
+
 export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
   await parent();
 
@@ -86,11 +102,27 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
     message: 'Belum ada kontribusi bulan ini'
   };
 
+  const sharedExpenseSummary: SharedExpenseDashboard = {
+    totalAmount: null,
+    outstandingAmount: null,
+    state: 'empty',
+    message: 'Belum ada pengeluaran bersama.'
+  };
+
+  const proposalSummary: ProposalDashboard = {
+    activeCount: null,
+    approvedCount: null,
+    state: 'empty',
+    message: 'Belum ada usulan aktif.'
+  };
+
   if (locals.token) {
-    const [walletResult, wifiResult, leaderboardResult] = await Promise.allSettled([
+    const [walletResult, wifiResult, leaderboardResult, sharedExpenseResult, proposalResult] = await Promise.allSettled([
       walletServerApi.summary(fetch, locals.token),
       wifiServerApi.getActive(fetch, locals.token),
-      contributionsServerApi.leaderboard(fetch, locals.token, 'month')
+      contributionsServerApi.leaderboard(fetch, locals.token, 'month'),
+      sharedExpensesServerApi.list(fetch, locals.token),
+      proposalsServerApi.list(fetch, locals.token)
     ]);
 
     if (walletResult.status === 'fulfilled') {
@@ -144,6 +176,34 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
       leaderboardSummary.state = 'error';
       leaderboardSummary.message = failure.message;
     }
+
+    if (sharedExpenseResult.status === 'fulfilled') {
+      const summary = sharedExpenseResult.value.data.summary;
+      sharedExpenseSummary.totalAmount = summary.total_amount;
+      sharedExpenseSummary.outstandingAmount = summary.outstanding_amount;
+      sharedExpenseSummary.state = summary.total_count > 0 ? 'ready' : 'empty';
+      sharedExpenseSummary.message =
+        summary.total_count > 0 ? null : 'Belum ada pengeluaran bersama.';
+    } else {
+      const failure = toApiFailureState(
+        sharedExpenseResult.reason,
+        'Ringkasan pengeluaran bersama belum dapat dimuat.'
+      );
+      sharedExpenseSummary.state = 'error';
+      sharedExpenseSummary.message = failure.message;
+    }
+
+    if (proposalResult.status === 'fulfilled') {
+      const proposals = proposalResult.value.data;
+      proposalSummary.activeCount = proposals.filter((proposal) => proposal.status === 'active').length;
+      proposalSummary.approvedCount = proposals.filter((proposal) => proposal.status === 'approved').length;
+      proposalSummary.state = proposals.length > 0 ? 'ready' : 'empty';
+      proposalSummary.message = proposals.length > 0 ? null : 'Belum ada usulan.';
+    } else {
+      const failure = toApiFailureState(proposalResult.reason, 'Ringkasan usulan belum dapat dimuat.');
+      proposalSummary.state = 'error';
+      proposalSummary.message = failure.message;
+    }
   }
 
   if (locals.token && locals.user && ['admin', 'treasurer'].includes(locals.user.role)) {
@@ -171,6 +231,8 @@ export const load: PageServerLoad = async ({ fetch, locals, parent }) => {
     memberSummary: summary,
     walletSummary,
     wifiSummary,
-    leaderboardSummary
+    leaderboardSummary,
+    sharedExpenseSummary,
+    proposalSummary
   };
 };

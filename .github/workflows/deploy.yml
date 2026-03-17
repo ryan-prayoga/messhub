@@ -56,10 +56,12 @@ jobs:
             git pull --ff-only origin main
 
             cd backend
+            go run ./cmd/migrate
             gas build --no-ui --type go --pm2-name messhub-backend --port 4100 --yes
 
             cd ../frontend
             gas build --no-ui --type svelte --pm2-name messhub-frontend --port 4101 --yes
 
             curl --fail --silent --show-error http://127.0.0.1:4100/health
+            curl --fail --silent --show-error http://127.0.0.1:4101/login | grep -q "MessHub"
           EOF

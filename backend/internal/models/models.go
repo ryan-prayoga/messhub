@@ -24,6 +24,19 @@ const (
 	WifiPaymentStatusPendingVerification = "pending_verification"
 	WifiPaymentStatusVerified            = "verified"
 	WifiPaymentStatusRejected            = "rejected"
+
+	SharedExpenseStatusPersonal            = "personal"
+	SharedExpenseStatusFronted             = "fronted"
+	SharedExpenseStatusPartiallyReimbursed = "partially_reimbursed"
+	SharedExpenseStatusReimbursed          = "reimbursed"
+
+	ProposalStatusActive   = "active"
+	ProposalStatusClosed   = "closed"
+	ProposalStatusApproved = "approved"
+	ProposalStatusRejected = "rejected"
+
+	ProposalVoteAgree    = "agree"
+	ProposalVoteDisagree = "disagree"
 )
 
 func IsValidRole(role string) bool {
@@ -45,8 +58,10 @@ type User struct {
 	AvatarURL    *string    `json:"avatar_url"`
 	Role         string     `json:"role"`
 	IsActive     bool       `json:"is_active"`
+	AuthVersion  int        `json:"-"`
 	JoinedAt     *time.Time `json:"joined_at"`
 	LeftAt       *time.Time `json:"left_at"`
+	ArchivedAt   *time.Time `json:"archived_at"`
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
 }
@@ -171,17 +186,33 @@ type SystemStatus struct {
 }
 
 type SharedExpense struct {
-	ID           string    `json:"id"`
-	ExpenseDate  time.Time `json:"expense_date"`
-	Category     string    `json:"category"`
-	Description  string    `json:"description"`
-	Amount       int64     `json:"amount"`
-	PaidByUserID string    `json:"paid_by_user_id"`
-	Status       string    `json:"status"`
-	Notes        *string   `json:"notes"`
-	ProofURL     *string   `json:"proof_url"`
-	CreatedBy    string    `json:"created_by"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID             string    `json:"id"`
+	ExpenseDate    time.Time `json:"expense_date"`
+	Category       string    `json:"category"`
+	Description    string    `json:"description"`
+	Amount         int64     `json:"amount"`
+	PaidByUserID   string    `json:"paid_by_user_id"`
+	PaidByUserName string    `json:"paid_by_user_name,omitempty"`
+	Status         string    `json:"status"`
+	Notes          *string   `json:"notes"`
+	ProofURL       *string   `json:"proof_url"`
+	CreatedBy      string    `json:"created_by"`
+	CreatedByName  string    `json:"created_by_name,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+type SharedExpenseSummary struct {
+	TotalCount        int   `json:"total_count"`
+	TotalAmount       int64 `json:"total_amount"`
+	FrontedCount      int   `json:"fronted_count"`
+	OutstandingAmount int64 `json:"outstanding_amount"`
+	ThisMonthAmount   int64 `json:"this_month_amount"`
+}
+
+type SharedExpenseList struct {
+	Items   []SharedExpense      `json:"items"`
+	Summary SharedExpenseSummary `json:"summary"`
 }
 
 type Contribution struct {
@@ -259,25 +290,37 @@ type ContributionLeaderboardEntry struct {
 }
 
 type Proposal struct {
-	ID                string     `json:"id"`
-	Title             string     `json:"title"`
-	Description       string     `json:"description"`
-	CreatedBy         string     `json:"created_by"`
-	VotingStart       *time.Time `json:"voting_start"`
-	VotingEnd         *time.Time `json:"voting_end"`
-	Status            string     `json:"status"`
-	FinalDecisionBy   *string    `json:"final_decision_by"`
-	FinalDecisionNote *string    `json:"final_decision_note"`
-	CreatedAt         time.Time  `json:"created_at"`
-	UpdatedAt         time.Time  `json:"updated_at"`
+	ID                  string     `json:"id"`
+	Title               string     `json:"title"`
+	Description         string     `json:"description"`
+	CreatedBy           string     `json:"created_by"`
+	CreatedByName       string     `json:"created_by_name,omitempty"`
+	VotingStart         *time.Time `json:"voting_start"`
+	VotingEnd           *time.Time `json:"voting_end"`
+	Status              string     `json:"status"`
+	FinalDecisionBy     *string    `json:"final_decision_by"`
+	FinalDecisionByName *string    `json:"final_decision_by_name,omitempty"`
+	FinalDecisionNote   *string    `json:"final_decision_note"`
+	AgreeCount          int        `json:"agree_count"`
+	DisagreeCount       int        `json:"disagree_count"`
+	TotalVotes          int        `json:"total_votes"`
+	CurrentUserVote     *string    `json:"current_user_vote"`
+	CreatedAt           time.Time  `json:"created_at"`
+	UpdatedAt           time.Time  `json:"updated_at"`
 }
 
 type ProposalVote struct {
 	ID         string    `json:"id"`
 	ProposalID string    `json:"proposal_id"`
 	UserID     string    `json:"user_id"`
+	UserName   string    `json:"user_name,omitempty"`
 	VoteType   string    `json:"vote_type"`
 	CreatedAt  time.Time `json:"created_at"`
+}
+
+type ProposalDetail struct {
+	Proposal Proposal       `json:"proposal"`
+	Votes    []ProposalVote `json:"votes"`
 }
 
 type Post struct {

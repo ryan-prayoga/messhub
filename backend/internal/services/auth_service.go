@@ -62,7 +62,7 @@ func (s *AuthService) Login(ctx context.Context, input LoginInput) (*LoginRespon
 		return nil, err
 	}
 
-	if !user.IsActive {
+	if !user.IsActive || user.ArchivedAt != nil {
 		return nil, ErrInactiveUser
 	}
 
@@ -90,11 +90,12 @@ func (s *AuthService) Login(ctx context.Context, input LoginInput) (*LoginRespon
 func (s *AuthService) issueToken(user *models.User) (string, error) {
 	expiresAt := time.Now().Add(time.Duration(s.config.JWTExpiresInHours) * time.Hour)
 	claims := types.JWTClaims{
-		UserID:   user.ID,
-		Name:     user.Name,
-		Email:    user.Email,
-		Username: user.Username,
-		Role:     user.Role,
+		UserID:      user.ID,
+		Name:        user.Name,
+		Email:       user.Email,
+		Username:    user.Username,
+		Role:        user.Role,
+		AuthVersion: user.AuthVersion,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

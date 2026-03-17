@@ -15,7 +15,8 @@ function isAdmin(role: string | undefined) {
 export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) => {
   await parent();
 
-  if (!locals.token) {
+  const session = await requireServerUser({ cookies, fetch, locals }).catch(() => null);
+  if (!session) {
     return {
       accessDenied: false,
       settings: null,
@@ -24,7 +25,7 @@ export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) =
     };
   }
 
-  if (!isAdmin(locals.user?.role)) {
+  if (!isAdmin(session.user.role)) {
     return {
       accessDenied: true,
       settings: null,
@@ -34,8 +35,8 @@ export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) =
   }
 
   const [settingsResult, systemResult] = await Promise.allSettled([
-    settingsServerApi.get(fetch, locals.token),
-    systemServerApi.status(fetch, locals.token)
+    settingsServerApi.get(fetch, session.token),
+    systemServerApi.status(fetch, session.token)
   ]);
 
   if (settingsResult.status === 'rejected') {

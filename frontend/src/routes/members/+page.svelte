@@ -25,7 +25,7 @@
   let pendingAction: string | null = null;
   let searchTerm = '';
   let roleFilter: 'all' | UserRole = 'all';
-  let statusFilter: 'all' | 'active' | 'inactive' = 'all';
+  let statusFilter: 'all' | 'active' | 'inactive' | 'archived' = 'all';
   let createSheetOpen = false;
   let editTargetId: string | null = null;
   let passwordTargetId: string | null = null;
@@ -54,8 +54,36 @@
     return 'badge-muted';
   }
 
-  function statusBadgeClass(isActive: boolean) {
-    return isActive ? 'badge-brand' : 'badge-danger';
+  function memberStatus(member: MemberUser) {
+    if (member.archived_at) {
+      return 'archived' as const;
+    }
+
+    return member.is_active ? 'active' : 'inactive';
+  }
+
+  function statusBadgeClass(status: ReturnType<typeof memberStatus>) {
+    if (status === 'active') {
+      return 'badge-brand';
+    }
+
+    if (status === 'archived') {
+      return 'badge-strong';
+    }
+
+    return 'badge-danger';
+  }
+
+  function statusLabel(status: ReturnType<typeof memberStatus>) {
+    if (status === 'active') {
+      return 'Aktif';
+    }
+
+    if (status === 'archived') {
+      return 'Arsip';
+    }
+
+    return 'Nonaktif';
   }
 
   function formatDate(value: string | null) {
@@ -83,11 +111,18 @@
       normalizeSearch(member.username).includes(query);
 
     const inRole = roleFilter === 'all' || member.role === roleFilter;
-    const inStatus =
-      statusFilter === 'all' ||
-      (statusFilter === 'active' ? member.is_active : !member.is_active);
+    const currentStatus = memberStatus(member);
+    const inStatus = statusFilter === 'all' || currentStatus === statusFilter;
 
     return inSearch && inRole && inStatus;
+  }
+
+  function confirmAction(message: string) {
+    return (event: SubmitEvent) => {
+      if (!confirm(message)) {
+        event.preventDefault();
+      }
+    };
   }
 
   function countByRole(role: UserRole) {
@@ -297,9 +332,9 @@
         </div>
 
         <div class="stat-card bg-white">
-          <p class="helper-label">Nonaktif</p>
-          <p class="mt-2 text-3xl font-semibold tracking-[-0.04em] text-ink">{data.summary.inactive}</p>
-          <p class="mt-2 text-sm text-muted">Riwayat anggota yang sudah tidak aktif.</p>
+          <p class="helper-label">Nonaktif & arsip</p>
+          <p class="mt-2 text-3xl font-semibold tracking-[-0.04em] text-ink">{data.summary.inactive + data.summary.archived}</p>
+          <p class="mt-2 text-sm text-muted">{data.summary.inactive} nonaktif, {data.summary.archived} arsip.</p>
         </div>
       </div>
 
@@ -337,6 +372,7 @@
                 <option value="all">Semua status</option>
                 <option value="active">Aktif</option>
                 <option value="inactive">Nonaktif</option>
+                <option value="archived">Arsip</option>
               </select>
             </label>
           </div>
@@ -404,8 +440,8 @@
                     <div class="flex flex-wrap items-center gap-2">
                       <h3 class="text-lg font-semibold text-ink">{member.name}</h3>
                       <span class={roleBadgeClass(member.role)}>{roleLabels[member.role]}</span>
-                      <span class={statusBadgeClass(member.is_active)}>
-                        {member.is_active ? 'Aktif' : 'Nonaktif'}
+                      <span class={statusBadgeClass(memberStatus(member))}>
+                        {statusLabel(memberStatus(member))}
                       </span>
                     </div>
                     <p class="mt-2 break-all text-sm text-muted">{member.email}</p>
@@ -436,8 +472,10 @@
                   </div>
 
                   <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p class="helper-label">Tanggal keluar</p>
-                    <p class="mt-2 text-sm font-medium text-ink">{formatDate(member.left_at)}</p>
+                    <p class="helper-label">Status keluar</p>
+                    <p class="mt-2 text-sm font-medium text-ink">
+                      {member.archived_at ? `Diarsipkan ${formatDate(member.archived_at)}` : formatDate(member.left_at)}
+                    </p>
                   </div>
 
                   <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -448,21 +486,84 @@
 
                 {#if data.canManage}
                   <div class="flex flex-wrap gap-3 border-t border-line pt-4">
-                    <form method="POST" action="?/toggleActive" use:enhance={enhanceWithAction(`toggle-${member.id}`)}>
-                      <input type="hidden" name="member_id" value={member.id} />
-                      <input type="hidden" name="is_active" value={member.is_active ? 'false' : 'true'} />
-                      <button
-                        type="submit"
-                        class={member.is_active ? 'btn-secondary px-4 py-3' : 'btn-primary px-4 py-3'}
-                        disabled={pendingAction === `toggle-${member.id}`}
+                    {#if !member.archived_at}
+                      <form
+                        method="POST"
+                        action="?/toggleActive"
+                        use:enhance={enhanceWithAction(`toggle-${member.id}`)}
+                        on:submit={confirmAction(
+                          member.is_active
+                            ? 'Nonaktifkan anggota ini dari siklus aktif mess? Riwayat lama tetap disimpan.'
+                            : 'Aktifkan kembali anggota ini ke status aktif?'
+                        )}
                       >
-                        {pendingAction === `toggle-${member.id}`
-                          ? 'Menyimpan...'
-                          : member.is_active
-                            ? 'Nonaktifkan akun'
-                            : 'Aktifkan kembali'}
-                      </button>
-                    </form>
+                        <input type="hidden" name="member_id" value={member.id} />
+                        <input type="hidden" name="is_active" value={member.is_active ? 'false' : 'true'} />
+                        <button
+                          type="submit"
+                          class={member.is_active ? 'btn-secondary px-4 py-3' : 'btn-primary px-4 py-3'}
+                          disabled={pendingAction === `toggle-${member.id}`}
+                        >
+                          {pendingAction === `toggle-${member.id}`
+                            ? 'Menyimpan...'
+                            : member.is_active
+                              ? 'Nonaktifkan akun'
+                              : 'Aktifkan kembali'}
+                        </button>
+                      </form>
+                    {/if}
+
+                    {#if member.archived_at}
+                      <form
+                        method="POST"
+                        action="?/reactivateMember"
+                        use:enhance={enhanceWithAction(`reactivate-${member.id}`)}
+                        on:submit={confirmAction('Aktifkan kembali anggota yang sudah diarsipkan ini?')}
+                      >
+                        <input type="hidden" name="member_id" value={member.id} />
+                        <button
+                          type="submit"
+                          class="btn-primary px-4 py-3"
+                          disabled={pendingAction === `reactivate-${member.id}`}
+                        >
+                          {pendingAction === `reactivate-${member.id}` ? 'Menyimpan...' : 'Aktifkan dari arsip'}
+                        </button>
+                      </form>
+                    {:else}
+                      <form
+                        method="POST"
+                        action="?/archiveMember"
+                        use:enhance={enhanceWithAction(`archive-${member.id}`)}
+                        on:submit={confirmAction('Arsipkan anggota ini? Akun akan keluar dari lifecycle aktif, tetapi histori tetap utuh.')}
+                      >
+                        <input type="hidden" name="member_id" value={member.id} />
+                        <button
+                          type="submit"
+                          class="btn-secondary px-4 py-3"
+                          disabled={pendingAction === `archive-${member.id}`}
+                        >
+                          {pendingAction === `archive-${member.id}` ? 'Mengarsipkan...' : 'Arsipkan akun'}
+                        </button>
+                      </form>
+                    {/if}
+
+                    {#if member.archived_at}
+                      <form
+                        method="POST"
+                        action="?/deletePermanent"
+                        use:enhance={enhanceWithAction(`delete-${member.id}`)}
+                        on:submit={confirmAction('Hapus permanen akun ini? Sistem hanya akan mengizinkan jika akun benar-benar belum punya relasi atau histori penting.')}
+                      >
+                        <input type="hidden" name="member_id" value={member.id} />
+                        <button
+                          type="submit"
+                          class="btn-secondary px-4 py-3"
+                          disabled={pendingAction === `delete-${member.id}`}
+                        >
+                          {pendingAction === `delete-${member.id}` ? 'Menghapus...' : 'Hapus permanen'}
+                        </button>
+                      </form>
+                    {/if}
 
                     <button type="button" class="btn-secondary px-4 py-3" on:click={() => openEditSheet(member.id)}>
                       Ubah role & data
@@ -629,7 +730,7 @@
             <label>
               <span class="field-label">Status akun</span>
               <select class="input-field" name="is_active">
-                <option value="true" selected={editValue(selectedMember, 'is_active') === 'true'}>Aktif</option>
+                <option value="true" selected={editValue(selectedMember, 'is_active') === 'true'} disabled={!!selectedMember.archived_at}>Aktif</option>
                 <option value="false" selected={editValue(selectedMember, 'is_active') === 'false'}>Nonaktif</option>
               </select>
             </label>
@@ -638,7 +739,7 @@
           <div class="helper-box">
             <p class="helper-label">Keamanan admin</p>
             <p class="mt-2 text-sm leading-6 text-muted">
-              Sistem akan menolak jika perubahan ini membuat tidak ada admin aktif yang tersisa atau jika admin mencoba menurunkan role akun dirinya sendiri.
+              Sistem akan menolak jika perubahan ini membuat tidak ada admin aktif yang tersisa, jika admin mencoba menurunkan role akun dirinya sendiri, atau jika akun yang sudah diarsipkan dipaksa aktif lagi dari form edit biasa.
             </p>
           </div>
 

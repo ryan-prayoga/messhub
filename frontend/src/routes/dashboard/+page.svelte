@@ -126,6 +126,18 @@
       label: 'Wifi',
       description: 'Cek tagihan aktif, deadline, dan status pembayaran.',
       icon: 'lucide:wifi'
+    },
+    {
+      href: '/shared-expenses',
+      label: 'Patungan',
+      description: 'Lihat talangan dan pengeluaran non-kas bersama.',
+      icon: 'lucide:receipt'
+    },
+    {
+      href: '/proposals',
+      label: 'Usulan',
+      description: 'Pantau usulan aktif dan hasil voting terbaru.',
+      icon: 'lucide:file-text'
     }
   ];
 
@@ -195,7 +207,7 @@
       </div>
     </div>
 
-    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+    <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
       {#each quickLinks as link}
         <a href={link.href} class="stat-card bg-white/80">
           <div class="flex items-start justify-between gap-3">
@@ -268,6 +280,54 @@
 
           <div class="nav-link-icon">
             <AppIcon icon="lucide:wifi" className="h-5 w-5" />
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <div class="mt-4 grid gap-3 sm:grid-cols-2">
+      <a href="/shared-expenses" class="stat-card bg-white">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="helper-label">Pengeluaran bersama</p>
+            <p class="mt-2 text-base font-semibold text-ink">Talangan & reimburse</p>
+            {#if data.sharedExpenseSummary.state === 'ready'}
+              <p class="mt-2 text-2xl font-semibold tracking-[-0.04em] text-ink">
+                {formatCurrency(data.sharedExpenseSummary.totalAmount)}
+              </p>
+              <p class="mt-2 text-sm leading-6 text-muted">
+                Outstanding {formatCurrency(data.sharedExpenseSummary.outstandingAmount)}
+              </p>
+            {:else}
+              <p class="mt-2 text-sm leading-6 text-muted">{data.sharedExpenseSummary.message}</p>
+            {/if}
+          </div>
+
+          <div class="nav-link-icon">
+            <AppIcon icon="lucide:receipt" className="h-5 w-5" />
+          </div>
+        </div>
+      </a>
+
+      <a href="/proposals" class="stat-card bg-white">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="helper-label">Usulan bersama</p>
+            <p class="mt-2 text-base font-semibold text-ink">Voting & keputusan</p>
+            {#if data.proposalSummary.state === 'ready'}
+              <p class="mt-2 text-2xl font-semibold tracking-[-0.04em] text-ink">
+                {data.proposalSummary.activeCount} aktif
+              </p>
+              <p class="mt-2 text-sm leading-6 text-muted">
+                {data.proposalSummary.approvedCount} usulan sudah disetujui
+              </p>
+            {:else}
+              <p class="mt-2 text-sm leading-6 text-muted">{data.proposalSummary.message}</p>
+            {/if}
+          </div>
+
+          <div class="nav-link-icon">
+            <AppIcon icon="lucide:file-text" className="h-5 w-5" />
           </div>
         </div>
       </a>

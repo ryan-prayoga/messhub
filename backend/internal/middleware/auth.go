@@ -57,8 +57,12 @@ func (m *AuthMiddleware) RequireAuth() fiber.Handler {
 			return response.InternalServerError(c, "failed to resolve current user")
 		}
 
-		if !user.IsActive {
+		if !user.IsActive || user.ArchivedAt != nil {
 			return response.Forbidden(c, "insufficient permissions")
+		}
+
+		if claims.AuthVersion != user.AuthVersion {
+			return response.Unauthorized(c, "authentication required")
 		}
 
 		c.Locals("user", types.AuthUser{

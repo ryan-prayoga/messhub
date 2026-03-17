@@ -175,3 +175,27 @@
 - Rationale: This keeps mutation feedback visible without forcing admins to close the sheet first, gives the app one reusable toast surface for future protected actions, and fixes the current member-create UX without introducing a separate modal system.
 - Impact: Future modal-based admin or settings flows should prefer inline sheet feedback plus the shared toaster for transient success/error notices, rather than relying only on page-level banners hidden behind overlays.
 - Follow-up: Reuse the same toast pattern for other modal-driven mutations if more admin tools are added.
+
+## Decision 23
+- Date: 2026-03-17
+- Context: Password change/reset needed to invalidate already-issued JWTs without introducing a full server-side session store.
+- Decision: Extend `users` with `auth_version`, include that version in JWT claims, and reject protected requests when the token version no longer matches the database row.
+- Rationale: This gives MessHub a realistic revocation mechanism for sensitive auth events while preserving the existing stateless JWT + httpOnly cookie architecture.
+- Impact: Any future action that should invalidate existing sessions must increment `auth_version`, and frontend flows that intentionally trigger invalidation should expect a re-login after success.
+- Follow-up: Revisit refresh-token or device-scoped session management only if the product later needs multi-device session inspection or selective sign-out.
+
+## Decision 24
+- Date: 2026-03-17
+- Context: Member lifecycle needed archive/delete-safe semantics, but the existing project already relies heavily on `users.is_active` across wallet, wifi, feed, notifications, and audit history.
+- Decision: Keep `is_active` as the primary active/inactive switch, add `archived_at` for the archived lifecycle state, and allow permanent delete only after archive plus a zero-relations safety check.
+- Rationale: This preserves compatibility with the current schema and business logic while preventing history loss from destructive deletes on users who already participate in financial or operational records.
+- Impact: New lifecycle-aware features should treat `active` as `is_active = true AND archived_at IS NULL`, `inactive` as `is_active = false AND archived_at IS NULL`, and `archived` as `archived_at IS NOT NULL`.
+- Follow-up: If the product later needs more lifecycle nuance, prefer deriving it from the existing fields before introducing a broader enum rewrite.
+
+## Decision 25
+- Date: 2026-03-17
+- Context: Shared expenses and proposals were still placeholders in the UI, but the initial schema already contained `shared_expenses`, `proposals`, and `proposal_votes`.
+- Decision: Implement both modules directly on the existing tables, add only a small follow-up migration for `shared_expenses.updated_at` and supporting indexes/triggers, and reuse the established repository/service/handler + audit-log patterns instead of inventing a second runtime path.
+- Rationale: This keeps scope tight, avoids schema duplication, and turns the existing placeholder routes into production-usable modules with minimal architectural drift.
+- Impact: Future reporting or workflow improvements for these modules should extend the current runtime first, and they should continue to stay separate from wallet transactions and wifi billing.
+- Follow-up: Revisit deeper proposal workflow or reimbursement analytics only after live usage shows where the current implementation is too thin.

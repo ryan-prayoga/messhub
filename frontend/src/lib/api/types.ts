@@ -2,11 +2,19 @@ export type UserRole = 'admin' | 'treasurer' | 'member';
 export type ActivityType = 'contribution' | 'food' | 'rice' | 'announcement' | 'other';
 export type WalletTransactionType = 'income' | 'expense';
 export type WifiBillStatus = 'draft' | 'active' | 'closed';
+export type FeedStatusFilter = 'active' | 'expired' | 'all';
 export type WifiPaymentStatus =
   | 'unpaid'
   | 'pending_verification'
   | 'verified'
   | 'rejected';
+export type SharedExpenseStatus =
+  | 'personal'
+  | 'fronted'
+  | 'partially_reimbursed'
+  | 'reimbursed';
+export type ProposalStatus = 'active' | 'closed' | 'approved' | 'rejected';
+export type ProposalVoteType = 'agree' | 'disagree';
 
 export type SessionUser = {
   id: string;
@@ -22,6 +30,7 @@ export type MemberUser = SessionUser & {
   is_active: boolean;
   joined_at: string | null;
   left_at: string | null;
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -213,6 +222,70 @@ export type ContributionLeaderboardEntry = {
   user_name: string;
   total_points: number;
   total_activities: number;
+};
+
+export type SharedExpense = {
+  id: string;
+  expense_date: string;
+  category: string;
+  description: string;
+  amount: number;
+  paid_by_user_id: string;
+  paid_by_user_name: string;
+  status: SharedExpenseStatus;
+  notes: string | null;
+  proof_url: string | null;
+  created_by: string;
+  created_by_name: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SharedExpenseSummary = {
+  total_count: number;
+  total_amount: number;
+  fronted_count: number;
+  outstanding_amount: number;
+  this_month_amount: number;
+};
+
+export type SharedExpenseList = {
+  items: SharedExpense[];
+  summary: SharedExpenseSummary;
+};
+
+export type Proposal = {
+  id: string;
+  title: string;
+  description: string;
+  created_by: string;
+  created_by_name: string;
+  voting_start: string | null;
+  voting_end: string | null;
+  status: ProposalStatus;
+  final_decision_by: string | null;
+  final_decision_by_name: string | null;
+  final_decision_note: string | null;
+  agree_count: number;
+  disagree_count: number;
+  total_votes: number;
+  current_user_vote: ProposalVoteType | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ProposalVote = {
+  id: string;
+  proposal_id: string;
+  user_id: string;
+  user_name: string;
+  vote_type: ProposalVoteType;
+  created_at: string;
+};
+
+export type ProposalDetail = {
+  proposal: Proposal;
+  votes: ProposalVote[];
 };
 
 export type Notification = {

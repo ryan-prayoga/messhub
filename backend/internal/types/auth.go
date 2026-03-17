@@ -11,10 +11,11 @@ type AuthUser struct {
 }
 
 type JWTClaims struct {
-	UserID   string `json:"user_id"`
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Username string `json:"username"`
-	Role     string `json:"role"`
+	UserID      string `json:"user_id"`
+	Name        string `json:"name"`
+	Email       string `json:"email"`
+	Username    string `json:"username"`
+	Role        string `json:"role"`
+	AuthVersion int    `json:"auth_version"`
 	jwt.RegisteredClaims
 }

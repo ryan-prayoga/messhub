@@ -12,16 +12,25 @@ import type {
   ActivityType,
   ApiEnvelope,
   ContributionLeaderboardEntry,
+  FeedStatusFilter,
   ImportCommitResult,
   MemberImportPreview,
   MessSettings,
   MemberUser,
   NotificationList,
   Profile,
+  Proposal,
+  ProposalDetail,
+  ProposalStatus,
+  ProposalVoteType,
   SessionUser,
+  SharedExpense,
+  SharedExpenseList,
+  SharedExpenseStatus,
   SystemStatus,
   WalletImportPreview,
   WifiBillDetail,
+  WifiBillStatus,
   WifiBillWithSummary,
   WifiMyBill,
   WalletSummary,
@@ -127,6 +136,21 @@ export const usersServerApi = {
       method: 'PATCH',
       token,
       body: payload
+    }),
+  archive: (fetcher: typeof fetch, token: string, userID: string) =>
+    apiServerRequest<MemberUser>(fetcher, `/users/${userID}/archive`, {
+      method: 'PATCH',
+      token
+    }),
+  reactivate: (fetcher: typeof fetch, token: string, userID: string) =>
+    apiServerRequest<MemberUser>(fetcher, `/users/${userID}/reactivate`, {
+      method: 'PATCH',
+      token
+    }),
+  deletePermanent: (fetcher: typeof fetch, token: string, userID: string) =>
+    apiServerRequest<{ deleted: boolean }>(fetcher, `/users/${userID}`, {
+      method: 'DELETE',
+      token
     })
 };
 
@@ -200,12 +224,16 @@ export const activitiesServerApi = {
     token: string,
     params: {
       limit?: number;
+      status?: FeedStatusFilter;
     } = {}
   ) => {
     const searchParams = new URLSearchParams();
 
     if (params.limit) {
       searchParams.set('limit', String(params.limit));
+    }
+    if (params.status) {
+      searchParams.set('status', params.status);
     }
 
     const query = searchParams.toString();
@@ -449,6 +477,19 @@ export const wifiServerApi = {
       token,
       body: payload
     }),
+  updateBillStatus: (
+    fetcher: typeof fetch,
+    token: string,
+    billID: string,
+    payload: {
+      status: WifiBillStatus;
+    }
+  ) =>
+    apiServerRequest<WifiBillDetail>(fetcher, `/wifi/bills/${billID}/status`, {
+      method: 'PATCH',
+      token,
+      body: payload
+    }),
   submitProof: (
     fetcher: typeof fetch,
     token: string,
@@ -478,6 +519,114 @@ export const wifiServerApi = {
     }
   ) =>
     apiServerRequest(fetcher, `/wifi/bills/${billID}/reject/${memberID}`, {
+      method: 'PATCH',
+      token,
+      body: payload
+    })
+};
+
+export const sharedExpensesServerApi = {
+  list: (fetcher: typeof fetch, token: string) =>
+    apiServerRequest<SharedExpenseList>(fetcher, '/shared-expenses', {
+      token
+    }),
+  get: (fetcher: typeof fetch, token: string, expenseID: string) =>
+    apiServerRequest<SharedExpense>(fetcher, `/shared-expenses/${expenseID}`, {
+      token
+    }),
+  create: (
+    fetcher: typeof fetch,
+    token: string,
+    payload: {
+      expense_date: string;
+      category: string;
+      description: string;
+      amount: number;
+      paid_by_user_id: string;
+      status: SharedExpenseStatus;
+      notes?: string;
+      proof_url?: string;
+    }
+  ) =>
+    apiServerRequest<SharedExpense>(fetcher, '/shared-expenses', {
+      method: 'POST',
+      token,
+      body: payload
+    }),
+  update: (
+    fetcher: typeof fetch,
+    token: string,
+    expenseID: string,
+    payload: {
+      expense_date?: string;
+      category?: string;
+      description?: string;
+      amount?: number;
+      paid_by_user_id?: string;
+      status?: SharedExpenseStatus;
+      notes?: string;
+      proof_url?: string;
+    }
+  ) =>
+    apiServerRequest<SharedExpense>(fetcher, `/shared-expenses/${expenseID}`, {
+      method: 'PATCH',
+      token,
+      body: payload
+    })
+};
+
+export const proposalsServerApi = {
+  list: (fetcher: typeof fetch, token: string) =>
+    apiServerRequest<Proposal[]>(fetcher, '/proposals', {
+      token
+    }),
+  detail: (fetcher: typeof fetch, token: string, proposalID: string) =>
+    apiServerRequest<ProposalDetail>(fetcher, `/proposals/${proposalID}`, {
+      token
+    }),
+  create: (
+    fetcher: typeof fetch,
+    token: string,
+    payload: {
+      title: string;
+      description: string;
+      voting_start?: string;
+      voting_end?: string;
+    }
+  ) =>
+    apiServerRequest<ProposalDetail>(fetcher, '/proposals', {
+      method: 'POST',
+      token,
+      body: payload
+    }),
+  vote: (
+    fetcher: typeof fetch,
+    token: string,
+    proposalID: string,
+    payload: {
+      vote_type: ProposalVoteType;
+    }
+  ) =>
+    apiServerRequest<ProposalDetail>(fetcher, `/proposals/${proposalID}/votes`, {
+      method: 'POST',
+      token,
+      body: payload
+    }),
+  close: (fetcher: typeof fetch, token: string, proposalID: string) =>
+    apiServerRequest<ProposalDetail>(fetcher, `/proposals/${proposalID}/close`, {
+      method: 'PATCH',
+      token
+    }),
+  finalize: (
+    fetcher: typeof fetch,
+    token: string,
+    proposalID: string,
+    payload: {
+      status: Extract<ProposalStatus, 'approved' | 'rejected'>;
+      final_decision_note?: string;
+    }
+  ) =>
+    apiServerRequest<ProposalDetail>(fetcher, `/proposals/${proposalID}/finalize`, {
       method: 'PATCH',
       token,
       body: payload

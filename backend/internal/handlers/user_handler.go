@@ -197,3 +197,73 @@ func (h *UserHandler) ResetPassword(c *fiber.Ctx) error {
 		"changed": true,
 	})
 }
+
+func (h *UserHandler) Archive(c *fiber.Ctx) error {
+	authUser, ok := c.Locals("user").(types.AuthUser)
+	if !ok {
+		return response.Unauthorized(c, "authentication required")
+	}
+
+	user, err := h.userService.ArchiveUser(c.UserContext(), authUser.ID, c.Params("id"))
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrSelfArchiveBlocked):
+			return response.InvalidRequest(c, "Admin tidak bisa mengarsipkan akunnya sendiri dari halaman ini.")
+		case errors.Is(err, services.ErrUserAlreadyArchived):
+			return response.InvalidRequest(c, "Anggota ini sudah diarsipkan.")
+		case errors.Is(err, services.ErrLastAdminRequired):
+			return response.InvalidRequest(c, "Minimal satu admin aktif harus tetap tersedia.")
+		case errors.Is(err, services.ErrUserNotFound):
+			return response.NotFound(c, "Anggota tidak ditemukan.")
+		default:
+			return response.InternalServerError(c, "failed to archive member")
+		}
+	}
+
+	return response.Success(c, fiber.StatusOK, "member archived", user)
+}
+
+func (h *UserHandler) Reactivate(c *fiber.Ctx) error {
+	authUser, ok := c.Locals("user").(types.AuthUser)
+	if !ok {
+		return response.Unauthorized(c, "authentication required")
+	}
+
+	user, err := h.userService.ReactivateUser(c.UserContext(), authUser.ID, c.Params("id"))
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrUserNotFound):
+			return response.NotFound(c, "Anggota tidak ditemukan.")
+		default:
+			return response.InternalServerError(c, "failed to reactivate member")
+		}
+	}
+
+	return response.Success(c, fiber.StatusOK, "member reactivated", user)
+}
+
+func (h *UserHandler) DeletePermanent(c *fiber.Ctx) error {
+	authUser, ok := c.Locals("user").(types.AuthUser)
+	if !ok {
+		return response.Unauthorized(c, "authentication required")
+	}
+
+	if err := h.userService.DeleteUserPermanent(c.UserContext(), authUser.ID, c.Params("id")); err != nil {
+		switch {
+		case errors.Is(err, services.ErrSelfDeleteBlocked):
+			return response.InvalidRequest(c, "Admin tidak bisa menghapus permanen akunnya sendiri.")
+		case errors.Is(err, services.ErrPermanentDeleteRequiresArchive):
+			return response.InvalidRequest(c, "Akun harus diarsipkan dulu sebelum bisa dihapus permanen.")
+		case errors.Is(err, services.ErrPermanentDeleteBlocked):
+			return response.Conflict(c, "Akun tidak bisa dihapus permanen karena sudah memiliki histori atau relasi penting. Gunakan arsip sebagai gantinya.")
+		case errors.Is(err, services.ErrUserNotFound):
+			return response.NotFound(c, "Anggota tidak ditemukan.")
+		default:
+			return response.InternalServerError(c, "failed to permanently delete member")
+		}
+	}
+
+	return response.Success(c, fiber.StatusOK, "member permanently deleted", fiber.Map{
+		"deleted": true,
+	})
+}

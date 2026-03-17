@@ -21,7 +21,9 @@ const (
 var (
 	ErrInvalidActivityInput      = errors.New("invalid activity input")
 	ErrInvalidActivityType       = errors.New("invalid activity type")
+	ErrInvalidActivityStatus     = errors.New("status must be active, expired, or all")
 	ErrActivityNotFound          = errors.New("activity not found")
+	ErrActivityExpired           = errors.New("activity is expired")
 	ErrInvalidCommentInput       = errors.New("comment is required")
 	ErrInvalidReactionInput      = errors.New("reaction type is required")
 	ErrInvalidLeaderboardPeriod  = errors.New("period must be month or all")
@@ -32,7 +34,8 @@ var (
 )
 
 type ListActivitiesInput struct {
-	Limit int
+	Limit  int
+	Status string
 }
 
 type CreateActivityInput struct {
@@ -81,7 +84,15 @@ func (s *ActivityService) ListActivities(ctx context.Context, viewerID string, i
 		limit = maxActivityLimit
 	}
 
-	activities, err := s.activityRepository.ListActivities(ctx, limit)
+	status := strings.TrimSpace(strings.ToLower(input.Status))
+	if status == "" {
+		status = "active"
+	}
+	if status != "active" && status != "expired" && status != "all" {
+		return nil, ErrInvalidActivityStatus
+	}
+
+	activities, err := s.activityRepository.ListActivities(ctx, limit, status)
 	if err != nil {
 		return nil, err
 	}
@@ -215,6 +226,9 @@ func (s *ActivityService) AddComment(ctx context.Context, activityID string, act
 	if err != nil {
 		return nil, err
 	}
+	if isExpiredActivity(activity) {
+		return nil, ErrActivityExpired
+	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -258,8 +272,12 @@ func (s *ActivityService) ToggleReaction(ctx context.Context, activityID string,
 		return nil, ErrInvalidReactionInput
 	}
 
-	if _, err := s.ensureActivityExists(ctx, activityID); err != nil {
+	activity, err := s.ensureActivityExists(ctx, activityID)
+	if err != nil {
 		return nil, err
+	}
+	if isExpiredActivity(activity) {
+		return nil, ErrActivityExpired
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -287,6 +305,9 @@ func (s *ActivityService) ClaimFood(ctx context.Context, activityID string, acto
 	activity, err := s.ensureActivityExists(ctx, activityID)
 	if err != nil {
 		return nil, err
+	}
+	if isExpiredActivity(activity) {
+		return nil, ErrActivityExpired
 	}
 	if activity.Type != models.ActivityTypeFood {
 		return nil, ErrFoodClaimNotAllowed
@@ -346,6 +367,9 @@ func (s *ActivityService) RespondRice(ctx context.Context, activityID string, ac
 	activity, err := s.ensureActivityExists(ctx, activityID)
 	if err != nil {
 		return nil, err
+	}
+	if isExpiredActivity(activity) {
+		return nil, ErrActivityExpired
 	}
 	if activity.Type != models.ActivityTypeRice {
 		return nil, ErrRiceResponseNotAllowed
@@ -556,4 +580,8 @@ func displayActorName(name string) string {
 	}
 
 	return name
+}
+
+func isExpiredActivity(activity *models.Activity) bool {
+	return activity != nil && activity.ExpiresAt != nil && activity.ExpiresAt.Before(time.Now())
 }

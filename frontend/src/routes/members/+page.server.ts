@@ -86,7 +86,8 @@ export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) =
       summary: {
         total: 0,
         active: 0,
-        inactive: 0
+        inactive: 0,
+        archived: 0
       },
       canManage: false,
       accessDenied: false,
@@ -97,14 +98,16 @@ export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) =
   try {
     const response = await usersServerApi.list(fetch, locals.token);
     const members = response.data;
-    const active = members.filter((member) => member.is_active).length;
+    const active = members.filter((member) => member.is_active && !member.archived_at).length;
+    const archived = members.filter((member) => !!member.archived_at).length;
 
     return {
       members,
       summary: {
         total: members.length,
         active,
-        inactive: members.length - active
+        inactive: members.length - active - archived,
+        archived
       },
       canManage: canManage(locals.user?.role),
       accessDenied: false,
@@ -119,7 +122,8 @@ export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) =
         summary: {
           total: 0,
           active: 0,
-          inactive: 0
+          inactive: 0,
+          archived: 0
         },
         canManage: false,
         accessDenied: true,
@@ -134,7 +138,8 @@ export const load: PageServerLoad = async ({ cookies, fetch, locals, parent }) =
       summary: {
         total: 0,
         active: 0,
-        inactive: 0
+        inactive: 0,
+        archived: 0
       },
       canManage: canManage(locals.user?.role),
       accessDenied: false,
@@ -295,6 +300,132 @@ export const actions: Actions = {
 
       return fail(failure.status, {
         action: 'toggleActive',
+        message: failure.message,
+        requestId: failure.requestId,
+        values
+      });
+    }
+  },
+  archiveMember: async ({ cookies, fetch, locals, request }) => {
+    const formData = await request.formData();
+    const values = {
+      member_id: normalizeString(formData.get('member_id'))
+    };
+    const session = await requireServerUser({ cookies, fetch, locals });
+
+    if (!canManage(session.user.role)) {
+      return fail(403, {
+        action: 'archiveMember',
+        message: 'Hanya admin yang bisa mengarsipkan anggota.',
+        values
+      });
+    }
+
+    if (values.member_id === '') {
+      return fail(400, {
+        action: 'archiveMember',
+        message: 'Referensi anggota tidak ditemukan.',
+        values
+      });
+    }
+
+    try {
+      await usersServerApi.archive(fetch, session.token, values.member_id);
+
+      return {
+        action: 'archiveMember',
+        success: 'Anggota berhasil diarsipkan. Histori lama tetap aman dan akun tidak akan ikut siklus aktif baru.'
+      };
+    } catch (error) {
+      throwIfUnauthorized(error, cookies);
+      const failure = toApiFailureState(error, 'Anggota belum dapat diarsipkan.');
+
+      return fail(failure.status, {
+        action: 'archiveMember',
+        message: failure.message,
+        requestId: failure.requestId,
+        values
+      });
+    }
+  },
+  reactivateMember: async ({ cookies, fetch, locals, request }) => {
+    const formData = await request.formData();
+    const values = {
+      member_id: normalizeString(formData.get('member_id'))
+    };
+    const session = await requireServerUser({ cookies, fetch, locals });
+
+    if (!canManage(session.user.role)) {
+      return fail(403, {
+        action: 'reactivateMember',
+        message: 'Hanya admin yang bisa mengaktifkan kembali anggota.',
+        values
+      });
+    }
+
+    if (values.member_id === '') {
+      return fail(400, {
+        action: 'reactivateMember',
+        message: 'Referensi anggota tidak ditemukan.',
+        values
+      });
+    }
+
+    try {
+      await usersServerApi.reactivate(fetch, session.token, values.member_id);
+
+      return {
+        action: 'reactivateMember',
+        success: 'Anggota berhasil diaktifkan kembali.'
+      };
+    } catch (error) {
+      throwIfUnauthorized(error, cookies);
+      const failure = toApiFailureState(error, 'Anggota belum dapat diaktifkan kembali.');
+
+      return fail(failure.status, {
+        action: 'reactivateMember',
+        message: failure.message,
+        requestId: failure.requestId,
+        values
+      });
+    }
+  },
+  deletePermanent: async ({ cookies, fetch, locals, request }) => {
+    const formData = await request.formData();
+    const values = {
+      member_id: normalizeString(formData.get('member_id'))
+    };
+    const session = await requireServerUser({ cookies, fetch, locals });
+
+    if (!canManage(session.user.role)) {
+      return fail(403, {
+        action: 'deletePermanent',
+        message: 'Hanya admin yang bisa menghapus permanen anggota.',
+        values
+      });
+    }
+
+    if (values.member_id === '') {
+      return fail(400, {
+        action: 'deletePermanent',
+        message: 'Referensi anggota tidak ditemukan.',
+        values
+      });
+    }
+
+    try {
+      await usersServerApi.deletePermanent(fetch, session.token, values.member_id);
+
+      return {
+        action: 'deletePermanent',
+        success: 'Akun anggota berhasil dihapus permanen.'
+      };
+    } catch (error) {
+      throwIfUnauthorized(error, cookies);
+      const failure = toApiFailureState(error, 'Akun anggota belum dapat dihapus permanen.');
+
+      return fail(failure.status, {
+        action: 'deletePermanent',
         message: failure.message,
         requestId: failure.requestId,
         values

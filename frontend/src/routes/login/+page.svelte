@@ -13,6 +13,7 @@
   };
 
   export let form: LoginFormState | undefined;
+  export let data: { notice?: string | null };
 
   const loginHighlights = [
     {
@@ -138,6 +139,10 @@
               />
             </div>
           </label>
+
+          {#if data.notice}
+            <FeedbackBanner tone="info" title="Sesi diperbarui" message={data.notice} />
+          {/if}
 
           {#if form?.message}
             <FeedbackBanner tone="error" title="Belum bisa masuk" message={form.message} />

@@ -28,9 +28,14 @@ func (h *ActivityHandler) ListActivities(c *fiber.Ctx) error {
 
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
 	items, err := h.activityService.ListActivities(c.UserContext(), user.ID, services.ListActivitiesInput{
-		Limit: limit,
+		Limit:  limit,
+		Status: c.Query("status", "active"),
 	})
 	if err != nil {
+		if errors.Is(err, services.ErrInvalidActivityStatus) {
+			return response.InvalidRequest(c, err.Error())
+		}
+
 		return response.InternalServerError(c, "failed to load activities")
 	}
 
@@ -130,6 +135,8 @@ func (h *ActivityHandler) AddComment(c *fiber.Ctx) error {
 			return response.InvalidRequest(c, err.Error())
 		case errors.Is(err, services.ErrActivityNotFound):
 			return response.NotFound(c, err.Error())
+		case errors.Is(err, services.ErrActivityExpired):
+			return response.InvalidRequest(c, "Aktivitas ini sudah berakhir dan tidak bisa dikomentari lagi.")
 		default:
 			return response.InternalServerError(c, "failed to add comment")
 		}
@@ -162,6 +169,8 @@ func (h *ActivityHandler) ToggleReaction(c *fiber.Ctx) error {
 			return response.InvalidRequest(c, err.Error())
 		case errors.Is(err, services.ErrActivityNotFound):
 			return response.NotFound(c, err.Error())
+		case errors.Is(err, services.ErrActivityExpired):
+			return response.InvalidRequest(c, "Aktivitas ini sudah berakhir dan reaksinya tidak bisa diubah lagi.")
 		default:
 			return response.InternalServerError(c, "failed to update reaction")
 		}
@@ -181,6 +190,8 @@ func (h *ActivityHandler) ClaimFood(c *fiber.Ctx) error {
 		switch {
 		case errors.Is(err, services.ErrActivityNotFound):
 			return response.NotFound(c, err.Error())
+		case errors.Is(err, services.ErrActivityExpired):
+			return response.InvalidRequest(c, "Aktivitas makanan ini sudah berakhir.")
 		case errors.Is(err, services.ErrFoodClaimNotAllowed):
 			return response.InvalidRequest(c, err.Error())
 		case errors.Is(err, services.ErrFoodClaimAlreadyExists):
@@ -220,6 +231,8 @@ func (h *ActivityHandler) RespondRice(c *fiber.Ctx) error {
 		switch {
 		case errors.Is(err, services.ErrActivityNotFound):
 			return response.NotFound(c, err.Error())
+		case errors.Is(err, services.ErrActivityExpired):
+			return response.InvalidRequest(c, "Aktivitas nasi ini sudah berakhir.")
 		case errors.Is(err, services.ErrRiceResponseNotAllowed):
 			return response.InvalidRequest(c, err.Error())
 		case errors.Is(err, services.ErrRiceResponseAlreadyExists):

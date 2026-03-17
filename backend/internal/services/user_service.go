@@ -15,20 +15,27 @@ import (
 )
 
 var (
-	ErrInvalidRole             = errors.New("invalid role")
-	ErrInvalidUserInput        = errors.New("invalid user input")
-	ErrInvalidUsername         = errors.New("invalid username")
-	ErrInvalidProfileInput     = errors.New("invalid profile input")
-	ErrPasswordTooShort        = errors.New("password must be at least 8 characters")
-	ErrCurrentPasswordRequired = errors.New("current password is required")
-	ErrNewPasswordRequired     = errors.New("new password is required")
-	ErrCurrentPasswordInvalid  = errors.New("current password is invalid")
-	ErrUserAlreadyExists       = errors.New("user email already exists")
-	ErrUsernameAlreadyExists   = errors.New("username already exists")
-	ErrUserNotFound            = errors.New("user not found")
-	ErrSelfDeactivateBlocked   = errors.New("cannot deactivate your own account")
-	ErrSelfDemoteBlocked       = errors.New("cannot remove your own admin role")
-	ErrLastAdminRequired       = errors.New("at least one active admin must remain")
+	ErrInvalidRole                    = errors.New("invalid role")
+	ErrInvalidUserInput               = errors.New("invalid user input")
+	ErrInvalidUsername                = errors.New("invalid username")
+	ErrInvalidProfileInput            = errors.New("invalid profile input")
+	ErrPasswordTooShort               = errors.New("password must be at least 8 characters")
+	ErrCurrentPasswordRequired        = errors.New("current password is required")
+	ErrNewPasswordRequired            = errors.New("new password is required")
+	ErrCurrentPasswordInvalid         = errors.New("current password is invalid")
+	ErrUserAlreadyExists              = errors.New("user email already exists")
+	ErrUsernameAlreadyExists          = errors.New("username already exists")
+	ErrUserNotFound                   = errors.New("user not found")
+	ErrSelfDeactivateBlocked          = errors.New("cannot deactivate your own account")
+	ErrSelfDemoteBlocked              = errors.New("cannot remove your own admin role")
+	ErrSelfArchiveBlocked             = errors.New("cannot archive your own account")
+	ErrSelfDeleteBlocked              = errors.New("cannot delete your own account")
+	ErrUserAlreadyArchived            = errors.New("user is already archived")
+	ErrUserNotArchived                = errors.New("user is not archived")
+	ErrArchivedUserReactivate         = errors.New("archived user must be reactivated through lifecycle action")
+	ErrPermanentDeleteBlocked         = errors.New("permanent delete is not allowed while relations exist")
+	ErrPermanentDeleteRequiresArchive = errors.New("user must be archived before permanent delete")
+	ErrLastAdminRequired              = errors.New("at least one active admin must remain")
 )
 
 type CreateUserInput struct {
@@ -247,6 +254,9 @@ func (s *UserService) UpdateUser(ctx context.Context, actorID string, userID str
 	}
 
 	if input.IsActive != nil {
+		if user.ArchivedAt != nil && *input.IsActive {
+			return nil, ErrArchivedUserReactivate
+		}
 		user.IsActive = *input.IsActive
 		updated = true
 	}
@@ -291,10 +301,7 @@ func (s *UserService) UpdateUser(ctx context.Context, actorID string, userID str
 		}
 	}
 
-	joinedAt := time.Now()
-	if user.JoinedAt != nil {
-		joinedAt = *user.JoinedAt
-	}
+	joinedAt := user.JoinedAt
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -396,6 +403,222 @@ func (s *UserService) UpdateUser(ctx context.Context, actorID string, userID str
 	}
 
 	return updatedUser, nil
+}
+
+func (s *UserService) ArchiveUser(ctx context.Context, actorID string, userID string) (*models.User, error) {
+	user, err := s.userRepository.FindByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrUserNotFound
+		}
+
+		return nil, err
+	}
+
+	if actorID == user.ID {
+		return nil, ErrSelfArchiveBlocked
+	}
+
+	if user.ArchivedAt != nil {
+		return nil, ErrUserAlreadyArchived
+	}
+
+	if user.Role == models.RoleAdmin && user.IsActive {
+		activeAdmins, err := s.userRepository.CountActiveAdmins(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		if activeAdmins <= 1 {
+			return nil, ErrLastAdminRequired
+		}
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	archivedUser, err := s.userRepository.ArchiveTx(ctx, tx, user.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrUserNotFound
+		}
+
+		return nil, err
+	}
+
+	if err := s.auditService.LogTx(ctx, tx, AuditLogInput{
+		UserID:     stringPtr(actorID),
+		Action:     "archive_user",
+		EntityType: "user",
+		EntityID:   stringPtr(archivedUser.ID),
+		OldValue: map[string]any{
+			"is_active":   user.IsActive,
+			"left_at":     user.LeftAt,
+			"archived_at": user.ArchivedAt,
+		},
+		NewValue: map[string]any{
+			"is_active":   archivedUser.IsActive,
+			"left_at":     archivedUser.LeftAt,
+			"archived_at": archivedUser.ArchivedAt,
+		},
+	}); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return archivedUser, nil
+}
+
+func (s *UserService) ReactivateUser(ctx context.Context, actorID string, userID string) (*models.User, error) {
+	user, err := s.userRepository.FindByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrUserNotFound
+		}
+
+		return nil, err
+	}
+
+	if user.IsActive && user.ArchivedAt == nil {
+		return user, nil
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	var updatedUser *models.User
+	if user.ArchivedAt != nil {
+		updatedUser, err = s.userRepository.ReactivateTx(ctx, tx, user.ID)
+	} else {
+		updatedUser, err = s.userRepository.UpdateTx(ctx, tx, repository.UpdateUserParams{
+			ID:       user.ID,
+			Name:     user.Name,
+			Email:    user.Email,
+			Username: user.Username,
+			Phone:    user.Phone,
+			Role:     user.Role,
+			IsActive: true,
+			JoinedAt: user.JoinedAt,
+		})
+	}
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrUserNotFound
+		}
+
+		return nil, err
+	}
+
+	if err := s.auditService.LogTx(ctx, tx, AuditLogInput{
+		UserID:     stringPtr(actorID),
+		Action:     "reactivate_user",
+		EntityType: "user",
+		EntityID:   stringPtr(updatedUser.ID),
+		OldValue: map[string]any{
+			"is_active":   user.IsActive,
+			"left_at":     user.LeftAt,
+			"archived_at": user.ArchivedAt,
+		},
+		NewValue: map[string]any{
+			"is_active":   updatedUser.IsActive,
+			"left_at":     updatedUser.LeftAt,
+			"archived_at": updatedUser.ArchivedAt,
+		},
+	}); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return updatedUser, nil
+}
+
+func (s *UserService) DeleteUserPermanent(ctx context.Context, actorID string, userID string) error {
+	user, err := s.userRepository.FindByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrUserNotFound
+		}
+
+		return err
+	}
+
+	if actorID == user.ID {
+		return ErrSelfDeleteBlocked
+	}
+
+	if user.ArchivedAt == nil {
+		return ErrPermanentDeleteRequiresArchive
+	}
+
+	relationCounts, err := s.userRepository.CountRelations(ctx, user.ID)
+	if err != nil {
+		return err
+	}
+
+	if relationCounts.HasAny() {
+		_ = s.auditService.Log(ctx, AuditLogInput{
+			UserID:     stringPtr(actorID),
+			Action:     "failed_delete_user_due_to_relations",
+			EntityType: "user",
+			EntityID:   stringPtr(user.ID),
+			NewValue: map[string]any{
+				"user_id":         user.ID,
+				"relation_counts": relationCounts,
+			},
+		})
+
+		return ErrPermanentDeleteBlocked
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if err := s.auditService.LogTx(ctx, tx, AuditLogInput{
+		UserID:     stringPtr(actorID),
+		Action:     "delete_user_permanent",
+		EntityType: "user",
+		EntityID:   stringPtr(user.ID),
+		OldValue: map[string]any{
+			"id":          user.ID,
+			"name":        user.Name,
+			"email":       user.Email,
+			"username":    user.Username,
+			"role":        user.Role,
+			"is_active":   user.IsActive,
+			"left_at":     user.LeftAt,
+			"archived_at": user.ArchivedAt,
+		},
+		NewValue: map[string]any{
+			"deleted": true,
+		},
+	}); err != nil {
+		return err
+	}
+
+	if err := s.userRepository.DeleteTx(ctx, tx, user.ID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrUserNotFound
+		}
+
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (s *UserService) UpdateProfile(ctx context.Context, userID string, input UpdateProfileInput) (*models.User, error) {

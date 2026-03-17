@@ -78,6 +78,44 @@ func (h *WifiHandler) ListBills(c *fiber.Ctx) error {
 	return response.Success(c, fiber.StatusOK, "wifi bills loaded", bills)
 }
 
+func (h *WifiHandler) UpdateBillStatus(c *fiber.Ctx) error {
+	request := new(services.UpdateWifiBillStatusInput)
+	if err := c.BodyParser(request); err != nil {
+		return invalidPayload(c, "wifi bill status")
+	}
+
+	user, ok := c.Locals("user").(types.AuthUser)
+	if !ok {
+		return response.Unauthorized(c, "authentication required")
+	}
+
+	details := validation.NewErrors()
+	details.Enum("status", request.Status, []string{
+		models.WifiBillStatusDraft,
+		models.WifiBillStatusActive,
+		models.WifiBillStatusClosed,
+	}, "status must be draft, active, or closed")
+	if details.HasAny() {
+		return validationFailed(c, details)
+	}
+
+	bill, err := h.wifiService.UpdateBillStatus(c.UserContext(), c.Params("id"), user.ID, *request)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrInvalidWifiStatus), errors.Is(err, services.ErrWifiReviewNotAllowed):
+			return response.InvalidRequest(c, err.Error())
+		case errors.Is(err, services.ErrAnotherActiveWifiBill):
+			return response.Conflict(c, "Masih ada tagihan wifi lain yang aktif. Tutup atau jadikan draft dulu tagihan aktif sebelumnya.")
+		case errors.Is(err, services.ErrWifiBillNotFound):
+			return response.NotFound(c, "Tagihan wifi tidak ditemukan.")
+		default:
+			return response.InternalServerError(c, "failed to update wifi bill status")
+		}
+	}
+
+	return response.Success(c, fiber.StatusOK, "wifi bill status updated", bill)
+}
+
 func (h *WifiHandler) GetBillDetail(c *fiber.Ctx) error {
 	user, ok := c.Locals("user").(types.AuthUser)
 	if !ok {

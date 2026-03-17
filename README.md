@@ -63,7 +63,7 @@ Port ini dipilih karena `3000`, `4000`, `4001`, `5000`, dan `5001` sudah terpaka
 - `frontend/vite.config.ts`: dev proxy ke backend `4100`
 - `backend/.env.example`: env backend untuk VPS/local run
 - `backend/internal/config/config.go`: backend sekarang membaca `PORT` lebih dulu
-- `backend/db/migrations/001_init.sql`: schema awal database
+- `backend/db/migrations/`: urutan migrasi database yang harus diterapkan berurutan
 
 ## Frontend
 
@@ -112,8 +112,9 @@ Pastikan ada instance PostgreSQL yang bisa diakses backend, misalnya lewat servi
 cd backend
 cp .env.example .env
 go mod tidy
-psql "postgres://messhub:messhub@127.0.0.1:5432/messhub?sslmode=disable" -f db/migrations/001_init.sql
-psql "postgres://messhub:messhub@127.0.0.1:5432/messhub?sslmode=disable" -f db/migrations/002_auth_foundation.sql
+for file in db/migrations/*.sql; do
+  psql "postgres://messhub:messhub@127.0.0.1:5432/messhub?sslmode=disable" -f "$file"
+done
 go run ./cmd/seed-admin
 go run ./cmd/api
 ```
@@ -213,6 +214,11 @@ gas build --no-ui --type svelte --pm2-name messhub-frontend --port 4101 --yes
 
 curl --fail --silent --show-error http://127.0.0.1:4100/health
 ```
+
+Catatan penting:
+
+- workflow deploy saat ini **belum** menjalankan migrasi database otomatis
+- setiap perubahan schema tetap perlu memastikan file di `backend/db/migrations/` sudah diterapkan berurutan di environment target sebelum atau saat deploy
 
 Contoh setup secrets di GitHub:
 

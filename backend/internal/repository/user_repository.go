@@ -27,7 +27,7 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 
 func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*models.User, error) {
 	query := `
-		SELECT id, name, email, username, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
+		SELECT id, name, email, username, password_hash, phone, avatar_url, role, is_active, auth_version, joined_at, left_at, archived_at, created_at, updated_at
 		FROM users
 		WHERE LOWER(email) = LOWER($1)
 		LIMIT 1
@@ -40,7 +40,7 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*models
 
 func (r *UserRepository) FindByLoginIdentifier(ctx context.Context, identifier string) (*models.User, error) {
 	query := `
-		SELECT id, name, email, username, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
+		SELECT id, name, email, username, password_hash, phone, avatar_url, role, is_active, auth_version, joined_at, left_at, archived_at, created_at, updated_at
 		FROM users
 		WHERE LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($1)
 		ORDER BY CASE WHEN LOWER(email) = LOWER($1) THEN 0 ELSE 1 END
@@ -54,7 +54,7 @@ func (r *UserRepository) FindByLoginIdentifier(ctx context.Context, identifier s
 
 func (r *UserRepository) FindByID(ctx context.Context, id string) (*models.User, error) {
 	query := `
-		SELECT id, name, email, username, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
+		SELECT id, name, email, username, password_hash, phone, avatar_url, role, is_active, auth_version, joined_at, left_at, archived_at, created_at, updated_at
 		FROM users
 		WHERE id = $1
 		LIMIT 1
@@ -67,9 +67,16 @@ func (r *UserRepository) FindByID(ctx context.Context, id string) (*models.User,
 
 func (r *UserRepository) List(ctx context.Context) ([]models.User, error) {
 	query := `
-		SELECT id, name, email, username, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
+		SELECT id, name, email, username, password_hash, phone, avatar_url, role, is_active, auth_version, joined_at, left_at, archived_at, created_at, updated_at
 		FROM users
-		ORDER BY is_active DESC, joined_at ASC, created_at ASC
+		ORDER BY
+			CASE
+				WHEN archived_at IS NULL AND is_active = TRUE THEN 0
+				WHEN archived_at IS NULL AND is_active = FALSE THEN 1
+				ELSE 2
+			END,
+			joined_at ASC NULLS LAST,
+			created_at ASC
 	`
 
 	rows, err := r.db.QueryContext(ctx, query)
@@ -97,10 +104,10 @@ func (r *UserRepository) List(ctx context.Context) ([]models.User, error) {
 
 func (r *UserRepository) ListActive(ctx context.Context) ([]models.User, error) {
 	query := `
-		SELECT id, name, email, username, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
+		SELECT id, name, email, username, password_hash, phone, avatar_url, role, is_active, auth_version, joined_at, left_at, archived_at, created_at, updated_at
 		FROM users
-		WHERE is_active = TRUE
-		ORDER BY joined_at ASC, created_at ASC
+		WHERE is_active = TRUE AND archived_at IS NULL
+		ORDER BY joined_at ASC NULLS LAST, created_at ASC
 	`
 
 	rows, err := r.db.QueryContext(ctx, query)
@@ -149,7 +156,7 @@ func (r *UserRepository) create(ctx context.Context, runner userQueryRunner, par
 	query := `
 		INSERT INTO users (name, email, username, phone, password_hash, role, is_active, joined_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-		RETURNING id, name, email, username, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
+		RETURNING id, name, email, username, password_hash, phone, avatar_url, role, is_active, auth_version, joined_at, left_at, archived_at, created_at, updated_at
 	`
 
 	row := runner.QueryRowContext(
@@ -176,7 +183,7 @@ type UpdateUserParams struct {
 	Phone    *string
 	Role     string
 	IsActive bool
-	JoinedAt time.Time
+	JoinedAt *time.Time
 }
 
 type UpdateProfileParams struct {
@@ -191,12 +198,144 @@ type UpdatePasswordParams struct {
 	PasswordHash string
 }
 
+type UserRelationCounts struct {
+	WalletTransactions int `json:"wallet_transactions"`
+	WifiBills          int `json:"wifi_bills"`
+	WifiBillMembers    int `json:"wifi_bill_members"`
+	Activities         int `json:"activities"`
+	ActivityComments   int `json:"activity_comments"`
+	ActivityReactions  int `json:"activity_reactions"`
+	FoodClaims         int `json:"food_claims"`
+	RiceResponses      int `json:"rice_responses"`
+	AuditLogs          int `json:"audit_logs"`
+	ImportJobs         int `json:"import_jobs"`
+	Notifications      int `json:"notifications"`
+	PushSubscriptions  int `json:"push_subscriptions"`
+	SharedExpensesPaid int `json:"shared_expenses_paid"`
+	SharedExpensesMade int `json:"shared_expenses_created"`
+	ProposalsCreated   int `json:"proposals_created"`
+	ProposalVotes      int `json:"proposal_votes"`
+}
+
+func (c UserRelationCounts) HasAny() bool {
+	return c.WalletTransactions > 0 ||
+		c.WifiBills > 0 ||
+		c.WifiBillMembers > 0 ||
+		c.Activities > 0 ||
+		c.ActivityComments > 0 ||
+		c.ActivityReactions > 0 ||
+		c.FoodClaims > 0 ||
+		c.RiceResponses > 0 ||
+		c.AuditLogs > 0 ||
+		c.ImportJobs > 0 ||
+		c.Notifications > 0 ||
+		c.PushSubscriptions > 0 ||
+		c.SharedExpensesPaid > 0 ||
+		c.SharedExpensesMade > 0 ||
+		c.ProposalsCreated > 0 ||
+		c.ProposalVotes > 0
+}
+
 func (r *UserRepository) Update(ctx context.Context, params UpdateUserParams) (*models.User, error) {
 	return r.update(ctx, r.db, params)
 }
 
 func (r *UserRepository) UpdateTx(ctx context.Context, tx *sql.Tx, params UpdateUserParams) (*models.User, error) {
 	return r.update(ctx, tx, params)
+}
+
+func (r *UserRepository) ArchiveTx(ctx context.Context, tx *sql.Tx, userID string) (*models.User, error) {
+	query := `
+		UPDATE users
+		SET
+			is_active = FALSE,
+			archived_at = COALESCE(archived_at, NOW()),
+			left_at = COALESCE(left_at, NOW()),
+			updated_at = NOW()
+		WHERE id = $1
+		RETURNING id, name, email, username, password_hash, phone, avatar_url, role, is_active, auth_version, joined_at, left_at, archived_at, created_at, updated_at
+	`
+
+	return scanUser(tx.QueryRowContext(ctx, query, userID))
+}
+
+func (r *UserRepository) ReactivateTx(ctx context.Context, tx *sql.Tx, userID string) (*models.User, error) {
+	query := `
+		UPDATE users
+		SET
+			is_active = TRUE,
+			archived_at = NULL,
+			left_at = NULL,
+			updated_at = NOW()
+		WHERE id = $1
+		RETURNING id, name, email, username, password_hash, phone, avatar_url, role, is_active, auth_version, joined_at, left_at, archived_at, created_at, updated_at
+	`
+
+	return scanUser(tx.QueryRowContext(ctx, query, userID))
+}
+
+func (r *UserRepository) DeleteTx(ctx context.Context, tx *sql.Tx, userID string) error {
+	result, err := tx.ExecContext(ctx, `DELETE FROM users WHERE id = $1`, userID)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
+func (r *UserRepository) CountRelations(ctx context.Context, userID string) (*UserRelationCounts, error) {
+	query := `
+		SELECT
+			(SELECT COUNT(1)::integer FROM wallet_transactions WHERE created_by = $1),
+			(SELECT COUNT(1)::integer FROM wifi_bills WHERE created_by = $1),
+			(SELECT COUNT(1)::integer FROM wifi_bill_members WHERE user_id = $1),
+			(SELECT COUNT(1)::integer FROM activities WHERE user_id = $1 OR created_by = $1),
+			(SELECT COUNT(1)::integer FROM activity_comments WHERE user_id = $1),
+			(SELECT COUNT(1)::integer FROM activity_reactions WHERE user_id = $1),
+			(SELECT COUNT(1)::integer FROM food_claims WHERE user_id = $1),
+			(SELECT COUNT(1)::integer FROM rice_responses WHERE user_id = $1),
+			(SELECT COUNT(1)::integer FROM audit_logs WHERE user_id = $1),
+			(SELECT COUNT(1)::integer FROM import_jobs WHERE created_by = $1),
+			(SELECT COUNT(1)::integer FROM notifications WHERE user_id = $1),
+			(SELECT COUNT(1)::integer FROM push_subscriptions WHERE user_id = $1),
+			(SELECT COUNT(1)::integer FROM shared_expenses WHERE paid_by_user_id = $1),
+			(SELECT COUNT(1)::integer FROM shared_expenses WHERE created_by = $1),
+			(SELECT COUNT(1)::integer FROM proposals WHERE created_by = $1),
+			(SELECT COUNT(1)::integer FROM proposal_votes WHERE user_id = $1)
+	`
+
+	counts := &UserRelationCounts{}
+	if err := r.db.QueryRowContext(ctx, query, userID).Scan(
+		&counts.WalletTransactions,
+		&counts.WifiBills,
+		&counts.WifiBillMembers,
+		&counts.Activities,
+		&counts.ActivityComments,
+		&counts.ActivityReactions,
+		&counts.FoodClaims,
+		&counts.RiceResponses,
+		&counts.AuditLogs,
+		&counts.ImportJobs,
+		&counts.Notifications,
+		&counts.PushSubscriptions,
+		&counts.SharedExpensesPaid,
+		&counts.SharedExpensesMade,
+		&counts.ProposalsCreated,
+		&counts.ProposalVotes,
+	); err != nil {
+		return nil, err
+	}
+
+	return counts, nil
 }
 
 func (r *UserRepository) update(ctx context.Context, runner userQueryRunner, params UpdateUserParams) (*models.User, error) {
@@ -210,6 +349,7 @@ func (r *UserRepository) update(ctx context.Context, runner userQueryRunner, par
 			role = $6,
 			is_active = $7,
 			left_at = CASE
+				WHEN archived_at IS NOT NULL THEN COALESCE(left_at, archived_at)
 				WHEN $7 = FALSE AND left_at IS NULL THEN NOW()
 				WHEN $7 = TRUE THEN NULL
 				ELSE left_at
@@ -217,7 +357,7 @@ func (r *UserRepository) update(ctx context.Context, runner userQueryRunner, par
 			joined_at = $8,
 			updated_at = NOW()
 		WHERE id = $1
-		RETURNING id, name, email, username, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
+		RETURNING id, name, email, username, password_hash, phone, avatar_url, role, is_active, auth_version, joined_at, left_at, archived_at, created_at, updated_at
 	`
 
 	row := runner.QueryRowContext(
@@ -230,7 +370,7 @@ func (r *UserRepository) update(ctx context.Context, runner userQueryRunner, par
 		nullableString(params.Phone),
 		params.Role,
 		params.IsActive,
-		params.JoinedAt,
+		nullableTime(params.JoinedAt),
 	)
 
 	return scanUser(row)
@@ -245,7 +385,7 @@ func (r *UserRepository) UpdateProfileTx(ctx context.Context, tx *sql.Tx, params
 			avatar_url = $4,
 			updated_at = NOW()
 		WHERE id = $1
-		RETURNING id, name, email, username, password_hash, phone, avatar_url, role, is_active, joined_at, left_at, created_at, updated_at
+		RETURNING id, name, email, username, password_hash, phone, avatar_url, role, is_active, auth_version, joined_at, left_at, archived_at, created_at, updated_at
 	`
 
 	return scanUser(
@@ -265,6 +405,7 @@ func (r *UserRepository) UpdatePasswordTx(ctx context.Context, tx *sql.Tx, param
 		UPDATE users
 		SET
 			password_hash = $2,
+			auth_version = auth_version + 1,
 			updated_at = NOW()
 		WHERE id = $1
 	`
@@ -294,7 +435,7 @@ func (r *UserRepository) CountActiveAdmins(ctx context.Context) (int, error) {
 	const query = `
 		SELECT COUNT(1)
 		FROM users
-		WHERE role = 'admin' AND is_active = TRUE
+		WHERE role = 'admin' AND is_active = TRUE AND archived_at IS NULL
 	`
 
 	var count int
@@ -344,6 +485,7 @@ func scanUser(row scanner) (*models.User, error) {
 	var avatarURL sql.NullString
 	var joinedAt sql.NullTime
 	var leftAt sql.NullTime
+	var archivedAt sql.NullTime
 	if err := row.Scan(
 		&user.ID,
 		&user.Name,
@@ -354,8 +496,10 @@ func scanUser(row scanner) (*models.User, error) {
 		&avatarURL,
 		&user.Role,
 		&user.IsActive,
+		&user.AuthVersion,
 		&joinedAt,
 		&leftAt,
+		&archivedAt,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	); err != nil {
@@ -366,6 +510,7 @@ func scanUser(row scanner) (*models.User, error) {
 	user.AvatarURL = nullStringPtr(avatarURL)
 	user.JoinedAt = nullTimePtr(joinedAt)
 	user.LeftAt = nullTimePtr(leftAt)
+	user.ArchivedAt = nullTimePtr(archivedAt)
 
 	return user, nil
 }
@@ -473,5 +618,16 @@ func nullableString(value *string) sql.NullString {
 	return sql.NullString{
 		String: trimmed,
 		Valid:  true,
+	}
+}
+
+func nullableTime(value *time.Time) sql.NullTime {
+	if value == nil {
+		return sql.NullTime{}
+	}
+
+	return sql.NullTime{
+		Time:  *value,
+		Valid: true,
 	}
 }

@@ -59,6 +59,8 @@ func New() (*App, error) {
 	walletRepository := repository.NewWalletRepository(db)
 	wifiRepository := repository.NewWifiRepository(db)
 	activityRepository := repository.NewActivityRepository(db)
+	sharedExpenseRepository := repository.NewSharedExpenseRepository(db)
+	proposalRepository := repository.NewProposalRepository(db)
 	auditRepository := repository.NewAuditLogRepository(db)
 	importJobRepository := repository.NewImportJobRepository(db)
 	notificationRepository := repository.NewNotificationRepository(db)
@@ -74,6 +76,8 @@ func New() (*App, error) {
 	notificationService := services.NewNotificationService(db, notificationRepository, userRepository, pushService, auditService)
 	wifiService := services.NewWifiService(db, wifiRepository, settingsService, auditService, notificationService)
 	activityService := services.NewActivityService(db, activityRepository, notificationService, auditService)
+	sharedExpenseService := services.NewSharedExpenseService(db, sharedExpenseRepository, userRepository, auditService)
+	proposalService := services.NewProposalService(db, proposalRepository, auditService)
 	authMiddleware := middleware.NewAuthMiddleware(cfg, userRepository)
 	healthHandler := handlers.NewHealthHandler(systemService)
 	authHandler := handlers.NewAuthHandler(authService)
@@ -85,6 +89,8 @@ func New() (*App, error) {
 	importHandler := handlers.NewImportHandler(importService)
 	wifiHandler := handlers.NewWifiHandler(wifiService)
 	activityHandler := handlers.NewActivityHandler(activityService)
+	sharedExpenseHandler := handlers.NewSharedExpenseHandler(sharedExpenseService)
+	proposalHandler := handlers.NewProposalHandler(proposalService)
 	notificationHandler := handlers.NewNotificationHandler(notificationService)
 	pushHandler := handlers.NewPushHandler(pushService)
 
@@ -100,6 +106,8 @@ func New() (*App, error) {
 		importHandler,
 		wifiHandler,
 		activityHandler,
+		sharedExpenseHandler,
+		proposalHandler,
 		notificationHandler,
 		pushHandler,
 		authMiddleware,

@@ -4,12 +4,16 @@ import { authServerApi } from '$lib/api/server';
 import { AUTH_COOKIE_KEYS, buildAuthCookieOptions } from '$lib/auth/session';
 import { toApiFailureState } from '$lib/server/api-errors';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
   if (locals.user) {
     throw redirect(303, '/dashboard');
   }
 
-  return {};
+  return {
+    notice: url.searchParams.get('message') === 'password-changed'
+      ? 'Password berhasil diganti. Silakan login lagi dengan password baru.'
+      : null
+  };
 };
 
 export const actions: Actions = {

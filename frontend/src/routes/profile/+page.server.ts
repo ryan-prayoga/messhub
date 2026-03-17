@@ -1,6 +1,7 @@
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { profileServerApi } from '$lib/api/server';
+import { clearAuthCookies } from '$lib/auth/session';
 import { throwIfUnauthorized, toApiFailureState } from '$lib/server/api-errors';
 
 function normalizeString(value: FormDataEntryValue | null) {
@@ -117,11 +118,8 @@ export const actions: Actions = {
         current_password: values.current_password,
         new_password: values.new_password
       });
-
-      return {
-        action: 'changePassword',
-        success: 'Password berhasil diganti.'
-      };
+      clearAuthCookies(cookies);
+      throw redirect(303, '/login?message=password-changed');
     } catch (error) {
       throwIfUnauthorized(error, cookies);
       const failure = toApiFailureState(error, 'Password belum dapat diganti.');

@@ -33,7 +33,7 @@ type CreateActivityParams struct {
 	ExpiresAt *time.Time
 }
 
-func (r *ActivityRepository) ListActivities(ctx context.Context, limit int) ([]models.Activity, error) {
+func (r *ActivityRepository) ListActivities(ctx context.Context, limit int, status string) ([]models.Activity, error) {
 	query := `
 		SELECT
 			a.id,
@@ -51,13 +51,22 @@ func (r *ActivityRepository) ListActivities(ctx context.Context, limit int) ([]m
 		FROM activities a
 		JOIN users subject ON subject.id = a.user_id
 		JOIN users creator ON creator.id = a.created_by
-		ORDER BY
-			CASE
-				WHEN a.expires_at IS NULL THEN 0
-				WHEN a.expires_at >= NOW() THEN 0
-				ELSE 1
-			END,
-			a.created_at DESC
+	`
+
+	switch strings.TrimSpace(status) {
+	case "expired":
+		query += `
+		WHERE a.expires_at IS NOT NULL AND a.expires_at < NOW()
+	`
+	case "all", "":
+	default:
+		query += `
+		WHERE a.expires_at IS NULL OR a.expires_at >= NOW()
+	`
+	}
+
+	query += `
+		ORDER BY a.created_at DESC
 		LIMIT $1
 	`
 

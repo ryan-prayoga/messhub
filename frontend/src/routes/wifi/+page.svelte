@@ -112,6 +112,17 @@
     return `${value} ${value === 1 ? singular : plural}`;
   }
 
+  function lifecycleTargets(status: WifiBillStatus) {
+    switch (status) {
+      case 'draft':
+        return ['active', 'closed'] as WifiBillStatus[];
+      case 'active':
+        return ['draft', 'closed'] as WifiBillStatus[];
+      default:
+        return ['draft', 'active'] as WifiBillStatus[];
+    }
+  }
+
   function findOwnBillItem(bill: WifiBill | null | undefined) {
     if (!bill) {
       return null;
@@ -403,6 +414,28 @@
                           <p class="mt-2 text-sm font-semibold text-ink">{bill.summary.rejected_count}</p>
                         </div>
                       </div>
+
+                      <div class="mt-4 flex flex-wrap gap-2">
+                        {#each lifecycleTargets(bill.status) as nextStatus}
+                          <form
+                            method="POST"
+                            action="?/updateBillStatus"
+                            use:enhance={enhanceWithAction(`bill-status-${bill.id}-${nextStatus}`)}
+                          >
+                            <input type="hidden" name="bill_id" value={bill.id} />
+                            <input type="hidden" name="status" value={nextStatus} />
+                            <button
+                              type="submit"
+                              class={nextStatus === 'active' ? 'btn-primary px-4 py-2.5' : 'btn-secondary px-4 py-2.5'}
+                              disabled={pendingAction === `bill-status-${bill.id}-${nextStatus}`}
+                            >
+                              {pendingAction === `bill-status-${bill.id}-${nextStatus}`
+                                ? 'Menyimpan...'
+                                : `Jadikan ${billStatusLabels[nextStatus].toLowerCase()}`}
+                            </button>
+                          </form>
+                        {/each}
+                      </div>
                     </article>
                   {/each}
                 </div>
@@ -606,10 +639,16 @@
                     <button
                       type="submit"
                       class="btn-primary w-full px-4 py-3"
-                      disabled={pendingAction === 'submitProof' || ownActiveBill.payment_status === 'verified'}
+                      disabled={
+                        pendingAction === 'submitProof' ||
+                        ownActiveBill.payment_status === 'verified' ||
+                        ownActiveBill.payment_status === 'pending_verification'
+                      }
                     >
                       {ownActiveBill.payment_status === 'verified'
                         ? 'Sudah terverifikasi'
+                        : ownActiveBill.payment_status === 'pending_verification'
+                          ? 'Sedang menunggu verifikasi'
                         : pendingAction === 'submitProof'
                           ? 'Mengirim bukti...'
                           : 'Kirim bukti pembayaran'}
