@@ -28,6 +28,9 @@
   $: targetPath = $navigating?.to?.url.pathname ?? null;
   $: visualPath = pendingNavIntent ?? targetPath ?? actualPath;
   $: navGroups = getVisibleNavigation(user);
+  $: mobileOverflowItems = [...navGroups.workspace, ...navGroups.admin].filter(
+    (item) => !navGroups.bottom.some((bottomItem) => bottomItem.href === item.href)
+  );
   $: currentItem = getCurrentNavigationItem(visualPath, user);
   $: currentMeta = getPageMeta(visualPath, user);
   $: unreadCount = notificationSummary?.unread_count ?? 0;
@@ -363,33 +366,6 @@
         </div>
       </header>
 
-      {#if mobileMenuOpen}
-        <section class="mobile-menu" transition:fade={{ duration: 160 }}>
-          <div class="mobile-menu-grid">
-            {#each [...navGroups.primary, ...navGroups.workspace, ...navGroups.admin] as item}
-              <a
-                href={item.href}
-                class={`mobile-menu-link ${navStateClass(item.href, 'mobile-menu-link-active', 'mobile-menu-link-pending')}`}
-                aria-current={isCurrentNavItem(item.href) ? 'page' : undefined}
-                data-sveltekit-preload-code="viewport"
-                data-sveltekit-preload-data="tap"
-                on:pointerdown={(event) => primeNavigation(item.href, event)}
-                on:click={(event) => {
-                  primeNavigation(item.href, event);
-                  closeMenus();
-                }}
-              >
-                <AppIcon icon={item.icon} className="h-5 w-5" />
-                <div class="min-w-0">
-                  <p class="text-sm font-semibold">{item.label}</p>
-                  <p class="mt-1 text-xs leading-5 text-muted">{item.description}</p>
-                </div>
-              </a>
-            {/each}
-          </div>
-        </section>
-      {/if}
-
       <PwaControlBar />
 
       <main class="page-container">
@@ -425,6 +401,55 @@
           {/each}
         </div>
       </nav>
+
+      {#if mobileMenuOpen}
+        <div class="mobile-menu-backdrop lg:hidden" transition:fade={{ duration: 140 }}>
+          <button
+            type="button"
+            class="mobile-menu-scrim"
+            aria-label="Tutup menu tambahan"
+            on:click={closeMenus}
+          ></button>
+          <section
+            class="mobile-menu mobile-menu-floating"
+            aria-label="Menu lainnya"
+            transition:fly={{ y: 18, duration: 180 }}
+          >
+            <div class="mobile-menu-head">
+              <p class="mobile-menu-kicker">Menu Lainnya</p>
+            </div>
+
+            <div class="mobile-menu-grid">
+              {#if mobileOverflowItems.length > 0}
+                {#each mobileOverflowItems as item}
+                  <a
+                    href={item.href}
+                    class={`mobile-menu-link ${navStateClass(item.href, 'mobile-menu-link-active', 'mobile-menu-link-pending')}`}
+                    aria-current={isCurrentNavItem(item.href) ? 'page' : undefined}
+                    data-sveltekit-preload-code="viewport"
+                    data-sveltekit-preload-data="tap"
+                    on:pointerdown={(event) => primeNavigation(item.href, event)}
+                    on:click={(event) => {
+                      primeNavigation(item.href, event);
+                      closeMenus();
+                    }}
+                  >
+                    <span class="mobile-menu-link-icon">
+                      <AppIcon icon={item.icon} className="h-5 w-5" />
+                    </span>
+                    <span class="mobile-menu-link-label">{item.label}</span>
+                  </a>
+                {/each}
+              {:else}
+                <div class="mobile-menu-empty">
+                  <AppIcon icon="lucide:panel-top-close" className="h-5 w-5" />
+                  <p>Tidak ada menu tambahan untuk role akun ini.</p>
+                </div>
+              {/if}
+            </div>
+          </section>
+        </div>
+      {/if}
     </div>
   </div>
 </div>

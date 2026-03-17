@@ -354,19 +354,44 @@
     color: var(--error);
   }
 
+  .mobile-menu-backdrop {
+    @apply fixed inset-0 z-40 flex items-start justify-center px-3 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-[calc(5.75rem+env(safe-area-inset-top))] sm:px-6;
+  }
+
+  .mobile-menu-scrim {
+    @apply absolute inset-0 border-0 p-0;
+    background: linear-gradient(180deg, rgba(31, 36, 48, 0.04), rgba(31, 36, 48, 0.14));
+  }
+
   .mobile-menu {
-    @apply border-b px-4 pb-4 pt-1 sm:px-6 lg:hidden;
-    border-color: rgba(216, 208, 197, 0.7);
-    background: rgba(248, 246, 242, 0.78);
-    backdrop-filter: blur(10px);
+    @apply relative w-full max-w-[34rem] rounded-[26px] border p-3.5;
+    border-color: rgba(216, 208, 197, 0.82);
+    background: rgba(248, 246, 242, 0.94);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 28px 64px -30px rgba(31, 36, 48, 0.42);
+  }
+
+  .mobile-menu-floating {
+    max-height: min(23rem, calc(100dvh - 10.75rem - env(safe-area-inset-bottom)));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .mobile-menu-head {
+    @apply mb-2 px-1;
+  }
+
+  .mobile-menu-kicker {
+    @apply text-[11px] font-semibold uppercase tracking-[0.22em];
+    color: var(--accent-brass);
   }
 
   .mobile-menu-grid {
-    @apply grid gap-3 sm:grid-cols-2;
+    @apply grid grid-cols-2 gap-2.5;
   }
 
   .mobile-menu-link {
-    @apply rounded-[24px] border p-4 transition duration-200;
+    @apply flex min-h-[6.25rem] flex-col items-center justify-center gap-2 rounded-[20px] border px-3 py-3 text-center transition duration-200;
     border-color: rgba(216, 208, 197, 0.88);
     background: rgba(248, 246, 242, 0.84);
     box-shadow: var(--shadow-card);
@@ -381,6 +406,24 @@
   .mobile-menu-link-pending {
     border-color: rgba(168, 139, 82, 0.26);
     background: rgba(248, 246, 242, 0.96);
+  }
+
+  .mobile-menu-link-icon {
+    @apply flex h-11 w-11 items-center justify-center rounded-[16px];
+    color: var(--accent-primary);
+    background: rgba(227, 221, 210, 0.9);
+  }
+
+  .mobile-menu-link-label {
+    @apply text-sm font-semibold leading-5;
+    color: var(--text-primary);
+  }
+
+  .mobile-menu-empty {
+    @apply flex items-center gap-3 rounded-[20px] border border-dashed px-4 py-3 text-sm;
+    border-color: rgba(216, 208, 197, 0.88);
+    color: var(--text-secondary);
+    background: rgba(248, 246, 242, 0.72);
   }
 
   .page-container {
