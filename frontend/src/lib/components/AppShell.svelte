@@ -98,7 +98,13 @@
   <div class="shell-layout">
     <aside class="shell-sidebar">
       <a href="/dashboard" class="shell-brand" data-sveltekit-preload-data="tap" on:click={closeMenus}>
-        <div class="shell-brand-mark">M</div>
+        <img
+          src="/icons/logo.png"
+          alt="Logo MessHub"
+          class="shell-brand-logo"
+          width="72"
+          height="72"
+        />
         <div class="min-w-0">
           <p class="shell-brand-kicker">Mess Traspac Menyala</p>
           <h1 class="shell-brand-title">{APP_NAME}</h1>

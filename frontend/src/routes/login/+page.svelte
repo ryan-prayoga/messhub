@@ -87,7 +87,10 @@
 
       <section class="app-panel w-full max-w-[34rem] justify-self-end">
         <div class="flex items-center justify-between gap-3">
-          <span class="badge-brand">MessHub</span>
+          <div class="brand-chip">
+            <img src="/icons/logo.png" alt="Logo MessHub" class="brand-chip-logo" width="28" height="28" />
+            <span>MessHub</span>
+          </div>
           <span class="badge-muted">PWA Internal</span>
         </div>
 

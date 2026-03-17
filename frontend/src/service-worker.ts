@@ -95,8 +95,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(payload.title ?? 'MessHub', {
       body: payload.body ?? 'Ada update baru di MessHub.',
-      icon: payload.icon ?? '/icons/icon-192.png',
-      badge: payload.badge ?? '/icons/icon-192.png',
+      icon: payload.icon ?? '/icons/logo.png',
+      badge: payload.badge ?? '/icons/logo.png',
       tag: payload.tag ?? 'messhub',
       data: payload.data ?? {
         url: '/notifications'

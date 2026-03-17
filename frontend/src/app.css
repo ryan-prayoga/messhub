@@ -158,12 +158,11 @@
     box-shadow: var(--shadow-card);
   }
 
-  .shell-brand-mark {
-    @apply flex h-12 w-12 items-center justify-center rounded-[20px] text-lg font-semibold;
-    font-family: "Iowan Old Style", "Baskerville", "Times New Roman", serif;
-    color: #f8f6f2;
-    background: linear-gradient(145deg, #2f3440, #454b57);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  .shell-brand-logo {
+    @apply h-[4.5rem] w-[4.5rem] shrink-0 rounded-[22px] border object-cover;
+    border-color: rgba(216, 208, 197, 0.92);
+    background: rgba(248, 246, 242, 0.92);
+    box-shadow: var(--shadow-card);
   }
 
   .shell-brand-kicker {
@@ -521,6 +520,18 @@
     @apply badge;
     color: #f8f6f2;
     background: linear-gradient(135deg, var(--accent-brass), #c3a069);
+  }
+
+  .brand-chip {
+    @apply inline-flex items-center gap-2 rounded-full border px-2.5 py-1.5 text-xs font-semibold uppercase tracking-[0.12em];
+    color: var(--text-primary);
+    border-color: rgba(216, 208, 197, 0.88);
+    background: rgba(248, 246, 242, 0.9);
+  }
+
+  .brand-chip-logo {
+    @apply h-7 w-7 rounded-full object-cover;
+    background: rgba(248, 246, 242, 0.92);
   }
 
   .badge-strong {
