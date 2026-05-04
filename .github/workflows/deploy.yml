@@ -12,59 +12,31 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Pull latest code
+      - name: Deploy backend + frontend
         working-directory: /home/ubuntu/projects/messhub
         run: |
           set -Eeuo pipefail
+
           export NVM_DIR="$HOME/.nvm"
           [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-          export PATH="$HOME/.local/bin:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node/ | sort -V | tail -1)/bin:$PATH"
+          export PATH="$HOME/.local/bin:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node/ | sort -V | tail -1)/bin:/usr/local/go/bin:$PATH"
 
+          PROJECT_DIR="/home/ubuntu/projects/messhub"
+
+          cd "$PROJECT_DIR"
           git checkout main
           git pull --ff-only origin main
           echo "✅ Code updated to $(git rev-parse --short HEAD)"
 
-      - name: Run migrations
-        working-directory: /home/ubuntu/projects/messhub/backend
-        run: |
-          set -Eeuo pipefail
-          export NVM_DIR="$HOME/.nvm"
-          [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-          export PATH="$HOME/.local/bin:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node/ | sort -V | tail -1)/bin:/usr/local/go/bin:$PATH"
+          cd backend
           go run ./cmd/migrate
-          echo "✅ Migrations done"
-
-      - name: Build backend (gas)
-        working-directory: /home/ubuntu/projects/messhub/backend
-        run: |
-          set -Eeuo pipefail
-          export NVM_DIR="$HOME/.nvm"
-          [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-          export PATH="$HOME/.local/bin:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node/ | sort -V | tail -1)/bin:/usr/local/go/bin:$PATH"
           gas build --no-ui --type go --pm2-name messhub-backend --port 4100 --yes
-          echo "✅ Backend built"
 
-      - name: Build frontend (gas)
-        working-directory: /home/ubuntu/projects/messhub/frontend
-        run: |
-          set -Eeuo pipefail
-          export NVM_DIR="$HOME/.nvm"
-          [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-          export PATH="$HOME/.local/bin:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node/ | sort -V | tail -1)/bin:/usr/local/go/bin:$PATH"
+          cd ../frontend
           gas build --no-ui --type svelte --pm2-name messhub-frontend --port 4101 --yes
-          echo "✅ Frontend built"
 
-      - name: Healthcheck
-        run: |
-          set -Eeuo pipefail
           curl --fail --silent --show-error http://127.0.0.1:4100/health
           curl --fail --silent --show-error http://127.0.0.1:4101/login | grep -q "MessHub"
-          echo "✅ Healthcheck passed"
 
-      - name: Save PM2
-        run: |
-          export NVM_DIR="$HOME/.nvm"
-          [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-          export PATH="$HOME/.local/bin:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node/ | sort -V | tail -1)/bin:$PATH"
           pm2 save
           echo "✅ Deploy complete"
