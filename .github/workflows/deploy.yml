@@ -8,60 +8,63 @@ on:
 jobs:
   deploy:
     name: Deploy main to VPS
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 30
 
-    env:
-      VPS_HOST: ${{ secrets.VPS_HOST }}
-      VPS_USER: ${{ secrets.VPS_USER }}
-      PROJECT_DIR: /home/ubuntu/projects/messhub
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Validate required secrets
+      - name: Pull latest code
+        working-directory: /home/ubuntu/projects/messhub
         run: |
-          set -eu
-          test -n "${VPS_HOST}"
-          test -n "${VPS_USER}"
-          test -n "${{ secrets.VPS_SSH_KEY }}"
+          set -Eeuo pipefail
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+          export PATH="$HOME/.local/bin:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node/ | sort -V | tail -1)/bin:$PATH"
 
-      - name: Setup SSH agent
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+          git checkout main
+          git pull --ff-only origin main
+          echo "✅ Code updated to $(git rev-parse --short HEAD)"
 
-      - name: Add VPS host to known_hosts
+      - name: Run migrations
+        working-directory: /home/ubuntu/projects/messhub/backend
         run: |
-          set -eu
-          mkdir -p ~/.ssh
-          ssh-keyscan -H "${VPS_HOST}" >> ~/.ssh/known_hosts
+          set -Eeuo pipefail
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+          export PATH="$HOME/.local/bin:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node/ | sort -V | tail -1)/bin:/usr/local/go/bin:$PATH"
+          go run ./cmd/migrate
+          echo "✅ Migrations done"
 
-      - name: Deploy on VPS
+      - name: Build backend (gas)
+        working-directory: /home/ubuntu/projects/messhub/backend
         run: |
-          set -euxo pipefail
-          ssh "${VPS_USER}@${VPS_HOST}" <<'EOF'
-            set -euxo pipefail
+          set -Eeuo pipefail
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+          export PATH="$HOME/.local/bin:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node/ | sort -V | tail -1)/bin:/usr/local/go/bin:$PATH"
+          gas build --no-ui --type go --pm2-name messhub-backend --port 4100 --yes
+          echo "✅ Backend built"
 
-            export NVM_DIR="$HOME/.nvm"
-            if [ -s "$NVM_DIR/nvm.sh" ]; then
-              . "$NVM_DIR/nvm.sh"
-            fi
-            export PATH="$HOME/.nvm/versions/node/$(nvm version)/bin:$PATH"
+      - name: Build frontend (gas)
+        working-directory: /home/ubuntu/projects/messhub/frontend
+        run: |
+          set -Eeuo pipefail
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+          export PATH="$HOME/.local/bin:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node/ | sort -V | tail -1)/bin:/usr/local/go/bin:$PATH"
+          gas build --no-ui --type svelte --pm2-name messhub-frontend --port 4101 --yes
+          echo "✅ Frontend built"
 
-            cd /home/ubuntu/projects/messhub
+      - name: Healthcheck
+        run: |
+          set -Eeuo pipefail
+          curl --fail --silent --show-error http://127.0.0.1:4100/health
+          curl --fail --silent --show-error http://127.0.0.1:4101/login | grep -q "MessHub"
+          echo "✅ Healthcheck passed"
 
-            git checkout main
-            git pull --ff-only origin main
-
-            cd backend
-            go run ./cmd/migrate
-            gas build --no-ui --type go --pm2-name messhub-backend --port 4100 --yes
-
-            cd ../frontend
-            gas build --no-ui --type svelte --pm2-name messhub-frontend --port 4101 --yes
-
-            curl --fail --silent --show-error http://127.0.0.1:4100/health
-            curl --fail --silent --show-error http://127.0.0.1:4101/login | grep -q "MessHub"
-          EOF
+      - name: Save PM2
+        run: |
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+          export PATH="$HOME/.local/bin:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node/ | sort -V | tail -1)/bin:$PATH"
+          pm2 save
+          echo "✅ Deploy complete"
